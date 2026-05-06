@@ -1,7 +1,6 @@
 import { RecommendationTable } from "../../components/RecommendationTable";
-import type { Recommendation } from "../../types";
 
-export function PriorityPage({ items, onPriority }: { items: Recommendation[]; onPriority: (id: string, priority: Recommendation["priority"]) => void }) {
+export function PriorityPage({ items, onPriority }) {
   return (
     <div className="large-panel">
       <div className="guidelines">

@@ -1,12 +1,10 @@
-import type { Recommendation, Role, Stats, User } from "./types";
-
-export const demoUsers: Record<Role, User> = {
+export const demoUsers = {
   lecturer: { id: "1", name: "Menaka Samaranayake", username: "lecturer", role: "lecturer", department: "DCEE" },
   hod: { id: "2", name: "Sameera Rathnayake", username: "hod", role: "hod", department: "DCEE" },
   librarian: { id: "3", name: "Senaka Aluthge", username: "librarian", role: "librarian", department: "DCEE" }
 };
 
-export const demoRecommendations: Recommendation[] = [
+export const demoRecommendations = [
   {
     _id: "b1",
     title: "Clean Code",
@@ -74,7 +72,7 @@ export const demoRecommendations: Recommendation[] = [
   }
 ];
 
-export function buildStats(items: Recommendation[]): Stats {
+export function buildStats(items) {
   return {
     total: items.length,
     pending: items.filter((item) => item.status === "submitted" || item.status === "under_review").length,

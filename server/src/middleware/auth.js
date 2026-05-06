@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import User from "../models/User.js";
+import User from "../models/user.js";
 
 export async function requireAuth(req, res, next) {
   const header = req.headers.authorization || "";
@@ -10,21 +10,29 @@ export async function requireAuth(req, res, next) {
   }
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET || "dev-secret");
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+
     const user = await User.findById(payload.id).select("-passwordHash");
     if (!user) {
       return res.status(401).json({ message: "Invalid session" });
     }
-    req.user = user;
+
+    req.user = {
+      id: user._id,
+      role: user.role,
+      email: user.email,
+      department: user.department
+    };
+
     next();
-  } catch {
-    res.status(401).json({ message: "Invalid session" });
+  } catch (err) {
+    return res.status(401).json({ message: "Invalid session" });
   }
 }
 
 export function allowRoles(...roles) {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
+    if (!req.user || !roles.includes(req.user.role)) {
       return res.status(403).json({ message: "You do not have permission for this action" });
     }
     next();

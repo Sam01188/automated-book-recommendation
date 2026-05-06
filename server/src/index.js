@@ -2,9 +2,10 @@ import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import mongoose from "mongoose";
-import authRoutes from "./routes/auth.js";
+import authRoutes from "./routes/authRoutes.js";
 import recommendationRoutes from "./routes/recommendations.js";
 import statsRoutes from "./routes/stats.js";
+import userRoutes from "./routes/userRoutes.js";
 
 dotenv.config();
 
@@ -21,10 +22,11 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/stats", statsRoutes);
+app.use("/api/admin/users", userRoutes);
 
 async function start() {
   try {
-    await mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/book_recommendation_system");
+    await mongoose.connect(process.env.MONGO_URI);
     app.listen(port, () => {
       console.log(`API running on http://localhost:${port}`);
     });

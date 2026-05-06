@@ -1,7 +1,6 @@
 import { Download } from "lucide-react";
-import type { Recommendation } from "../../types";
 
-export function ExportDataPage({ items }: { items: Recommendation[] }) {
+export function ExportDataPage({ items }) {
   function downloadCsv() {
     const header = "Title,Author,Publisher,Submitted By,Priority,Status";
     const rows = items.map((item) =>

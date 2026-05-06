@@ -3,14 +3,30 @@ import mongoose from "mongoose";
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
-    username: { type: String, required: true, unique: true, lowercase: true, trim: true },
+
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      match: [/^\S+@\S+\.\S+$/, "Invalid email format"]
+    },
+
     passwordHash: { type: String, required: true },
+
     role: {
       type: String,
-      enum: ["lecturer", "hod", "librarian"],
+      enum: ["lecturer", "hod", "librarian", "admin"],
       required: true
     },
-    department: { type: String, default: "DCEE" }
+
+    department: {
+      type: String,
+      required: function() {
+        return this.role !== "admin" && this.role !== "librarian";
+      }
+    }
   },
   { timestamps: true }
 );

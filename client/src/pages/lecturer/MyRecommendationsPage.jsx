@@ -1,7 +1,6 @@
 import { CompactList } from "../../components/RecommendationList";
-import type { Recommendation } from "../../types";
 
-export function MyRecommendationsPage({ items }: { items: Recommendation[] }) {
+export function MyRecommendationsPage({ items }) {
   return (
     <div className="large-panel">
       <h2>My Book Recommendations</h2>

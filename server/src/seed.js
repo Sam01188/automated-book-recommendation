@@ -1,17 +1,25 @@
 import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
+import path from "path";
+import { fileURLToPath } from "url";
+
+import User from "./models/user.js";
 import Recommendation from "./models/Recommendation.js";
-import User from "./models/User.js";
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, "../.env") });
 
+// 👤 USERS
 const users = [
-  ["Menaka Samaranayake", "lecturer", "lecturer123", "lecturer"],
-  ["Sameera Rathnayake", "hod", "hod123", "hod"],
-  ["Senaka Aluthge", "librarian", "library123", "librarian"]
+  ["System Admin", "admin@ruh.ac.lk", "admin123", "admin"],
+  ["Menaka Samaranayake", "menaka@ruh.ac.lk", "lecturer123", "lecturer"],
+  ["Sameera Rathnayake", "sameera@ruh.ac.lk", "hod123", "hod"],
+  ["Senaka Aluthge", "senaka@ruh.ac.lk", "library123", "librarian"]
 ];
 
+// 📚 SAMPLE BOOK RECOMMENDATIONS
 const books = [
   ["Clean Code", "Robert C. Martin", "Prentice Hall", "high"],
   ["Design Patterns", "Erich Gamma", "Addison-Wesley", "medium"],
@@ -21,44 +29,69 @@ const books = [
 ];
 
 async function seed() {
-  await mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/book_recommendation_system");
-  await User.deleteMany({});
-  await Recommendation.deleteMany({});
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
 
-  const created = [];
-  for (const [name, username, password, role] of users) {
-    created.push(
-      await User.create({
+    console.log("🔗 Connected to MongoDB");
+
+    // 🧹 Clean existing data
+    await User.deleteMany({});
+    await Recommendation.deleteMany({});
+
+    console.log("🧹 Old data cleared");
+
+    // 👤 Create users
+    const createdUsers = [];
+
+    for (const [name, email, password, role] of users) {
+      const user = await User.create({
         name,
-        username,
+        email,
         role,
-        department: "DCEE",
+        ...(role !== "admin" && role !== "librarian" ? { department: "DCEE" } : {}),
         passwordHash: await bcrypt.hash(password, 10)
-      })
+      });
+
+      createdUsers.push(user);
+    }
+
+    console.log("👥 Users seeded");
+
+    // 📚 Create recommendations
+    for (const [title, author, publisher, priority] of books) {
+      await Recommendation.create({
+        title,
+        author,
+        isbn: "9780000000000",
+        publisher,
+        edition: "Latest",
+        additionalNotes: "Seeded recommendation",
+        submittedBy: createdUsers.find(u => u.role === "lecturer")._id,
+        department: "DCEE",
+        status: priority === "high" ? "approved" : "under_review",
+        priority
+      });
+    }
+
+    console.log("📚 Recommendations seeded");
+
+    // 🧾 Output login credentials
+    console.log("\n✅ SEED COMPLETE");
+    console.table(
+      users.map(([name, email, password, role]) => ({
+        name,
+        email,
+        password,
+        role
+      }))
     );
-  }
 
-  for (const [title, author, publisher, priority] of books) {
-    await Recommendation.create({
-      title,
-      author,
-      isbn: "9780000000000",
-      publisher,
-      edition: "Latest",
-      additionalNotes: "Recommended for engineering reference collection.",
-      submittedBy: created[0]._id,
-      department: "DCEE",
-      status: priority === "high" ? "approved" : "under_review",
-      priority
-    });
+    await mongoose.disconnect();
+    console.log("🔌 Disconnected from MongoDB");
+  } catch (error) {
+    console.error("❌ Seed error:", error);
+    process.exit(1);
   }
-
-  console.log("Seed complete");
-  console.table(users.map(([, username, password, role]) => ({ username, password, role })));
-  await mongoose.disconnect();
 }
 
-seed().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+seed();

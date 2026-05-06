@@ -1,6 +1,5 @@
 import { RecommendationTable } from "../../components/RecommendationTable";
-import type { Recommendation } from "../../types";
 
-export function AllRecommendationsPage({ items }: { items: Recommendation[] }) {
+export function AllRecommendationsPage({ items }) {
   return <RecommendationTable items={items} title="All Recommendations" />;
 }

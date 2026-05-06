@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createRecommendation, fetchRecommendations, fetchStats, login, updatePriority } from "./api";
-import { AppLayout, roleViews, type View } from "./components/AppLayout";
+import { AppLayout, roleViews } from "./components/AppLayout";
 import { LoginPage } from "./pages/auth/LoginPage";
 import { HodDashboardPage } from "./pages/hod/HodDashboardPage";
 import { AllRecommendationsPage as HodAllRecommendationsPage } from "./pages/hod/AllRecommendationsPage";
@@ -11,13 +11,17 @@ import { LibrarianDashboardPage } from "./pages/librarian/LibrarianDashboardPage
 import { LecturerDashboardPage } from "./pages/lecturer/LecturerDashboardPage";
 import { MyRecommendationsPage } from "./pages/lecturer/MyRecommendationsPage";
 import { SubmitRequestPage } from "./pages/lecturer/SubmitRequestPage";
-import type { Recommendation, Stats, User } from "./types";
+import { AdminDashboard } from "./pages/admin/AdminDashboard";
+import { CreateUserPage } from "./pages/admin/CreateUserPage";
+import { UsersListPage } from "./pages/admin/UsersListPage";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { createUser as apiCreateUser } from "./api";
 
 function App() {
-  const [session, setSession] = useState<{ token: string; user: User } | null>(null);
-  const [view, setView] = useState<View>("dashboard");
-  const [items, setItems] = useState<Recommendation[]>([]);
-  const [stats, setStats] = useState<Stats>({ total: 0, pending: 0, approved: 0, highPriority: 0 });
+  const [session, setSession] = useState(null);
+  const [view, setView] = useState("dashboard");
+  const [items, setItems] = useState([]);
+  const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, highPriority: 0 });
 
   useEffect(() => {
     const stored = localStorage.getItem("book-rec-session");
@@ -37,10 +41,13 @@ function App() {
     });
   }, [session]);
 
-  const allowedViews = useMemo(() => (session ? roleViews[session.user.role] : []), [session]);
+  const allowedViews = useMemo(() => {
+    if (!session || !session.user || !session.user.role) return [];
+    return roleViews[session.user.role] || [];
+  }, [session]);
 
-  async function handleLogin(username: string, password: string) {
-    const nextSession = await login(username, password);
+  async function handleLogin(email, password) {
+    const nextSession = await login(email, password);
     localStorage.setItem("book-rec-session", JSON.stringify(nextSession));
     setSession(nextSession);
     setView("dashboard");
@@ -52,7 +59,7 @@ function App() {
     setItems([]);
   }
 
-  async function handleCreate(payload: Partial<Recommendation>) {
+  async function handleCreate(payload) {
     if (!session) {
       return;
     }
@@ -69,13 +76,18 @@ function App() {
     setView("my");
   }
 
-  async function handlePriority(id: string, priority: Recommendation["priority"]) {
+  async function handlePriority(id, priority) {
     if (!session) {
       return;
     }
 
     await updatePriority(session.token, id, priority);
     setItems((current) => current.map((item) => (item._id === id ? { ...item, priority, status: "under_review" } : item)));
+  }
+
+  async function handleUserCreation(userData) {
+    if (!session) return;
+    await apiCreateUser(session.token, userData);
   }
 
   if (!session) {
@@ -95,6 +107,10 @@ function App() {
       {session.user.role === "librarian" && view === "dashboard" && <LibrarianDashboardPage user={session.user} stats={stats} items={items} />}
       {session.user.role === "librarian" && view === "all" && <AllSubmissionsPage items={items} />}
       {session.user.role === "librarian" && view === "export" && <ExportDataPage items={items} />}
+
+      {session.user.role === "admin" && view === "dashboard" && <AdminDashboard user={session.user} stats={stats} items={items} />}
+      {session.user.role === "admin" && view === "users" && <UsersListPage token={session.token} />}
+      {session.user.role === "admin" && view === "createUser" && <CreateUserPage onCreateUser={handleUserCreation} />}
     </AppLayout>
   );
 }
