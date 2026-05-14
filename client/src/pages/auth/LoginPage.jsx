@@ -28,7 +28,7 @@ export function LoginPage({ onLogin }) {
       <div className="login-visual">
         <img src="/ruhuna.gif" alt="Logo" style={{ width: '80px', marginBottom: '2rem' }} />
         <h2>Engineering Library Portal</h2>
-        <p>A smart priority-based recommendation system for the Faculty of Engineering, University of Ruhuna.</p>
+        <p>A priority-based recommendation system for the Faculty of Engineering, University of Ruhuna.</p>
         
         <div style={{ marginTop: 'auto', display: 'flex', gap: '2rem' }}>
           <div>
@@ -45,13 +45,13 @@ export function LoginPage({ onLogin }) {
       <div className="login-form-side">
         <form className="radical-login-card" onSubmit={submit}>
           <div>
-            <h3 style={{ fontSize: '2rem', fontWeight: 800 }}>Welcome back</h3>
+            <h3 style={{ fontSize: '2rem', fontWeight: 800 }}>Welcome back ...</h3>
             <p style={{ color: 'var(--text-dim)', fontWeight: 500 }}>Please enter your credentials to continue.</p>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <div className="field-radical">
-              <label>Institutional Email</label>
+              <label>Email</label>
               <input 
                 type="email" 
                 value={email} 
@@ -60,7 +60,7 @@ export function LoginPage({ onLogin }) {
               />
             </div>
             <div className="field-radical">
-              <label>Secure Password</label>
+              <label>Password</label>
               <input 
                 type="password" 
                 value={password} 
@@ -77,7 +77,7 @@ export function LoginPage({ onLogin }) {
 
           <div style={{ textAlign: 'center', fontSize: '0.85rem' }}>
             <a href="#help" style={{ color: 'var(--primary)', fontWeight: 700, textDecoration: 'none' }}>
-              Need technical assistance?
+              Forgot Password?
             </a>
           </div>
         </form>

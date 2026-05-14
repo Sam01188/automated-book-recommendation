@@ -696,7 +696,7 @@ input:focus, select:focus, textarea:focus {
   max-width: 400px;
   display: flex;
   flex-direction: column;
-  gap: 2.5rem;
+  gap: 1rem;
 }
 
 .field-radical {
@@ -746,6 +746,7 @@ input:focus, select:focus, textarea:focus {
   width: fit-content;
   align-self: center;
   min-width: 160px;
+  margin-top: 1.5rem;
 }
 
 .btn-radical:hover {
