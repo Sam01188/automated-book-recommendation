@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import User from "../models/user.js";
+import { tokenBlacklist } from "../index.js";
 
 export async function requireAuth(req, res, next) {
   const header = req.headers.authorization || "";
@@ -7,6 +8,11 @@ export async function requireAuth(req, res, next) {
 
   if (!token) {
     return res.status(401).json({ message: "Authentication required" });
+  }
+
+  // Check if token is blacklisted
+  if (tokenBlacklist.has(token)) {
+    return res.status(401).json({ message: "Session has ended" });
   }
 
   try {
@@ -23,6 +29,7 @@ export async function requireAuth(req, res, next) {
       email: user.email,
       department: user.department
     };
+    req.token = token;
 
     next();
   } catch (err) {

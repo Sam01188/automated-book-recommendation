@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import User from "../models/user.js";
+import { tokenBlacklist } from "../index.js";
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
@@ -27,6 +28,14 @@ export const login = async (req, res) => {
       department: user.department
     }
   });
+};
+
+export const logout = (req, res) => {
+  const token = req.token;
+  if (token) {
+    tokenBlacklist.add(token);
+  }
+  res.json({ message: "Logged out successfully" });
 };
 
 export const me = (req, res) => {

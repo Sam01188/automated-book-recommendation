@@ -17,6 +17,21 @@ export async function login(email, password) {
   return response.json();
 }
 
+export async function logout(token) {
+  if (token === "demo-token") {
+    return;
+  }
+
+  try {
+    await fetch(`${api}/auth/logout`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  } catch (error) {
+    console.error("Logout error:", error);
+  }
+}
+
 export async function fetchRecommendations(token, role) {
   if (token === "demo-token") {
     return role === "lecturer" ? demoRecommendations.slice(0, 3) : demoRecommendations;

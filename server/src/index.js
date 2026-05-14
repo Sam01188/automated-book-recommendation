@@ -9,6 +9,9 @@ import userRoutes from "./routes/userRoutes.js";
 
 dotenv.config();
 
+// Token blacklist for logout functionality
+export const tokenBlacklist = new Set();
+
 const app = express();
 const port = process.env.PORT || 5000;
 

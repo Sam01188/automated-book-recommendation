@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { UserPlus, Users } from "lucide-react";
-import { createRecommendation, fetchRecommendations, fetchStats, login, updatePriority } from "./api";
+import { createRecommendation, fetchRecommendations, fetchStats, login, logout as apiLogout, updatePriority } from "./api";
 import { AppLayout, roleViews } from "./components/AppLayout";
 import { LoginPage } from "./pages/auth/LoginPage";
 import { HodDashboardPage } from "./pages/hod/HodDashboardPage";
@@ -53,7 +53,10 @@ function App() {
     setView("dashboard");
   }
 
-  function logout() {
+  async function logout() {
+    if (session?.token) {
+      await apiLogout(session.token);
+    }
     localStorage.removeItem("book-rec-session");
     setSession(null);
     setItems([]);
