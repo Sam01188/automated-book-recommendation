@@ -109,3 +109,20 @@ export async function deleteUser(token, userId) {
   if (!response.ok) throw new Error("Failed to delete user");
   return response.json();
 }
+
+export const updateUser = async (token, id, data) => {
+  const response = await fetch(`${api}/admin/users/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(data)
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to update user");
+  }
+
+  return response.json();
+};

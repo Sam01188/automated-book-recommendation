@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { UserPlus, Users } from "lucide-react";
 import { createRecommendation, fetchRecommendations, fetchStats, login, updatePriority } from "./api";
 import { AppLayout, roleViews } from "./components/AppLayout";
 import { LoginPage } from "./pages/auth/LoginPage";
@@ -14,7 +15,6 @@ import { SubmitRequestPage } from "./pages/lecturer/SubmitRequestPage";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { CreateUserPage } from "./pages/admin/CreateUserPage";
 import { UsersListPage } from "./pages/admin/UsersListPage";
-import { ProtectedRoute } from "./components/ProtectedRoute";
 import { createUser as apiCreateUser } from "./api";
 
 function App() {
@@ -95,7 +95,14 @@ function App() {
   }
 
   return (
-    <AppLayout user={session.user} view={view} allowedViews={allowedViews} onViewChange={setView} onLogout={logout}>
+    <AppLayout
+      user={session.user}
+      view={view}
+      allowedViews={allowedViews}
+      onViewChange={setView}
+      onLogout={logout}
+      viewActions={null}
+    >
       {session.user.role === "lecturer" && view === "dashboard" && <LecturerDashboardPage user={session.user} stats={stats} items={items} />}
       {session.user.role === "lecturer" && view === "submit" && <SubmitRequestPage onSubmit={handleCreate} />}
       {session.user.role === "lecturer" && view === "my" && <MyRecommendationsPage items={items} />}
@@ -108,7 +115,9 @@ function App() {
       {session.user.role === "librarian" && view === "all" && <AllSubmissionsPage items={items} />}
       {session.user.role === "librarian" && view === "export" && <ExportDataPage items={items} />}
 
-      {session.user.role === "admin" && view === "dashboard" && <AdminDashboard user={session.user} stats={stats} items={items} />}
+      {session.user.role === "admin" && view === "dashboard" && (
+        <AdminDashboard user={session.user} token={session.token} items={items} onViewChange={setView} />
+      )}
       {session.user.role === "admin" && view === "users" && <UsersListPage token={session.token} />}
       {session.user.role === "admin" && view === "createUser" && <CreateUserPage onCreateUser={handleUserCreation} />}
     </AppLayout>

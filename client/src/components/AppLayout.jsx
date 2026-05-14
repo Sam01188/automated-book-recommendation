@@ -15,7 +15,7 @@ export const viewLabels = {
   priority: "Pending Priority",
   all: "All Recommendations",
   export: "Export Data",
-  users: "Users Management",
+  users: "User Management",
   createUser: "Create New User"
 };
 
@@ -30,7 +30,7 @@ export const viewIcons = {
   createUser: UserPlus
 };
 
-export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, children }) {
+export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, viewActions, children }) {
   const ActiveIcon = viewIcons[view] || Home;
 
   return (
@@ -74,9 +74,12 @@ export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, ch
         </aside>
 
         <main className="content">
-          <div className="view-title">
-            <ActiveIcon size={20} />
-            <span>{viewLabels[view]}</span>
+          <div className="view-title-row">
+            <div className="view-title">
+              <ActiveIcon size={20} />
+              <span>{viewLabels[view]}</span>
+            </div>
+            {viewActions}
           </div>
           {children}
         </main>

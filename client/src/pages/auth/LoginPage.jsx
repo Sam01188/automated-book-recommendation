@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { LogIn, ArrowRight } from "lucide-react";
+import { AppModal } from "../../components/AppModal";
 
 export function LoginPage({ onLogin }) {
   const [email, setEmail] = useState("admin@ruh.ac.lk");
   const [password, setPassword] = useState("admin123");
   const [busy, setBusy] = useState(false);
+  const [modal, setModal] = useState(null);
 
   async function submit(event) {
     event.preventDefault();
@@ -12,7 +14,10 @@ export function LoginPage({ onLogin }) {
     try {
       await onLogin(email, password);
     } catch (error) {
-      alert(error.message || "Login failed");
+      setModal({
+        title: "Login failed",
+        message: error.message || "Please check your email and password."
+      });
     } finally {
       setBusy(false);
     }
@@ -77,6 +82,14 @@ export function LoginPage({ onLogin }) {
           </div>
         </form>
       </div>
+
+      {modal && (
+        <AppModal
+          title={modal.title}
+          message={modal.message}
+          onConfirm={() => setModal(null)}
+        />
+      )}
     </div>
   );
 }

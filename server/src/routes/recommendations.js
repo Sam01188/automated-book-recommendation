@@ -8,6 +8,7 @@ router.get("/", requireAuth, async (req, res) => {
   const filter = req.user.role === "lecturer" ? { submittedBy: req.user._id } : {};
   const recommendations = await Recommendation.find(filter)
     .populate("submittedBy", "name department")
+    .populate("reviewedBy", "name department")
     .sort({ createdAt: -1 });
   res.json(recommendations);
 });

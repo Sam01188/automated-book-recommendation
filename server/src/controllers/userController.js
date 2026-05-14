@@ -43,13 +43,13 @@ export const deleteUser = async (req, res) => {
 };
 
 export const updateUser = async (req, res) => {
-  const { role, department } = req.body;
+  const { name, role, department } = req.body;
 
   const user = await User.findByIdAndUpdate(
     req.params.id,
-    { role, department },
+    { name, role, department },
     { new: true }
-  );
+  ).select("-passwordHash");
 
   res.json(user);
 };
