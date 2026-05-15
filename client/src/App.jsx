@@ -6,9 +6,11 @@ import { LoginPage } from "./pages/auth/LoginPage";
 import { HodDashboardPage } from "./pages/hod/HodDashboardPage";
 import { AllRecommendationsPage as HodAllRecommendationsPage } from "./pages/hod/AllRecommendationsPage";
 import { PriorityPage as HodPriorityPage } from "./pages/hod/PriorityPage";
-import { AllSubmissionsPage } from "./pages/librarian/AllSubmissionsPage";
+import { AllRecommendationsPage } from "./pages/librarian/AllRecommendationsPage";
 import { ExportDataPage } from "./pages/librarian/ExportDataPage";
 import { LibrarianDashboardPage } from "./pages/librarian/LibrarianDashboardPage";
+import { OrderTimePeriodsPage } from "./pages/librarian/OrderTimePeriodsPage";
+import { EmailAnnouncementsPage } from "./pages/librarian/EmailAnnouncementsPage";
 import { LecturerDashboardPage } from "./pages/lecturer/LecturerDashboardPage";
 import { MyRecommendationsPage } from "./pages/lecturer/MyRecommendationsPage";
 import { SubmitRequestPage } from "./pages/lecturer/SubmitRequestPage";
@@ -16,6 +18,7 @@ import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { CreateUserPage } from "./pages/admin/CreateUserPage";
 import { UsersListPage } from "./pages/admin/UsersListPage";
 import { createUser as apiCreateUser } from "./api";
+import "./styles/librarian.css";
 
 function App() {
   const [session, setSession] = useState(null);
@@ -112,7 +115,9 @@ function App() {
       {session.user.role === "hod" && view === "all" && <HodAllRecommendationsPage items={items} />}
 
       {session.user.role === "librarian" && view === "dashboard" && <LibrarianDashboardPage user={session.user} stats={stats} items={items} />}
-      {session.user.role === "librarian" && view === "all" && <AllSubmissionsPage items={items} />}
+      {session.user.role === "librarian" && view === "all" && <AllRecommendationsPage items={items} />}
+      {session.user.role === "librarian" && view === "periods" && <OrderTimePeriodsPage />}
+      {session.user.role === "librarian" && view === "announcements" && <EmailAnnouncementsPage />}
       {session.user.role === "librarian" && view === "export" && <ExportDataPage items={items} />}
 
       {session.user.role === "admin" && view === "dashboard" && (
