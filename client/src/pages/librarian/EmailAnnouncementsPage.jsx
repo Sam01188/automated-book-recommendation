@@ -1,22 +1,40 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Send, Eye } from "lucide-react";
 import { Card } from "../../components/librarian/Card";
 import { Button } from "../../components/librarian/Button";
 
-export function EmailAnnouncementsPage() {
+export function EmailAnnouncementsPage({ selectedPeriod }) {
+  const initialTemplate = selectedPeriod 
+    ? `Order Period for ${selectedPeriod.faculty}\n\nStart Date: ${new Date(selectedPeriod.startDate).toLocaleDateString()}\nEnd Date: ${new Date(selectedPeriod.endDate).toLocaleDateString()}\n\nPlease note: The order period for ${selectedPeriod.faculty} is now open. We kindly request all faculty members and departments to submit their book recommendations within this period.\n\nThank you.`
+    : "";
+
   const [formData, setFormData] = useState({
-    period: "1",
+    period: selectedPeriod ? selectedPeriod.id.toString() : "1",
     recipients: "all",
-    subject: "",
-    message: ""
+    subject: selectedPeriod ? `Book Order Period - ${selectedPeriod.faculty}` : "",
+    message: initialTemplate
   });
 
   const [previewMode, setPreviewMode] = useState(false);
 
-  const periods = [
-    { id: "1", name: "Jan - Mar 2026" },
-    { id: "2", name: "Oct - Dec 2025" }
-  ];
+  const periods = selectedPeriod
+    ? [{ id: selectedPeriod.id.toString(), name: selectedPeriod.faculty, details: selectedPeriod }]
+    : [
+        { id: "1", name: "Jan - Mar 2026" },
+        { id: "2", name: "Oct - Dec 2025" }
+      ];
+
+  useEffect(() => {
+    if (selectedPeriod) {
+      const newTemplate = `Order Period for ${selectedPeriod.faculty}\n\nStart Date: ${new Date(selectedPeriod.startDate).toLocaleDateString()}\nEnd Date: ${new Date(selectedPeriod.endDate).toLocaleDateString()}\n\nPlease note: The order period for ${selectedPeriod.faculty} is now open. We kindly request all faculty members and departments to submit their book recommendations within this period.\n\nThank you.`;
+      setFormData({
+        period: selectedPeriod.id.toString(),
+        recipients: "all",
+        subject: `Book Order Period - ${selectedPeriod.faculty}`,
+        message: newTemplate
+      });
+    }
+  }, [selectedPeriod]);
 
   const handleSendEmail = () => {
     console.log("Email sent:", formData);

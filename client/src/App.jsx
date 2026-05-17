@@ -25,6 +25,7 @@ function App() {
   const [view, setView] = useState("dashboard");
   const [items, setItems] = useState([]);
   const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, highPriority: 0 });
+  const [selectedPeriod, setSelectedPeriod] = useState(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("book-rec-session");
@@ -116,8 +117,8 @@ function App() {
 
       {session.user.role === "librarian" && view === "dashboard" && <LibrarianDashboardPage user={session.user} stats={stats} items={items} />}
       {session.user.role === "librarian" && view === "all" && <AllRecommendationsPage items={items} />}
-      {session.user.role === "librarian" && view === "periods" && <OrderTimePeriodsPage />}
-      {session.user.role === "librarian" && view === "announcements" && <EmailAnnouncementsPage />}
+      {session.user.role === "librarian" && view === "periods" && <OrderTimePeriodsPage onViewChange={setView} onSelectPeriod={setSelectedPeriod} />}
+      {session.user.role === "librarian" && view === "announcements" && <EmailAnnouncementsPage selectedPeriod={selectedPeriod} />}
       {session.user.role === "librarian" && view === "export" && <ExportDataPage items={items} />}
 
       {session.user.role === "admin" && view === "dashboard" && (
