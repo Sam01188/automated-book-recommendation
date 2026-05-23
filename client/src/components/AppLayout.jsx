@@ -1,10 +1,10 @@
-import React from "react";
-import { BookMarked, ClipboardList, Download, Home, ListChecks, LogOut, Send, UserCircle, Users, UserPlus } from "lucide-react";
+import React, { useState } from "react";
+import { BookMarked, ClipboardList, Download, Home, ListChecks, LogOut, Send, UserCircle, Users, UserPlus, Clock, Mail, ChevronLeft, ChevronRight } from "lucide-react";
 
 export const roleViews = {
   lecturer: ["dashboard", "submit", "my"],
   hod: ["dashboard", "priority", "all"],
-  librarian: ["dashboard", "all", "export"],
+  librarian: ["dashboard", "all", "periods", "announcements", "export"],
   admin: ["dashboard", "users", "createUser"]
 };
 
@@ -14,6 +14,8 @@ export const viewLabels = {
   my: "My Requests",
   priority: "Pending Priority",
   all: "All Recommendations",
+  periods: "Order Periods",
+  announcements: "Email Announcements",
   export: "Export Data",
   users: "User Management",
   createUser: "Create New User"
@@ -25,12 +27,15 @@ export const viewIcons = {
   my: ClipboardList,
   priority: ListChecks,
   all: BookMarked,
+  periods: Clock,
+  announcements: Mail,
   export: Download,
   users: Users,
   createUser: UserPlus
 };
 
 export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, viewActions, children }) {
+  const [sidebarMinimized, setSidebarMinimized] = useState(false);
   const ActiveIcon = viewIcons[view] || Home;
 
   return (
@@ -57,7 +62,15 @@ export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, vi
       </header>
 
       <div className="workspace">
-        <aside className="sidebar">
+        <aside className={`sidebar ${sidebarMinimized ? 'minimized' : ''}`}>
+          <button 
+            className="sidebar-toggle-btn"
+            onClick={() => setSidebarMinimized(!sidebarMinimized)}
+            title={sidebarMinimized ? "Expand sidebar" : "Minimize sidebar"}
+          >
+            {sidebarMinimized ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+          </button>
+          
           {allowedViews.map((item) => {
             const Icon = viewIcons[item];
             return (
@@ -65,9 +78,10 @@ export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, vi
                 key={item} 
                 className={view === item ? "nav-item active" : "nav-item"} 
                 onClick={() => onViewChange(item)}
+                title={sidebarMinimized ? viewLabels[item] : ""}
               >
                 <Icon size={20} />
-                <span>{viewLabels[item]}</span>
+                {!sidebarMinimized && <span>{viewLabels[item]}</span>}
               </button>
             );
           })}
