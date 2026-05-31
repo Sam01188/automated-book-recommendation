@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { BookMarked, ClipboardList, Download, Home, ListChecks, LogOut, Send, UserCircle, Users, UserPlus, Clock, Mail, ChevronLeft, ChevronRight } from "lucide-react";
+import { BookMarked, ClipboardList, Download, Home, ListChecks, LogOut, Send, UserCircle, Users, UserPlus, Clock, Mail, ChevronLeft, ChevronRight, Sun, Moon } from "lucide-react";
 
 export const roleViews = {
   lecturer: ["dashboard", "submit", "my"],
@@ -34,7 +34,7 @@ export const viewIcons = {
   createUser: UserPlus
 };
 
-export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, viewActions, children }) {
+export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, viewActions, theme, onToggleTheme, children }) {
   const [sidebarMinimized, setSidebarMinimized] = useState(false);
   const ActiveIcon = viewIcons[view] || Home;
 
@@ -45,7 +45,7 @@ export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, vi
           <img src="/ruhuna.gif" alt="University of Ruhuna" className="logo" />
           <div>
             <h1>University of Ruhuna</h1>
-            <p>Faculty of Engineering • Library Portal</p>
+            <p>Faculty of Engineering • Book Recommendation Portal</p>
           </div>
         </div>
         <div className="userbar">
@@ -54,7 +54,25 @@ export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, vi
             <span className="user-role">{user.role}</span>
           </div>
           <UserCircle size={32} color="var(--primary)" />
-          <button className="secondary-button" onClick={onLogout} style={{ padding: '0.5rem 1rem' }}>
+          
+          <button 
+            className="secondary-button theme-toggle-btn" 
+            onClick={onToggleTheme} 
+            title={theme === 'dark' ? "Switch to light mode" : "Switch to dark mode"}
+            style={{ 
+              padding: '0.5rem', 
+              minWidth: '40px', 
+              minHeight: '40px', 
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
+          <button className="logout-button" onClick={onLogout} title="Sign out">
             <LogOut size={18} />
             <span>Logout</span>
           </button>
@@ -63,20 +81,12 @@ export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, vi
 
       <div className="workspace">
         <aside className={`sidebar ${sidebarMinimized ? 'minimized' : ''}`}>
-          <button 
-            className="sidebar-toggle-btn"
-            onClick={() => setSidebarMinimized(!sidebarMinimized)}
-            title={sidebarMinimized ? "Expand sidebar" : "Minimize sidebar"}
-          >
-            {sidebarMinimized ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-          </button>
-          
           {allowedViews.map((item) => {
             const Icon = viewIcons[item];
             return (
-              <button 
-                key={item} 
-                className={view === item ? "nav-item active" : "nav-item"} 
+              <button
+                key={item}
+                className={view === item ? "nav-item active" : "nav-item"}
                 onClick={() => onViewChange(item)}
                 title={sidebarMinimized ? viewLabels[item] : ""}
               >
@@ -85,6 +95,14 @@ export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, vi
               </button>
             );
           })}
+
+          <button
+            className="nav-item sidebar-toggle-btn"
+            onClick={() => setSidebarMinimized(!sidebarMinimized)}
+            title={sidebarMinimized ? "Expand sidebar" : ""}
+          >
+            {sidebarMinimized ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+          </button>
         </aside>
 
         <main className="content">

@@ -24,12 +24,12 @@ export function LoginPage({ onLogin }) {
   }
 
   return (
-    <div className="radical-login-page">
+    <div className="login-page">
       <div className="login-visual">
         <img src="/ruhuna.gif" alt="Logo" style={{ width: '80px', marginBottom: '2rem' }} />
-        <h2>Engineering Library Portal</h2>
-        <p>A priority-based recommendation system for the Faculty of Engineering, University of Ruhuna.</p>
-        
+        <h2>Library Book Recommendation Portal</h2>
+        <p>A centralized platform for managing book recommendations and departmental prioritizations of the Faculty of Engineering, University of Ruhuna.</p>
+
         <div style={{ marginTop: 'auto', display: 'flex', gap: '2rem' }}>
           <div>
             <h4 style={{ fontSize: '1.5rem' }}>1.2k+</h4>
@@ -37,40 +37,40 @@ export function LoginPage({ onLogin }) {
           </div>
           <div>
             <h4 style={{ fontSize: '1.5rem' }}>45+</h4>
-            <span style={{ opacity: 0.6 }}>Active Faculty</span>
+            <span style={{ opacity: 0.6 }}>Active Members</span>
           </div>
         </div>
       </div>
 
       <div className="login-form-side">
-        <form className="radical-login-card" onSubmit={submit}>
+        <form className="login-card" onSubmit={submit}>
           <div>
             <h3 style={{ fontSize: '2rem', fontWeight: 800 }}>Welcome back ...</h3>
-            <p style={{ color: 'var(--text-dim)', fontWeight: 500 }}>Please enter your credentials to continue.</p>
+            <p style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Please enter your credentials to continue.</p>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div className="field-radical">
+            <div className="field">
               <label>Email</label>
-              <input 
-                type="email" 
-                value={email} 
-                onChange={(event) => setEmail(event.target.value)} 
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
                 placeholder="name@ruh.ac.lk"
               />
             </div>
-            <div className="field-radical">
+            <div className="field">
               <label>Password</label>
-              <input 
-                type="password" 
-                value={password} 
-                onChange={(event) => setPassword(event.target.value)} 
+              <input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
                 placeholder="••••••••"
               />
             </div>
           </div>
 
-          <button className="btn-radical" type="submit" disabled={busy}>
+          <button className="btn" type="submit" disabled={busy}>
             {busy ? "Signing in..." : "Sign In"}
             {!busy && <ArrowRight size={20} />}
           </button>

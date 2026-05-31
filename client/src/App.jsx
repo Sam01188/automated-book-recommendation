@@ -26,6 +26,18 @@ function App() {
   const [items, setItems] = useState([]);
   const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, highPriority: 0 });
   const [selectedPeriod, setSelectedPeriod] = useState(null);
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem("book-rec-theme") || "dark";
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("book-rec-theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+  };
 
   useEffect(() => {
     const stored = localStorage.getItem("book-rec-session");
@@ -109,6 +121,8 @@ function App() {
       onViewChange={setView}
       onLogout={logout}
       viewActions={null}
+      theme={theme}
+      onToggleTheme={toggleTheme}
     >
       {session.user.role === "lecturer" && view === "dashboard" && <LecturerDashboardPage user={session.user} stats={stats} items={items} />}
       {session.user.role === "lecturer" && view === "submit" && <SubmitRequestPage onSubmit={handleCreate} />}
