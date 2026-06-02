@@ -5,17 +5,16 @@ import { Button } from "../../components/librarian/Button";
 import { DataTable } from "../../components/librarian/DataTable";
 
 const FACULTIES = [
-  "Engineering Faculty",
-  "Human Resource Faculty",
-  "Science Faculty",
-  "Management Faculty",
-  "Medicine Faculty"
+  "Faculty of Engineering",
+  "Faculty of Allied Health Sciences",
+  "Faculty of Science",
+  "Faculty of Medicine"
 ];
 
 export function OrderTimePeriodsPage({ onViewChange, onSelectPeriod }) {
   const [periods, setPeriods] = useState([
-    { id: 1, faculty: "Engineering Faculty", startDate: "2026-01-01", endDate: "2026-03-31", status: "active" },
-    { id: 2, faculty: "Science Faculty", startDate: "2025-10-01", endDate: "2025-12-31", status: "closed" }
+    { id: 1, faculty: "Faculty of Engineering", startDate: "2026-01-01", endDate: "2026-03-31", status: "active" },
+    { id: 2, faculty: "Faculty of Science", startDate: "2025-10-01", endDate: "2025-12-31", status: "closed" }
   ]);
 
   const [formData, setFormData] = useState({ faculty: "", startDate: "", endDate: "" });
@@ -114,15 +113,11 @@ export function OrderTimePeriodsPage({ onViewChange, onSelectPeriod }) {
   };
 
   return (
-    <div className="order-periods-page">
-      <div className="page-header">
-        <div>
-          <h1>Order Time Periods</h1>
-          <p>Manage book recommendation ordering periods by faculty</p>
-        </div>
-      </div>
+    <div className="dashboard-container">
 
-      <Card title="Add New Period" className="form-card">
+      <section className="large-panel">
+        <h3 className="panel-title">Add New Period</h3>
+        <Card className="form-card">
         <div className="form-group">
           <div className="form-row">
             <div className="form-field">
@@ -175,10 +170,13 @@ export function OrderTimePeriodsPage({ onViewChange, onSelectPeriod }) {
             </p>
           )}
         </div>
-      </Card>
+        </Card>
+      </section>
 
-      <Card title="Active Periods" className="full-width">
-        <DataTable
+      <section className="large-panel">
+        <h3 className="panel-title">Active Periods</h3>
+        <Card className="full-width">
+          <DataTable
           columns={[
             { key: "id", label: "ID", width: "8%" },
             { key: "faculty", label: "Faculty", width: "25%" },
@@ -225,8 +223,9 @@ export function OrderTimePeriodsPage({ onViewChange, onSelectPeriod }) {
               </td>
             </>
           )}
-        />
-      </Card>
+          />
+        </Card>
+      </section>
 
       {editingId && (
         <div className="modal-overlay" onClick={handleCancelEditEndDate}>

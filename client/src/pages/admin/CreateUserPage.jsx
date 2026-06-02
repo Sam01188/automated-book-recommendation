@@ -3,6 +3,10 @@ import { AppModal } from "../../components/AppModal";
 
 const departments = ["DCEE", "DEIE", "DMME", "DMENA", "DCE"];
 
+function roleHasDepartment(role) {
+  return role === "lecturer" || role === "hod";
+}
+
 export function CreateUserPage({ onCreateUser }) {
   const [form, setForm] = useState({
     name: "",
@@ -21,7 +25,7 @@ export function CreateUserPage({ onCreateUser }) {
     try {
       const payload = {
         ...form,
-        department: form.role === "lecturer" || form.role === "hod" ? form.department : ""
+        department: roleHasDepartment(form.role) ? form.department : ""
       };
 
       await onCreateUser(payload);
@@ -69,7 +73,7 @@ export function CreateUserPage({ onCreateUser }) {
                 setForm({
                   ...form,
                   role: e.target.value,
-                  department: e.target.value === "lecturer" || e.target.value === "hod" ? form.department || "DCEE" : ""
+                  department: roleHasDepartment(e.target.value) ? form.department || "DCEE" : ""
                 })
               }
             >
@@ -80,7 +84,7 @@ export function CreateUserPage({ onCreateUser }) {
             </select>
           </div>
 
-          {(form.role === "lecturer" || form.role === "hod") && (
+          {roleHasDepartment(form.role) && (
             <div className="field">
               <label>Department *</label>
               <select value={form.department} required onChange={(e) => setForm({ ...form, department: e.target.value })}>

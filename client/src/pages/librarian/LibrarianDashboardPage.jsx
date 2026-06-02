@@ -1,67 +1,59 @@
-import { BarChart3, Clock, DollarSign, Zap } from "lucide-react";
+import { Building2, ClipboardList, Hourglass, TriangleAlert } from "lucide-react";
 import { StatCard } from "../../components/librarian/StatCard";
 import { Card } from "../../components/librarian/Card";
 import { DataTable } from "../../components/librarian/DataTable";
 import { Badge } from "../../components/librarian/Badge";
+import { getPriorityBadgeType, getStatusBadgeType } from "./recommendationBadges";
 
-export function LibrarianDashboardPage({ user, stats, items }) {
+function formatSubmittedDate(item) {
+  const dateValue = item.submittedAt || item.createdAt || item.updatedAt;
+
+  if (!dateValue) {
+    return "N/A";
+  }
+
+  const date = new Date(dateValue);
+
+  if (Number.isNaN(date.getTime())) {
+    return "N/A";
+  }
+
+  return date.toLocaleDateString();
+}
+
+export function LibrarianDashboardPage({ stats, items }) {
   const recentItems = items.slice(0, 5);
 
-  const getStatusBadgeType = (status) => {
-    const statusMap = {
-      "pending": "warning",
-      "approved": "success",
-      "rejected": "danger",
-      "under_review": "info"
-    };
-    return statusMap[status] || "default";
-  };
-
-  const getPriorityBadgeType = (priority) => {
-    const priorityMap = {
-      "high": "danger",
-      "medium": "warning",
-      "low": "success",
-      "unassigned": "secondary"
-    };
-    return priorityMap[priority] || "default";
-  };
-
   return (
-    <div className="librarian-dashboard">
-      <div className="dashboard-header">
-        <div>
-          <h1>Welcome back, {user.name}</h1>
-          <p>Here's what's happening with your library today</p>
-        </div>
-      </div>
-
-      <div className="stats-grid">
+    <div className="dashboard-container">
+      <section className="metrics admin-metrics" aria-label="Library statistics">
         <StatCard
-          label="Total Submissions"
+          title="Total Submissions"
           value={stats.total}
-          icon={<BarChart3 size={24} />}
+          icon={ClipboardList}
         />
         <StatCard
-          label="Pending Review"
+          title="Pending Review"
           value={stats.pending}
-          icon={<Clock size={24} />}
+          icon={Hourglass}
         />
         <StatCard
-          label="High Priority"
+          title="High Priority"
           value={stats.highPriority}
-          icon={<Zap size={24} />}
+          icon={TriangleAlert}
         />
         <StatCard
-          label="Departments"
+          title="Departments"
           value="5"
-          icon={<DollarSign size={24} />}
+          icon={Building2}
         />
-      </div>
+      </section>
 
-      <div className="dashboard-content">
-        <Card title="Recent Submissions" className="full-width">
+      <section className="large-panel recent-submissions-panel">
+        <h3 className="panel-title">Recent Submissions</h3>
+        <Card className="full-width">
           <DataTable
+            className="recent-submissions-table"
             columns={[
               { key: "title", label: "Title", width: "25%" },
               { key: "author", label: "Author", width: "15%" },
@@ -74,7 +66,7 @@ export function LibrarianDashboardPage({ user, stats, items }) {
             renderRow={(item) => (
               <>
                 <td>
-                  <strong>{item.title}</strong>
+                  <strong className="recent-submission-title">{item.title}</strong>
                 </td>
                 <td>{item.author}</td>
                 <td>
@@ -84,12 +76,12 @@ export function LibrarianDashboardPage({ user, stats, items }) {
                   <Badge label={item.status} type={getStatusBadgeType(item.status)} />
                 </td>
                 <td>{item.department}</td>
-                <td className="text-muted">Today</td>
+                <td className="text-muted">{formatSubmittedDate(item)}</td>
               </>
             )}
           />
         </Card>
-      </div>
+      </section>
     </div>
   );
 }

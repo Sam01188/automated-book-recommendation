@@ -3,16 +3,23 @@ import { Send, Eye } from "lucide-react";
 import { Card } from "../../components/librarian/Card";
 import { Button } from "../../components/librarian/Button";
 
-export function EmailAnnouncementsPage({ selectedPeriod }) {
-  const initialTemplate = selectedPeriod 
-    ? `Order Period for ${selectedPeriod.faculty}\n\nStart Date: ${new Date(selectedPeriod.startDate).toLocaleDateString()}\nEnd Date: ${new Date(selectedPeriod.endDate).toLocaleDateString()}\n\nPlease note: The order period for ${selectedPeriod.faculty} is now open. We kindly request all faculty members and departments to submit their book recommendations within this period.\n\nThank you.`
-    : "";
+function buildPeriodMessage(period) {
+  if (!period) {
+    return "";
+  }
 
+  const startDate = new Date(period.startDate).toLocaleDateString();
+  const endDate = new Date(period.endDate).toLocaleDateString();
+
+  return `Order Period for ${period.faculty}\n\nStart Date: ${startDate}\nEnd Date: ${endDate}\n\nPlease note: The order period for ${period.faculty} is now open. We kindly request all faculty members and departments to submit their book recommendations within this period.\n\nThank you.`;
+}
+
+export function EmailAnnouncementsPage({ selectedPeriod }) {
   const [formData, setFormData] = useState({
     period: selectedPeriod ? selectedPeriod.id.toString() : "1",
     recipients: "all",
     subject: selectedPeriod ? `Book Order Period - ${selectedPeriod.faculty}` : "",
-    message: initialTemplate
+    message: buildPeriodMessage(selectedPeriod)
   });
 
   const [previewMode, setPreviewMode] = useState(false);
@@ -26,12 +33,11 @@ export function EmailAnnouncementsPage({ selectedPeriod }) {
 
   useEffect(() => {
     if (selectedPeriod) {
-      const newTemplate = `Order Period for ${selectedPeriod.faculty}\n\nStart Date: ${new Date(selectedPeriod.startDate).toLocaleDateString()}\nEnd Date: ${new Date(selectedPeriod.endDate).toLocaleDateString()}\n\nPlease note: The order period for ${selectedPeriod.faculty} is now open. We kindly request all faculty members and departments to submit their book recommendations within this period.\n\nThank you.`;
       setFormData({
         period: selectedPeriod.id.toString(),
         recipients: "all",
         subject: `Book Order Period - ${selectedPeriod.faculty}`,
-        message: newTemplate
+        message: buildPeriodMessage(selectedPeriod)
       });
     }
   }, [selectedPeriod]);
@@ -42,17 +48,12 @@ export function EmailAnnouncementsPage({ selectedPeriod }) {
   };
 
   return (
-    <div className="announcements-page">
-      <div className="page-header">
-        <div>
-          <h1>Email Announcements</h1>
-          <p>Send notifications to lecturers about order periods</p>
-        </div>
-      </div>
-
+    <div className="dashboard-container">
       <div className="announcements-grid">
-        <Card title="Compose Email" className="form-card">
-          <div className="form-group">
+        <section className="large-panel">
+          <h3 className="panel-title">Compose Email</h3>
+          <Card className="form-card">
+            <div className="form-group">
             <div className="form-field">
               <label>Order Period</label>
               <select
@@ -111,12 +112,15 @@ export function EmailAnnouncementsPage({ selectedPeriod }) {
                 <Send size={18} /> Send Email
               </Button>
             </div>
-          </div>
-        </Card>
+            </div>
+          </Card>
+        </section>
 
         {previewMode && (
-          <Card title="Email Preview" className="preview-card">
-            <div className="email-preview">
+          <section className="large-panel">
+            <h3 className="panel-title">Email Preview</h3>
+            <Card className="preview-card">
+              <div className="email-preview">
               <div className="preview-field">
                 <strong>From:</strong> University of Ruhuna Engineering Library
               </div>
@@ -132,8 +136,9 @@ export function EmailAnnouncementsPage({ selectedPeriod }) {
                   {formData.message || "(No message)"}
                 </div>
               </div>
-            </div>
-          </Card>
+              </div>
+            </Card>
+          </section>
         )}
       </div>
     </div>

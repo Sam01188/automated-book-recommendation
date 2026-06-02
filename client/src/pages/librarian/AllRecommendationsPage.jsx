@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Plus, Search, Filter } from "lucide-react";
+import { Search } from "lucide-react";
 import { Card } from "../../components/librarian/Card";
 import { DataTable } from "../../components/librarian/DataTable";
 import { Badge } from "../../components/librarian/Badge";
-import { Button } from "../../components/librarian/Button";
+import { getPriorityBadgeType, getStatusBadgeType } from "./recommendationBadges";
 
 export function AllRecommendationsPage({ items }) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -19,36 +19,11 @@ export function AllRecommendationsPage({ items }) {
     return matchesSearch && matchesPriority && matchesStatus;
   });
 
-  const getStatusBadgeType = (status) => {
-    const statusMap = {
-      "pending": "warning",
-      "approved": "success",
-      "rejected": "danger",
-      "under_review": "info"
-    };
-    return statusMap[status] || "default";
-  };
-
-  const getPriorityBadgeType = (priority) => {
-    const priorityMap = {
-      "high": "danger",
-      "medium": "warning",
-      "low": "success",
-      "unassigned": "secondary"
-    };
-    return priorityMap[priority] || "default";
-  };
-
   return (
-    <div className="recommendations-page">
-      <div className="page-header">
-        <div>
-          <h1>All Recommendations</h1>
-          <p>Manage and review all book recommendations</p>
-        </div>
-      </div>
-
-      <Card className="filters-card">
+    <div className="dashboard-container">
+      <section className="large-panel">
+        <h3 className="panel-title">Filter Recommendations</h3>
+        <Card className="filters-card">
         <div className="filters-container">
           <div className="search-wrapper">
             <Search size={18} className="search-icon" />
@@ -87,10 +62,13 @@ export function AllRecommendationsPage({ items }) {
             </select>
           </div>
         </div>
-      </Card>
+        </Card>
+      </section>
 
-      <Card className="full-width">
-        <DataTable
+      <section className="large-panel">
+        <h3 className="panel-title">All Recommendations</h3>
+        <Card className="full-width">
+          <DataTable
           columns={[
             { key: "title", label: "Title", width: "20%" },
             { key: "author", label: "Author", width: "15%" },
@@ -118,12 +96,13 @@ export function AllRecommendationsPage({ items }) {
               <td className="text-muted">{item.submittedBy?.name || "N/A"}</td>
             </>
           )}
-        />
-      </Card>
+          />
+        </Card>
 
-      <div className="results-info">
-        Showing {filteredItems.length} of {items.length} recommendations
-      </div>
+        <div className="results-info">
+          Showing {filteredItems.length} of {items.length} recommendations
+        </div>
+      </section>
     </div>
   );
 }

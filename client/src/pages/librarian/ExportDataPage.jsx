@@ -36,52 +36,56 @@ export function ExportDataPage({ items }) {
     URL.revokeObjectURL(url);
   }
 
+  function handleDownloadClick(event, download) {
+    event.stopPropagation();
+    download();
+  }
+
   return (
-    <div className="export-page">
-      <div className="page-header">
-        <div>
-          <h1>Export Data</h1>
-          <p>Download recommendations in different formats</p>
+    <div className="dashboard-container">
+      <section className="large-panel">
+        <h3 className="panel-title">Export Data</h3>
+        <div className="export-grid">
+          <Card className="export-card" onClick={downloadExcel}>
+            <div className="export-icon excel">
+              <Table size={32} />
+            </div>
+            <h3>Export as Excel</h3>
+            <p>Download all recommendations as a CSV file compatible with Excel and spreadsheet applications.</p>
+            <button className="btn btn-primary btn-sm" onClick={(event) => handleDownloadClick(event, downloadExcel)}>
+              <Download size={16} /> Download Excel
+            </button>
+          </Card>
+
+          <Card className="export-card" onClick={downloadPDF}>
+            <div className="export-icon pdf">
+              <FileText size={32} />
+            </div>
+            <h3>Export as PDF</h3>
+            <p>Generate a detailed PDF report with all recommendation data formatted for printing and archival.</p>
+            <button className="btn btn-secondary btn-sm" onClick={(event) => handleDownloadClick(event, downloadPDF)}>
+              <Download size={16} /> Download PDF
+            </button>
+          </Card>
         </div>
-      </div>
+      </section>
 
-      <div className="export-grid">
-        <Card className="export-card" onClick={downloadExcel}>
-          <div className="export-icon excel">
-            <Table size={32} />
+      <section className="large-panel">
+        <h3 className="panel-title">Export Information</h3>
+        <Card className="info-card">
+          <div className="info-content">
+            <p>
+              <strong>Total Records:</strong> {items.length} recommendations
+            </p>
+            <p>
+              <strong>Last Updated:</strong> {new Date().toLocaleDateString()}
+            </p>
+            <p>
+              <strong>Included Fields:</strong> Title, Author, Publisher, Submitted By, Priority, Status, Department
+            </p>
           </div>
-          <h3>Export to Excel</h3>
-          <p>Download all recommendations as a CSV file compatible with Excel and spreadsheet applications.</p>
-          <button className="btn btn-primary btn-sm" onClick={downloadExcel}>
-            <Download size={16} /> Download Excel
-          </button>
         </Card>
-
-        <Card className="export-card" onClick={downloadPDF}>
-          <div className="export-icon pdf">
-            <FileText size={32} />
-          </div>
-          <h3>Export to PDF Report</h3>
-          <p>Generate a detailed PDF report with all recommendation data formatted for printing and archival.</p>
-          <button className="btn btn-secondary btn-sm" onClick={downloadPDF}>
-            <Download size={16} /> Download PDF
-          </button>
-        </Card>
-      </div>
-
-      <Card title="Export Information" className="info-card">
-        <div className="info-content">
-          <p>
-            <strong>Total Records:</strong> {items.length} recommendations
-          </p>
-          <p>
-            <strong>Last Updated:</strong> {new Date().toLocaleDateString()}
-          </p>
-          <p>
-            <strong>Included Fields:</strong> Title, Author, Publisher, Submitted By, Priority, Status, Department
-          </p>
-        </div>
-      </Card>
+      </section>
     </div>
   );
 }

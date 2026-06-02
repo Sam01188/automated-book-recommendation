@@ -1,12 +1,14 @@
-export function StatCard({ label, value, icon, trend }) {
+export function StatCard({ title, value, icon: Icon, trend }) {
   return (
-    <div className="stat-card">
-      <div className="stat-header">
-        <div className="stat-icon">{icon}</div>
-        {trend && <span className={`stat-trend ${trend > 0 ? 'positive' : 'negative'}`}>{trend > 0 ? '↑' : '↓'} {Math.abs(trend)}%</span>}
+    <article className="metric-card admin-stat-card">
+      <div className="metric-header">
+        <span className="metric-label">{title}</span>
+        <span className="metric-icon">
+          <Icon size={20} />
+        </span>
       </div>
-      <div className="stat-value">{value}</div>
-      <div className="stat-label">{label}</div>
-    </div>
+      {trend && <span className={`stat-trend ${trend > 0 ? 'positive' : 'negative'}`}>{trend > 0 ? '↑' : '↓'} {Math.abs(trend)}%</span>}
+      <strong className="metric-value">{value}</strong>
+    </article>
   );
 }

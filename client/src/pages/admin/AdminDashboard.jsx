@@ -76,13 +76,6 @@ export function AdminDashboard({ user, token, items = [] }) {
   const [recentActivities, setRecentActivities] = useState([]);
 
   useEffect(() => {
-    if (user && user.role !== "admin") {
-      localStorage.removeItem("book-rec-session");
-      window.location.assign("/");
-    }
-  }, [user]);
-
-  useEffect(() => {
     if (!token) {
       return;
     }

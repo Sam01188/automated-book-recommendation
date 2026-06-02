@@ -4,7 +4,7 @@ import { BookMarked, ClipboardList, Download, Home, ListChecks, LogOut, Send, Us
 export const roleViews = {
   lecturer: ["dashboard", "submit", "my"],
   hod: ["dashboard", "priority", "all"],
-  librarian: ["dashboard", "all", "periods", "announcements", "export"],
+  librarian: ["dashboard", "periods", "announcements", "all", "export"],
   admin: ["dashboard", "users", "createUser"]
 };
 

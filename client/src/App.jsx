@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { UserPlus, Users } from "lucide-react";
 import { createRecommendation, fetchRecommendations, fetchStats, login, logout as apiLogout, updatePriority } from "./api";
 import { AppLayout, roleViews } from "./components/AppLayout";
 import { LoginPage } from "./pages/auth/LoginPage";
@@ -132,14 +131,14 @@ function App() {
       {session.user.role === "hod" && view === "priority" && <HodPriorityPage items={items} onPriority={handlePriority} />}
       {session.user.role === "hod" && view === "all" && <HodAllRecommendationsPage items={items} />}
 
-      {session.user.role === "librarian" && view === "dashboard" && <LibrarianDashboardPage user={session.user} stats={stats} items={items} />}
+      {session.user.role === "librarian" && view === "dashboard" && <LibrarianDashboardPage stats={stats} items={items} />}
       {session.user.role === "librarian" && view === "all" && <AllRecommendationsPage items={items} />}
       {session.user.role === "librarian" && view === "periods" && <OrderTimePeriodsPage onViewChange={setView} onSelectPeriod={setSelectedPeriod} />}
       {session.user.role === "librarian" && view === "announcements" && <EmailAnnouncementsPage selectedPeriod={selectedPeriod} />}
       {session.user.role === "librarian" && view === "export" && <ExportDataPage items={items} />}
 
       {session.user.role === "admin" && view === "dashboard" && (
-        <AdminDashboard user={session.user} token={session.token} items={items} onViewChange={setView} />
+        <AdminDashboard user={session.user} token={session.token} items={items} />
       )}
       {session.user.role === "admin" && view === "users" && <UsersListPage token={session.token} />}
       {session.user.role === "admin" && view === "createUser" && <CreateUserPage onCreateUser={handleUserCreation} />}

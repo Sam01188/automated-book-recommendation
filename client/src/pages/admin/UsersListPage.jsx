@@ -10,6 +10,10 @@ function formatRole(role) {
   return role.charAt(0).toUpperCase() + role.slice(1);
 }
 
+function roleHasDepartment(role) {
+  return role === "lecturer" || role === "hod";
+}
+
 function SortHeader({ label, column, sortConfig, onSort }) {
   const isActive = sortConfig.column === column;
   const directionLabel = sortConfig.direction === "asc" ? "ascending" : "descending";
@@ -57,7 +61,7 @@ export function UsersListPage({ token }) {
     try {
       const data = await getUsers(token);
       setUsers(data);
-    } catch (err) {
+    } catch {
       setModal({
         title: "Failed to load users",
         message: "Please refresh the page or try again later."
@@ -82,8 +86,8 @@ export function UsersListPage({ token }) {
     try {
       setModal(null);
       await deleteUser(token, id);
-      setUsers(users.filter((u) => u._id !== id));
-    } catch (err) {
+      setUsers((current) => current.filter((u) => u._id !== id));
+    } catch {
       setModal({
         title: "Failed to delete user",
         message: "Please try again later."
@@ -119,19 +123,17 @@ export function UsersListPage({ token }) {
       name: editForm.name.trim(),
       email: editForm.email.trim(),
       role: editForm.role,
-      department: editForm.role === "lecturer" || editForm.role === "hod" ? editForm.department.trim() : ""
+      department: roleHasDepartment(editForm.role) ? editForm.department.trim() : ""
     };
 
     try {
       setSaving(true);
       const updated = await updateUser(token, id, payload);
 
-      setUsers(
-        users.map((u) => (u._id === id ? updated : u))
-      );
+      setUsers((current) => current.map((u) => (u._id === id ? updated : u)));
 
       cancelEdit();
-    } catch (err) {
+    } catch {
       setModal({
         title: "Failed to update user",
         message: "Please check the changes and try again."
@@ -176,7 +178,6 @@ export function UsersListPage({ token }) {
     <div className="large-panel">
       <div className="panel-toolbar">
         <h2 className="panel-title">
-          <UserCog size={24} />
           System Users
         </h2>
 
@@ -282,7 +283,7 @@ export function UsersListPage({ token }) {
                         setEditForm({
                           ...editForm,
                           role: e.target.value,
-                          department: e.target.value === "lecturer" || e.target.value === "hod" ? editForm.department || "DCEE" : ""
+                          department: roleHasDepartment(e.target.value) ? editForm.department || "DCEE" : ""
                         })
                       }
                     >
@@ -297,7 +298,7 @@ export function UsersListPage({ token }) {
                 </td>
 
                 <td>
-                  {editingUserId === u._id && (editForm.role === "lecturer" || editForm.role === "hod") ? (
+                  {editingUserId === u._id && roleHasDepartment(editForm.role) ? (
                     <select
                       value={editForm.department}
                       onChange={(e) =>
