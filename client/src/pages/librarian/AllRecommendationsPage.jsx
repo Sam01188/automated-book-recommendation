@@ -7,16 +7,21 @@ import { Button } from "../../components/librarian/Button";
 
 export function AllRecommendationsPage({ items }) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterFaculty, setFilterFaculty] = useState("all");
   const [filterPriority, setFilterPriority] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+
+  // Extract unique faculties from items
+  const uniqueFaculties = [...new Set(items.map(item => item.faculty).filter(Boolean))].sort();
 
   const filteredItems = items.filter((item) => {
     const matchesSearch =
       item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.author.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesFaculty = filterFaculty === "all" || item.faculty === filterFaculty;
     const matchesPriority = filterPriority === "all" || item.priority === filterPriority;
     const matchesStatus = filterStatus === "all" || item.status === filterStatus;
-    return matchesSearch && matchesPriority && matchesStatus;
+    return matchesSearch && matchesFaculty && matchesPriority && matchesStatus;
   });
 
   const getStatusBadgeType = (status) => {
@@ -63,6 +68,19 @@ export function AllRecommendationsPage({ items }) {
 
           <div className="filters-group">
             <select
+              value={filterFaculty}
+              onChange={(e) => setFilterFaculty(e.target.value)}
+              className="filter-select"
+            >
+              <option value="all">All Faculties</option>
+              {uniqueFaculties.map((faculty) => (
+                <option key={faculty} value={faculty}>
+                  {faculty}
+                </option>
+              ))}
+            </select>
+
+            <select
               value={filterPriority}
               onChange={(e) => setFilterPriority(e.target.value)}
               className="filter-select"
@@ -92,13 +110,14 @@ export function AllRecommendationsPage({ items }) {
       <Card className="full-width">
         <DataTable
           columns={[
-            { key: "title", label: "Title", width: "20%" },
-            { key: "author", label: "Author", width: "15%" },
-            { key: "publisher", label: "Publisher", width: "15%" },
-            { key: "priority", label: "Priority", width: "12%" },
-            { key: "status", label: "Status", width: "12%" },
-            { key: "department", label: "Department", width: "13%" },
-            { key: "submitted", label: "Submitted By", width: "13%" }
+            { key: "title", label: "Title", width: "18%" },
+            { key: "author", label: "Author", width: "12%" },
+            { key: "publisher", label: "Publisher", width: "12%" },
+            { key: "faculty", label: "Faculty", width: "12%" },
+            { key: "priority", label: "Priority", width: "10%" },
+            { key: "status", label: "Status", width: "10%" },
+            { key: "department", label: "Department", width: "11%" },
+            { key: "submitted", label: "Submitted By", width: "15%" }
           ]}
           data={filteredItems}
           renderRow={(item) => (
@@ -108,6 +127,7 @@ export function AllRecommendationsPage({ items }) {
               </td>
               <td>{item.author}</td>
               <td>{item.publisher}</td>
+              <td><strong>{item.faculty || "N/A"}</strong></td>
               <td>
                 <Badge label={item.priority || "Unassigned"} type={getPriorityBadgeType(item.priority)} />
               </td>
