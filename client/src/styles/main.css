@@ -334,10 +334,27 @@ body {
   overflow: hidden;
 }
 
+button.metric-card {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--surface-solid);
+  width: 100%;
+  text-align: left;
+}
+
 .metric-card:hover {
   transform: translateY(-6px);
   box-shadow: var(--shadow-lg), var(--glow-primary);
   border-color: var(--border-bright);
+}
+
+.clickable-metric {
+  cursor: pointer;
+}
+
+.clickable-metric:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 .metric-header {
@@ -367,6 +384,52 @@ body {
   font-size: 2rem;
   font-weight: 700;
   color: var(--text);
+}
+
+/* Priority guidelines */
+.priority-guidelines {
+  background: var(--surface-solid);
+  color: var(--text);
+  padding: 1.25rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+}
+
+.priority-guidelines strong {
+  display: block;
+  margin-bottom: 1rem;
+  color: var(--text);
+}
+
+.guideline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.guideline-item {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.guideline-term {
+  font-weight: 700;
+  margin-right: 0.4rem;
+}
+
+.guideline-term.high {
+  color: var(--danger-text);
+}
+
+.guideline-term.medium {
+  color: var(--warning-text);
+}
+
+.guideline-term.low {
+  color: var(--success-text);
 }
 
 /* Admin Dashboard */

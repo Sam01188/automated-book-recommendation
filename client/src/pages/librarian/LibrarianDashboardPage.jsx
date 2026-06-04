@@ -4,7 +4,7 @@ import { Card } from "../../components/librarian/Card";
 import { DataTable } from "../../components/librarian/DataTable";
 import { Badge } from "../../components/librarian/Badge";
 
-export function LibrarianDashboardPage({ user, stats, items }) {
+export function LibrarianDashboardPage({ user, stats, items, onHighPriorityClick }) {
   const recentItems = items.slice(0, 5);
 
   const getStatusBadgeType = (status) => {
@@ -51,6 +51,7 @@ export function LibrarianDashboardPage({ user, stats, items }) {
           label="High Priority"
           value={stats.highPriority}
           icon={<Zap size={24} />}
+          onClick={onHighPriorityClick}
         />
         <StatCard
           label="Departments"

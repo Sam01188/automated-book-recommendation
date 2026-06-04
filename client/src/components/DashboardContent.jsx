@@ -2,7 +2,7 @@ import { BookMarked, ClipboardList, ShieldCheck } from "lucide-react";
 import { Metric } from "./Metric";
 import { CompactList } from "./RecommendationList";
 
-export function DashboardContent({ user, stats, items }) {
+export function DashboardContent({ user, stats, items, onHighPriorityClick }) {
   return (
     <section className="panel-space">
       <div className="metrics">
@@ -20,6 +20,7 @@ export function DashboardContent({ user, stats, items }) {
           label={user.role === "lecturer" ? "Approved" : "High Priority"}
           value={user.role === "lecturer" ? stats.approved : stats.highPriority}
           icon={<ShieldCheck size={20} />}
+          onClick={user.role !== "lecturer" ? onHighPriorityClick : undefined}
         />
       </div>
 

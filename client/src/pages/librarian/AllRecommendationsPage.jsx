@@ -4,7 +4,7 @@ import { Card } from "../../components/librarian/Card";
 import { DataTable } from "../../components/librarian/DataTable";
 import { Badge } from "../../components/librarian/Badge";
 
-export function AllRecommendationsPage({ items }) {
+export function AllRecommendationsPage({ items, filterPriority: initialFilterPriority = "all" }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDepartment, setFilterDepartment] = useState("all");
   const [filterPriority, setFilterPriority] = useState("all");
