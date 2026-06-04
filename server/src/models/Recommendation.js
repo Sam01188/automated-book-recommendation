@@ -23,12 +23,12 @@ const recommendationSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ["submitted", "under_review", "approved", "rejected"],
-      default: "submitted"
+      default: "submitted",
     },
     priority: {
       type: String,
       enum: ["high", "medium", "low", "unassigned"],
-      default: "unassigned"
+      default: "unassigned",
     },
     priorityReason: { type: String, trim: true },
     reviewedBy:     { type: mongoose.Schema.Types.ObjectId, ref: "User" }
