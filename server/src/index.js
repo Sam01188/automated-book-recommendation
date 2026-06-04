@@ -29,12 +29,34 @@ app.use("/api/admin/users", userRoutes);
 
 async function start() {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
+    console.log("🔄 Connecting to MongoDB Atlas...");
+    console.log("URI:", process.env.MONGO_URI?.replace(/:(.*?)@/, ":****@"));
+    
+    await mongoose.connect(process.env.MONGO_URI, {
+      retryWrites: true,
+      w: "majority",
+      serverSelectionTimeoutMS: 20000,
+      socketTimeoutMS: 60000,
+      family: 4,
+      connectTimeoutMS: 20000,
+    });
+    
+    console.log("✅ Connected to MongoDB Atlas successfully");
     app.listen(port, () => {
-      console.log(`API running on http://localhost:${port}`);
+      console.log(`✅ API running on http://localhost:${port}`);
     });
   } catch (error) {
-    console.error("Unable to connect to MongoDB", error.message);
+    console.error("\n❌ MongoDB Connection Error:");
+    console.error("Message:", error.message);
+    console.error("Code:", error.code);
+    console.error("\n📋 Troubleshooting Checklist:");
+    console.error("1. Check MongoDB Atlas cluster status: https://cloud.mongodb.com");
+    console.error("2. Verify IP whitelist includes: 0.0.0.0/0 (or your current IP)");
+    console.error("3. Check database user password matches in Database Access section");
+    console.error("4. Verify database name: book-recommendation exists");
+    console.error("5. Try restarting your cluster if it appears paused or stuck");
+    console.error("\n🔗 Connection String (masked):");
+    console.error(process.env.MONGO_URI?.replace(/:(.*?)@/, ":****@"));
     process.exit(1);
   }
 }
