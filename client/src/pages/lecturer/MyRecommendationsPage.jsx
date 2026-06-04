@@ -42,10 +42,11 @@ export function MyRecommendationsPage({ items }) {
           border: "1px solid var(--border)",
           overflow: "hidden"
         }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ minWidth: "1100px", width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
-                {["Title", "Author", "Publisher", "Edition", "Year", "Binding", "Copies", "Price (LKR)", "Status", "Priority"].map((col) => (
+                {["Title", "Author", "ISBN Number", "Publisher", "Edition", "Year", "Binding", "Copies", "Price (LKR)", "Status", "Priority"].map((col) => (
                   <th key={col} style={{
                     background: "var(--background)",
                     padding: "0.875rem 1rem",
@@ -67,7 +68,8 @@ export function MyRecommendationsPage({ items }) {
                 <RecommendationRow key={item._id} item={item} />
               ))}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
       )}
     </div>
@@ -110,6 +112,7 @@ function RecommendationRow({ item }) {
         </div>
       </td>
       <td style={tdStyle}>{item.author ?? "—"}</td>
+      <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{item.isbn ?? "—"}</td>
       <td style={tdStyle}>{item.publisher ?? "—"}</td>
       <td style={tdStyle}>{item.edition ?? "—"}</td>
       <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{item.publicationYear ?? "—"}</td>
