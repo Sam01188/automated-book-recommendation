@@ -1,45 +1,56 @@
 import { useState } from "react";
-import { Plus, Search, Filter } from "lucide-react";
+import { Search } from "lucide-react";
 import { Card } from "../../components/librarian/Card";
 import { DataTable } from "../../components/librarian/DataTable";
 import { Badge } from "../../components/librarian/Badge";
-import { Button } from "../../components/librarian/Button";
 
 export function AllRecommendationsPage({ items }) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterFaculty, setFilterFaculty] = useState("all");
+  const [filterDepartment, setFilterDepartment] = useState("all");
   const [filterPriority, setFilterPriority] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
 
-  // Extract unique faculties from items
-  const uniqueFaculties = [...new Set(items.map(item => item.faculty).filter(Boolean))].sort();
-
   const filteredItems = items.filter((item) => {
+    const search = searchTerm.toLowerCase();
+
     const matchesSearch =
-      item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.author.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFaculty = filterFaculty === "all" || item.faculty === filterFaculty;
-    const matchesPriority = filterPriority === "all" || item.priority === filterPriority;
-    const matchesStatus = filterStatus === "all" || item.status === filterStatus;
-    return matchesSearch && matchesFaculty && matchesPriority && matchesStatus;
+      item.title?.toLowerCase().includes(search) ||
+      item.author?.toLowerCase().includes(search) ||
+      item.isbn?.toLowerCase().includes(search);
+
+    const matchesDepartment =
+      filterDepartment === "all" || item.department === filterDepartment;
+
+    const matchesPriority =
+      filterPriority === "all" || item.priority === filterPriority;
+
+    const matchesStatus =
+      filterStatus === "all" || item.status === filterStatus;
+
+    return (
+      matchesSearch &&
+      matchesDepartment &&
+      matchesPriority &&
+      matchesStatus
+    );
   });
 
   const getStatusBadgeType = (status) => {
     const statusMap = {
-      "pending": "warning",
-      "approved": "success",
-      "rejected": "danger",
-      "under_review": "info"
+      pending: "warning",
+      approved: "success",
+      rejected: "danger",
+      under_review: "info",
     };
     return statusMap[status] || "default";
   };
 
   const getPriorityBadgeType = (priority) => {
     const priorityMap = {
-      "high": "danger",
-      "medium": "warning",
-      "low": "success",
-      "unassigned": "secondary"
+      high: "danger",
+      medium: "warning",
+      low: "success",
+      unassigned: "secondary",
     };
     return priorityMap[priority] || "default";
   };
@@ -59,7 +70,7 @@ export function AllRecommendationsPage({ items }) {
             <Search size={18} className="search-icon" />
             <input
               type="text"
-              placeholder="Search by title or author..."
+              placeholder="Search by title, author or ISBN..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="search-input"
@@ -68,16 +79,15 @@ export function AllRecommendationsPage({ items }) {
 
           <div className="filters-group">
             <select
-              value={filterFaculty}
-              onChange={(e) => setFilterFaculty(e.target.value)}
+              value={filterDepartment}
+              onChange={(e) => setFilterDepartment(e.target.value)}
               className="filter-select"
             >
-              <option value="all">All Faculties</option>
-              {uniqueFaculties.map((faculty) => (
-                <option key={faculty} value={faculty}>
-                  {faculty}
-                </option>
-              ))}
+              <option value="all">All Departments</option>
+              <option value="DCEE">DCEE</option>
+              <option value="DEIE">DEIE</option>
+              <option value="MENA">MENA</option>
+              <option value="DMME">DMME</option>
             </select>
 
             <select
@@ -110,32 +120,58 @@ export function AllRecommendationsPage({ items }) {
       <Card className="full-width">
         <DataTable
           columns={[
-            { key: "title", label: "Title", width: "18%" },
-            { key: "author", label: "Author", width: "12%" },
-            { key: "publisher", label: "Publisher", width: "12%" },
-            { key: "faculty", label: "Faculty", width: "12%" },
-            { key: "priority", label: "Priority", width: "10%" },
-            { key: "status", label: "Status", width: "10%" },
-            { key: "department", label: "Department", width: "11%" },
-            { key: "submitted", label: "Submitted By", width: "15%" }
+            { key: "title", label: "Title" },
+            { key: "author", label: "Author" },
+            { key: "isbn", label: "ISBN" },
+            { key: "edition", label: "Edition" },
+            { key: "year", label: "Year" },
+            { key: "binding", label: "Binding" },
+            { key: "copies", label: "Copies" },
+            { key: "price", label: "Price (LKR)" },
+            { key: "publisher", label: "Publisher" },
+            { key: "priority", label: "Priority" },
+            { key: "status", label: "Status" },
+            { key: "department", label: "Department" },
+            { key: "submitted", label: "Submitted By" },
           ]}
           data={filteredItems}
           renderRow={(item) => (
             <>
-              <td>
-                <strong>{item.title}</strong>
-              </td>
+              <td><strong>{item.title}</strong></td>
               <td>{item.author}</td>
+              <td>{item.isbn || "N/A"}</td>
+              <td>{item.edition || "N/A"}</td>
+              <td>{item.year || "N/A"}</td>
+              <td>{item.binding || "N/A"}</td>
+              <td>{item.copies ?? 0}</td>
+
+              {/* ✅ Price formatted properly */}
+              <td>
+                {item.price
+                  ? `Rs. ${Number(item.price).toLocaleString()}`
+                  : "N/A"}
+              </td>
+
               <td>{item.publisher}</td>
-              <td><strong>{item.faculty || "N/A"}</strong></td>
+
               <td>
-                <Badge label={item.priority || "Unassigned"} type={getPriorityBadgeType(item.priority)} />
+                <Badge
+                  label={item.priority || "Unassigned"}
+                  type={getPriorityBadgeType(item.priority)}
+                />
               </td>
+
               <td>
-                <Badge label={item.status} type={getStatusBadgeType(item.status)} />
+                <Badge
+                  label={item.status}
+                  type={getStatusBadgeType(item.status)}
+                />
               </td>
+
               <td>{item.department}</td>
-              <td className="text-muted">{item.submittedBy?.name || "N/A"}</td>
+              <td className="text-muted">
+                {item.submittedBy?.name || "N/A"}
+              </td>
             </>
           )}
         />

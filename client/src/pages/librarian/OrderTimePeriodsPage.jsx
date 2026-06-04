@@ -4,21 +4,14 @@ import { Card } from "../../components/librarian/Card";
 import { Button } from "../../components/librarian/Button";
 import { DataTable } from "../../components/librarian/DataTable";
 
-const FACULTIES = [
-  "Engineering Faculty",
-  "Human Resource Faculty",
-  "Science Faculty",
-  "Management Faculty",
-  "Medicine Faculty"
-];
+const FACULTY = "Engineering Faculty";
 
 export function OrderTimePeriodsPage({ onViewChange, onSelectPeriod }) {
   const [periods, setPeriods] = useState([
-    { id: 1, faculty: "Engineering Faculty", startDate: "2026-01-01", endDate: "2026-03-31", status: "active", hodRecommendationDays: 7 },
-    { id: 2, faculty: "Science Faculty", startDate: "2025-10-01", endDate: "2025-12-31", status: "closed", hodRecommendationDays: 7 }
+    { id: 1, faculty: "Engineering Faculty", startDate: "2026-01-01", endDate: "2026-03-31", status: "active", hodRecommendationDays: 7 }
   ]);
 
-  const [formData, setFormData] = useState({ faculty: "", startDate: "", endDate: "" });
+  const [formData, setFormData] = useState({ startDate: "", endDate: "" });
   const [editingId, setEditingId] = useState(null);
   const [editEndDate, setEditEndDate] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
@@ -62,15 +55,10 @@ export function OrderTimePeriodsPage({ onViewChange, onSelectPeriod }) {
   };
 
   const handleAddPeriod = () => {
-    if (!formData.faculty) {
-      alert("Please select a faculty");
-      return;
-    }
-
-    // Check if faculty already has an active period
-    const facultyExists = periods.some((p) => p.faculty === formData.faculty && p.status === "active");
+    // Check if Engineering Faculty already has an active period
+    const facultyExists = periods.some((p) => p.faculty === FACULTY && p.status === "active");
     if (facultyExists) {
-      alert(`An active time period already exists for ${formData.faculty}. Please delete it first or select a different faculty.`);
+      alert(`An active time period already exists for ${FACULTY}. Please delete it first.`);
       return;
     }
 
@@ -83,20 +71,19 @@ export function OrderTimePeriodsPage({ onViewChange, onSelectPeriod }) {
         ...periods,
         {
           id: periods.length + 1,
-          faculty: formData.faculty,
+          faculty: FACULTY,
           startDate: formData.startDate,
           endDate: formData.endDate,
           status: "active"
         }
       ]);
-      setFormData({ faculty: "", startDate: "", endDate: "" });
+      setFormData({ startDate: "", endDate: "" });
     } else {
       alert("Please fill in all fields");
     }
   };
 
-  const isFacultySelected = formData.faculty !== "";
-  const facultyHasActivePeriod = periods.some((p) => p.faculty === formData.faculty && p.status === "active");
+  const facultyHasActivePeriod = periods.some((p) => p.faculty === FACULTY && p.status === "active");
 
   const handleDeleteClick = (id) => {
     setDeleteConfirmId(id);
@@ -166,7 +153,7 @@ export function OrderTimePeriodsPage({ onViewChange, onSelectPeriod }) {
       <div className="page-header">
         <div>
           <h1>Order Time Periods</h1>
-          <p>Manage book recommendation ordering periods by faculty</p>
+          <p>Manage book recommendation ordering periods for Engineering Faculty</p>
         </div>
         <button
           onClick={() => {
@@ -195,21 +182,6 @@ export function OrderTimePeriodsPage({ onViewChange, onSelectPeriod }) {
         <div className="form-group">
           <div className="form-row">
             <div className="form-field">
-              <label>Faculty</label>
-              <select
-                value={formData.faculty}
-                onChange={(e) => setFormData({ ...formData, faculty: e.target.value })}
-                className="form-input"
-              >
-                <option value="">-- Select Faculty --</option>
-                {FACULTIES.map((faculty) => (
-                  <option key={faculty} value={faculty}>
-                    {faculty}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="form-field">
               <label>Start Date</label>
               <input
                 type="date"
@@ -233,14 +205,14 @@ export function OrderTimePeriodsPage({ onViewChange, onSelectPeriod }) {
           <Button 
             onClick={handleAddPeriod} 
             variant="primary"
-            disabled={!isFacultySelected || facultyHasActivePeriod}
-            style={{ opacity: (!isFacultySelected || facultyHasActivePeriod) ? 0.6 : 1, cursor: (!isFacultySelected || facultyHasActivePeriod) ? "not-allowed" : "pointer" }}
+            disabled={facultyHasActivePeriod}
+            style={{ opacity: facultyHasActivePeriod ? 0.6 : 1, cursor: facultyHasActivePeriod ? "not-allowed" : "pointer" }}
           >
             <Plus size={18} /> {facultyHasActivePeriod ? "Period Already Exists" : "Add Period"}
           </Button>
           {facultyHasActivePeriod && (
             <p style={{ color: "#d32f2f", fontSize: "0.85rem", marginTop: "0.5rem" }}>
-              ⚠️ An active time period already exists for {formData.faculty}
+              ⚠️ An active time period already exists for {FACULTY}
             </p>
           )}
         </div>
@@ -249,13 +221,12 @@ export function OrderTimePeriodsPage({ onViewChange, onSelectPeriod }) {
       <Card title="Active Periods" className="full-width">
         <DataTable
           columns={[
-            { key: "id", label: "ID", width: "6%" },
-            { key: "faculty", label: "Faculty", width: "20%" },
-            { key: "startDate", label: "Start Date", width: "15%" },
-            { key: "endDate", label: "End Date", width: "15%" },
-            { key: "hodDeadline", label: "HOD Deadline", width: "18%" },
+            { key: "id", label: "ID", width: "8%" },
+            { key: "startDate", label: "Start Date", width: "18%" },
+            { key: "endDate", label: "End Date", width: "18%" },
+            { key: "hodDeadline", label: "HOD Deadline", width: "20%" },
             { key: "status", label: "Status", width: "10%" },
-            { key: "actions", label: "Actions", width: "16%" }
+            { key: "actions", label: "Actions", width: "26%" }
           ]}
           data={periods}
           renderRow={(period) => {
@@ -268,7 +239,6 @@ export function OrderTimePeriodsPage({ onViewChange, onSelectPeriod }) {
             return (
               <>
                 <td>#{period.id}</td>
-                <td><strong>{period.faculty}</strong></td>
                 <td>{new Date(period.startDate).toLocaleDateString()}</td>
                 <td>{new Date(period.endDate).toLocaleDateString()}</td>
                 <td>
