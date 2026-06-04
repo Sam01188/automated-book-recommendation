@@ -177,6 +177,27 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
+button.stat-card {
+  appearance: none;
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  width: 100%;
+  text-align: left;
+}
+
+.stat-card-actionable {
+  cursor: pointer;
+}
+
+.stat-card-actionable:hover {
+  border-color: var(--maroon-light);
+}
+
+.stat-card-actionable:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 .stat-card:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-lg);

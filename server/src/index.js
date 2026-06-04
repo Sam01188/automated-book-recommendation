@@ -1,3 +1,8 @@
+import dns, { setDefaultResultOrder } from "node:dns";
+setDefaultResultOrder("ipv4first");
+
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
+
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
@@ -8,6 +13,8 @@ import statsRoutes from "./routes/stats.js";
 import userRoutes from "./routes/userRoutes.js";
 
 dotenv.config();
+
+console.log("MONGO_URI:", process.env.MONGO_URI);
 
 // Token blacklist for logout functionality
 export const tokenBlacklist = new Set();

@@ -5,9 +5,9 @@ import { DataTable } from "../../components/librarian/DataTable";
 import { Badge } from "../../components/librarian/Badge";
 import { Button } from "../../components/librarian/Button";
 
-export function AllRecommendationsPage({ items }) {
+export function AllRecommendationsPage({ items, filterPriority: initialFilterPriority = "all" }) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterPriority, setFilterPriority] = useState("all");
+  const [filterPriority, setFilterPriority] = useState(initialFilterPriority);
   const [filterStatus, setFilterStatus] = useState("all");
 
   const filteredItems = items.filter((item) => {
