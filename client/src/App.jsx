@@ -24,6 +24,7 @@ function App() {
   const [view, setView] = useState("dashboard");
   const [items, setItems] = useState([]);
   const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, highPriority: 0 });
+  const [allFilter, setAllFilter] = useState("all");
   const [selectedPeriod, setSelectedPeriod] = useState(null);
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem("book-rec-theme") || "dark";
@@ -60,6 +61,13 @@ function App() {
     if (!session || !session.user || !session.user.role) return [];
     return roleViews[session.user.role] || [];
   }, [session]);
+
+  const handleViewChange = (nextView) => {
+    if (nextView === "all") {
+      setAllFilter("all");
+    }
+    setView(nextView);
+  };
 
   async function handleLogin(email, password) {
     const nextSession = await login(email, password);
@@ -100,7 +108,18 @@ function App() {
     }
 
     await updatePriority(session.token, id, priority);
-    setItems((current) => current.map((item) => (item._id === id ? { ...item, priority, status: "under_review" } : item)));
+
+    const nextItems = items.map((item) =>
+      item._id === id ? { ...item, priority, status: "under_review" } : item
+    );
+
+    setItems(nextItems);
+    setStats({
+      total: nextItems.length,
+      pending: nextItems.filter((item) => item.status === "submitted" || item.status === "under_review").length,
+      approved: nextItems.filter((item) => item.status === "approved").length,
+      highPriority: nextItems.filter((item) => item.priority === "high").length
+    });
   }
 
   async function handleUserCreation(userData) {
@@ -117,7 +136,7 @@ function App() {
       user={session.user}
       view={view}
       allowedViews={allowedViews}
-      onViewChange={setView}
+      onViewChange={handleViewChange}
       onLogout={logout}
       viewActions={null}
       theme={theme}
@@ -127,12 +146,22 @@ function App() {
       {session.user.role === "lecturer" && view === "submit" && <SubmitRequestPage onSubmit={handleCreate} />}
       {session.user.role === "lecturer" && view === "my" && <MyRecommendationsPage items={items} />}
 
-      {session.user.role === "hod" && view === "dashboard" && <HodDashboardPage user={session.user} stats={stats} items={items} />}
+      {session.user.role === "hod" && view === "dashboard" && (
+        <HodDashboardPage
+          user={session.user}
+          stats={stats}
+          items={items}
+          onHighPriorityClick={() => {
+            setAllFilter("high");
+            setView("all");
+          }}
+        />
+      )}
       {session.user.role === "hod" && view === "priority" && <HodPriorityPage items={items} onPriority={handlePriority} />}
-      {session.user.role === "hod" && view === "all" && <HodAllRecommendationsPage items={items} />}
+      {session.user.role === "hod" && view === "all" && <HodAllRecommendationsPage items={items} filterPriority={allFilter} />}
 
-      {session.user.role === "librarian" && view === "dashboard" && <LibrarianDashboardPage stats={stats} items={items} />}
-      {session.user.role === "librarian" && view === "all" && <AllRecommendationsPage items={items} />}
+      {session.user.role === "librarian" && view === "dashboard" && <LibrarianDashboardPage user={session.user} stats={stats} items={items} onHighPriorityClick={() => { setAllFilter("high"); setView("all"); }} />}
+      {session.user.role === "librarian" && view === "all" && <AllRecommendationsPage items={items} filterPriority={allFilter} />}
       {session.user.role === "librarian" && view === "periods" && <OrderTimePeriodsPage onViewChange={setView} onSelectPeriod={setSelectedPeriod} />}
       {session.user.role === "librarian" && view === "announcements" && <EmailAnnouncementsPage selectedPeriod={selectedPeriod} />}
       {session.user.role === "librarian" && view === "export" && <ExportDataPage items={items} />}

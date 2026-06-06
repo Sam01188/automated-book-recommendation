@@ -192,7 +192,60 @@ body {
   margin-bottom: 2.5rem;
 }
 
-/* Stat cards now use metric-card and admin-stat-card classes */
+.stat-card {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+button.stat-card {
+  appearance: none;
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  width: 100%;
+  text-align: left;
+}
+
+.stat-card-actionable {
+  cursor: pointer;
+}
+
+.stat-card-actionable:hover {
+  border-color: var(--maroon-light);
+}
+
+.stat-card-actionable:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--maroon-light);
+}
+
+.stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(127, 29, 29, 0.12) 0%, rgba(127, 29, 29, 0.05) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--maroon-main);
+}
+
 .stat-trend {
   font-size: 0.875rem;
   padding: 0.5rem 0.75rem;

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { AppModal } from "../../components/AppModal";
 
-const departments = ["DCEE", "DEIE", "DMME", "DMENA", "DCE"];
+const departments = ["DCEE"];
 
 function roleHasDepartment(role) {
   return role === "lecturer" || role === "hod";

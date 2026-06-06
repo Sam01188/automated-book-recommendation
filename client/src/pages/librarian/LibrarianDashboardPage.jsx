@@ -21,7 +21,7 @@ function formatSubmittedDate(item) {
   return date.toLocaleDateString();
 }
 
-export function LibrarianDashboardPage({ stats, items }) {
+export function LibrarianDashboardPage({ user, stats, items, onHighPriorityClick }) {
   const recentItems = items.slice(0, 5);
 
   return (
@@ -40,7 +40,8 @@ export function LibrarianDashboardPage({ stats, items }) {
         <StatCard
           title="High Priority"
           value={stats.highPriority}
-          icon={TriangleAlert}
+          icon={<Zap size={24} />}
+          onClick={onHighPriorityClick}
         />
         <StatCard
           title="Departments"
