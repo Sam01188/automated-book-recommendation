@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 export function AppModal({
   title,
   message,
@@ -7,6 +9,18 @@ export function AppModal({
   onCancel,
   variant = "default"
 }) {
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        onConfirm();
+      }
+    }
+    
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onConfirm]);
+
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="app-modal-title">
       <div className={`app-modal app-modal-${variant}`}>

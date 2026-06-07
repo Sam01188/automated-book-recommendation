@@ -33,6 +33,26 @@ function formatActivityDateTime(dateValue) {
 function getRecentActivities(users, recommendations, adminUser) {
   const adminName = adminUser?.name || "Admin";
 
+  // Get stored activities from localStorage (updates, deletes, creates)
+  const storedActivities = JSON.parse(localStorage.getItem('userActivities') || '[]');
+  const userLogActivities = storedActivities.map(a => {
+    let actionText = '';
+    if (a.type === 'delete') {
+      actionText = `${a.userName} account deleted`;
+    } else if (a.type === 'create') {
+      actionText = `${a.userName} account created`;
+    } else if (a.type === 'update') {
+      actionText = `${a.userName} account updated`;
+    }
+    
+    return {
+      id: `${a.type}-${a.userId}`,
+      text: actionText,
+      time: a.timestamp,
+      label: `by ${adminName}`
+    };
+  });
+
   const userActivities = users.map((item) => {
     const createdAt = item.createdAt;
     const updatedAt = item.updatedAt;
@@ -60,7 +80,7 @@ function getRecentActivities(users, recommendations, adminUser) {
     };
   });
 
-  return [...userActivities, ...recommendationActivities]
+  return [...userLogActivities, ...userActivities, ...recommendationActivities]
     .filter((item) => item.time)
     .sort((a, b) => new Date(b.time) - new Date(a.time))
     .slice(0, 5);

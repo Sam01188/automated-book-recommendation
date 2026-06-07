@@ -67,7 +67,7 @@
   --gray-50: #080a12;
   --gray-100: #0f1524;
   --gray-200: rgba(226, 232, 240, 0.09);
-  --gray-300: rgba(226, 232, 240, 0.16);
+  --gray-300: rgba(226, 232, 240, 0.25);
   --gray-400: #6f7d91;
   --gray-500: #8b98ad;
   --gray-600: #a8b3c7;
@@ -89,7 +89,7 @@
   --surface-hover-solid: #1f212f;
   --text: #f8fafc;
   --text-muted: #8b98ad;
-  --border: rgba(226, 232, 240, 0.09);
+  --border: rgba(226, 232, 240, 0.25);
   --border-bright: rgba(252, 165, 165, 0.34);
   --glow-primary: 0 0 12px rgba(95, 21, 21, 0.85);
 }
@@ -329,7 +329,7 @@ button.stat-card {
   border-radius: var(--radius-lg);
   font-size: 1rem;
   font-family: inherit;
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
   background: var(--white);
   color: var(--gray-900);
 }
@@ -339,7 +339,16 @@ button.stat-card {
 .form-textarea:focus {
   outline: none;
   border-color: var(--maroon-main);
-  box-shadow: 0 0 0 3px rgba(127, 29, 29, 0.14);
+  background: #ffffff;
+  color: #000000;
+  box-shadow: 0 0 0 4px rgba(127, 29, 29, 0.14);
+}
+
+/* Dark theme focus glow for better visibility */
+[data-theme='dark'] .form-input:focus,
+[data-theme='dark'] .form-select:focus,
+[data-theme='dark'] .form-textarea:focus {
+  box-shadow: 0 0 0 2px rgba(252, 165, 165, 0.3), 0 0 6px rgba(95, 21, 21, 0.85);
 }
 
 .form-input:disabled,

@@ -178,7 +178,9 @@ export function OrderTimePeriodsPage({ onViewChange, onSelectPeriod }) {
         </button>
       </div>
 
-      <Card title="Add New Period" className="form-card">
+      <section className="large-panel">
+        <h3 className="panel-title">Add New Period</h3>
+        <Card className="form-card">
         <div className="form-group">
           <div className="form-row">
             <div className="form-field">
@@ -295,6 +297,7 @@ export function OrderTimePeriodsPage({ onViewChange, onSelectPeriod }) {
           }}
         />
       </Card>
+      </section>
 
       {editingId && (
         <div className="modal-overlay" onClick={handleCancelEditEndDate}>
