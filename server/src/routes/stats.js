@@ -11,7 +11,13 @@ router.get("/", requireAuth, async (req, res) => {
 
     const [total, pending, approved, highPriority] = await Promise.all([
       Recommendation.countDocuments(filter),
-      Recommendation.countDocuments({ ...filter, status: { $in: ["submitted", "under_review"] } }),
+      Recommendation.countDocuments({
+        ...filter,
+        $or: [
+          { status: "under_review" },
+          { status: "submitted", reviewedBy: { $exists: false } }
+        ]
+      }),
       Recommendation.countDocuments({ ...filter, status: "approved" }),
       Recommendation.countDocuments({ ...filter, priority: "high" })
     ]);
