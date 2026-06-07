@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { UserPlus, Users } from "lucide-react";
-import { createRecommendation, fetchRecommendations, fetchStats, login, logout as apiLogout, updatePriority } from "./api";
+import { createRecommendation, fetchRecommendations, fetchStats, login, logout as apiLogout, submitToLibrarian, updatePriority } from "./api";
 import { AppLayout, roleViews } from "./components/AppLayout";
 import { LoginPage } from "./pages/auth/LoginPage";
 import { HodDashboardPage } from "./pages/hod/HodDashboardPage";
 import { AllRecommendationsPage as HodAllRecommendationsPage } from "./pages/hod/AllRecommendationsPage";
 import { PriorityPage as HodPriorityPage } from "./pages/hod/PriorityPage";
+import { HodSubmissionsPage } from "./pages/hod/HodSubmissionsPage";
 import { AllRecommendationsPage } from "./pages/librarian/AllRecommendationsPage";
 import { ExportDataPage } from "./pages/librarian/ExportDataPage";
 import { LibrarianDashboardPage } from "./pages/librarian/LibrarianDashboardPage";
@@ -63,6 +64,24 @@ function App() {
     return roleViews[session.user.role] || [];
   }, [session]);
 
+  const deriveStats = (records, role = session?.user?.role) => ({
+    total: records.length,
+    pending:
+      role === "hod"
+        ? records.filter(
+            (item) =>
+              item.status === "under_review" ||
+              (item.status === "submitted" && !item.reviewedBy)
+          ).length
+        : records.filter((item) => item.status === "submitted" || item.status === "under_review").length,
+    approved: records.filter((item) => item.status === "approved").length,
+    highPriority: records.filter((item) => item.priority === "high").length
+  });
+
+  useEffect(() => {
+    setStats(deriveStats(items, session?.user?.role));
+  }, [items, session?.user?.role]);
+
   const handleViewChange = (nextView) => {
     if (nextView === "all") {
       setAllFilter("all");
@@ -94,12 +113,7 @@ function App() {
     const created = await createRecommendation(session.token, payload);
     const next = [created, ...items];
     setItems(next);
-    setStats({
-      total: next.length,
-      pending: next.filter((item) => item.status !== "approved").length,
-      approved: next.filter((item) => item.status === "approved").length,
-      highPriority: next.filter((item) => item.priority === "high").length
-    });
+    setStats(deriveStats(next, session.user.role));
     setView("my");
   }
 
@@ -115,12 +129,16 @@ function App() {
     );
 
     setItems(nextItems);
-    setStats({
-      total: nextItems.length,
-      pending: nextItems.filter((item) => item.status === "submitted" || item.status === "under_review").length,
-      approved: nextItems.filter((item) => item.status === "approved").length,
-      highPriority: nextItems.filter((item) => item.priority === "high").length
-    });
+    setStats(deriveStats(nextItems, session.user.role));
+  }
+
+  async function handleSubmitToLibrarian() {
+    if (!session) return;
+
+    const updatedRecords = await submitToLibrarian(session.token);
+    setItems(updatedRecords);
+    setStats(deriveStats(updatedRecords, session.user.role));
+    setView("submissions");
   }
 
   async function handleUserCreation(userData) {
@@ -152,14 +170,31 @@ function App() {
           user={session.user}
           stats={stats}
           items={items}
+          onTotalClick={() => setView("submissions")}
+          onPendingClick={() => setView("priority")}
           onHighPriorityClick={() => {
             setAllFilter("high");
             setView("all");
           }}
         />
       )}
-      {session.user.role === "hod" && view === "priority" && <HodPriorityPage items={items} onPriority={handlePriority} />}
-      {session.user.role === "hod" && view === "all" && <HodAllRecommendationsPage items={items} filterPriority={allFilter} />}
+      {session.user.role === "hod" && view === "priority" && (
+        <HodPriorityPage
+          items={items}
+          onPriority={handlePriority}
+        />
+      )}
+      {session.user.role === "hod" && view === "all" && (
+        <HodAllRecommendationsPage
+          items={items}
+          filterPriority={allFilter}
+          onPriority={handlePriority}
+          onSubmit={handleSubmitToLibrarian}
+        />
+      )}
+      {session.user.role === "hod" && view === "submissions" && (
+        <HodSubmissionsPage items={items} currentUserId={session.user.id} />
+      )}
 
       {session.user.role === "librarian" && view === "dashboard" && <LibrarianDashboardPage user={session.user} stats={stats} items={items} onHighPriorityClick={() => { setAllFilter("high"); setView("all"); }} />}
       {session.user.role === "librarian" && view === "all" && <AllRecommendationsPage items={items} filterPriority={allFilter} />}
