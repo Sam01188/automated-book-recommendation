@@ -91,6 +91,24 @@ export async function updatePriority(token, id, priority) {
   });
 }
 
+export async function submitToLibrarian(token) {
+  if (token === "demo-token") {
+    return [];
+  }
+
+  const response = await fetch(`${api}/recommendations/submit`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to submit recommendations");
+  }
+
+  return response.json();
+}
+
 // ADMIN METHODS
 export async function getUsers(token) {
   const response = await fetch(`${api}/admin/users`, {

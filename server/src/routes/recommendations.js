@@ -10,10 +10,40 @@ router.get("/", requireAuth, async (req, res) => {
     const filter = req.user.role === "lecturer" ? { submittedBy: req.user.id } : {};
     const recommendations = await Recommendation.find(filter)
       .populate("submittedBy", "name department")
+      .populate("reviewedBy", "name")
       .sort({ createdAt: -1 });
     res.json(recommendations);
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch recommendations" });
+  }
+});
+
+router.patch("/submit", requireAuth, allowRoles("hod"), async (req, res) => {
+  try {
+    const unassignedCount = await Recommendation.countDocuments({
+      priority: "unassigned",
+      $or: [{ status: "under_review" }, { status: "submitted", reviewedBy: { $exists: false } }]
+    });
+    if (unassignedCount > 0) {
+      return res.status(400).json({ message: "Please assign a priority to every recommendation before submitting to the librarian." });
+    }
+
+    await Recommendation.updateMany(
+      {
+        $or: [{ status: "under_review" }, { status: "submitted", reviewedBy: { $exists: false } }],
+        priority: { $ne: "unassigned" }
+      },
+      { status: "submitted", reviewedBy: req.user.id }
+    );
+
+    const recommendations = await Recommendation.find({})
+      .populate("submittedBy", "name department")
+      .populate("reviewedBy", "name")
+      .sort({ createdAt: -1 });
+
+    res.json(recommendations);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to submit recommendations" });
   }
 });
 
