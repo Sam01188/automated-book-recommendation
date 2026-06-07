@@ -36,7 +36,7 @@ export function SubmitRequestPage({ onSubmit, loading }) {
 
   return (
     <div style={{
-      background: "var(--surface)",
+      background: "var(--surface-solid)",
       borderRadius: "var(--radius-lg)",
       border: "1px solid var(--border)",
       boxShadow: "var(--shadow)",
@@ -56,14 +56,14 @@ export function SubmitRequestPage({ onSubmit, loading }) {
 
       {success && (
         <div style={{
-          background: "#dcfce7",
-          color: "#166534",
+          background: "var(--success-bg)",
+          color: "var(--success-text)",
           borderRadius: "var(--radius)",
           padding: "0.875rem 1.25rem",
           fontWeight: 600,
           fontSize: "0.9rem",
           marginBottom: "1.5rem",
-          border: "1px solid #bbf7d0"
+          border: "1px solid var(--success-border)"
         }}>
           ✓ Recommendation submitted successfully! View it in My Requests.
         </div>
@@ -168,7 +168,7 @@ function Field({ label, required, children }) {
     <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
       <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text)" }}>
         {label}
-        {required && <span style={{ color: "#dc2626", marginLeft: "0.2rem" }}>*</span>}
+        {required && <span style={{ color: "var(--danger-text)", marginLeft: "0.2rem" }}>*</span>}
       </label>
       {children}
     </div>

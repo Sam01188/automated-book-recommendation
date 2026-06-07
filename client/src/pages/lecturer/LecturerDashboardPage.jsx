@@ -6,17 +6,6 @@ export function LecturerDashboardPage({ user, stats, items }) {
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
-      {/* Welcome Heading */}
-      <h2 style={{
-        fontSize: "1.75rem",
-        fontWeight: 700,
-        color: "var(--text)",
-        letterSpacing: "0.02em",
-        textTransform: "capitalize"
-      }}>
-        Welcome, {user?.name ?? ""}!
-      </h2>
-
       {/* Metric Cards */}
       <div style={{
         display: "grid",
@@ -45,7 +34,7 @@ export function LecturerDashboardPage({ user, stats, items }) {
 
       {/* Recent Submissions Panel */}
       <div style={{
-        background: "var(--surface)",
+        background: "var(--surface-solid)",
         borderRadius: "var(--radius-lg)",
         border: "1px solid var(--border)",
         boxShadow: "var(--shadow)",
@@ -89,7 +78,7 @@ export function LecturerDashboardPage({ user, stats, items }) {
 function MetricCard({ icon, label, value, sub }) {
   return (
     <div style={{
-      background: "var(--surface)",
+      background: "var(--surface-solid)",
       borderRadius: "var(--radius-lg)",
       border: "1px solid var(--border)",
       padding: "1.5rem",
@@ -119,8 +108,8 @@ function MetricCard({ icon, label, value, sub }) {
           {label}
         </span>
         <span style={{
-          color: "var(--primary)",
-          background: "var(--background)",
+          color: "var(--accent)",
+          background: "var(--accent-glow)",
           borderRadius: "var(--radius-sm)",
           padding: "0.35rem",
           display: "flex",
@@ -141,10 +130,10 @@ function MetricCard({ icon, label, value, sub }) {
 
 function RecentRow({ item }) {
   const statusColors = {
-    submitted: { bg: "#dbeafe", text: "#1e40af" },
-    under_review: { bg: "#fef3c7", text: "#92400e" },
-    approved: { bg: "#dcfce7", text: "#166534" },
-    rejected: { bg: "#fee2e2", text: "#991b1b" }
+    submitted: { bg: "var(--admin-action-bg)", text: "var(--primary-light)", border: "var(--border-bright)" },
+    under_review: { bg: "var(--warning-bg)", text: "var(--warning-text)", border: "var(--warning-border)" },
+    approved: { bg: "var(--success-bg)", text: "var(--success-text)", border: "var(--success-border)" },
+    rejected: { bg: "var(--danger-bg)", text: "var(--danger-text)", border: "var(--danger-border)" }
   };
   const sc = statusColors[item.status] ?? statusColors.submitted;
 
@@ -154,7 +143,7 @@ function RecentRow({ item }) {
       alignItems: "center",
       justifyContent: "space-between",
       padding: "1rem 1.25rem",
-      background: "var(--background)",
+      background: "var(--surface-hover)",
       borderRadius: "var(--radius)",
       border: "1px solid var(--border)"
     }}>
@@ -174,7 +163,8 @@ function RecentRow({ item }) {
         textTransform: "uppercase",
         letterSpacing: "0.06em",
         background: sc.bg,
-        color: sc.text
+        color: sc.text,
+        border: `1px solid ${sc.border}`
       }}>
         {item.status?.replace("_", " ") ?? "submitted"}
       </span>

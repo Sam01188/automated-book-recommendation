@@ -1,7 +1,7 @@
 export function MyRecommendationsPage({ items }) {
   return (
     <div style={{
-      background: "var(--surface)",
+      background: "var(--surface-solid)",
       borderRadius: "var(--radius-lg)",
       border: "1px solid var(--border)",
       boxShadow: "var(--shadow)",
@@ -25,7 +25,7 @@ export function MyRecommendationsPage({ items }) {
       {items.length === 0 ? (
         /* Empty State */
         <div style={{
-          background: "var(--background)",
+          background: "var(--surface-hover)",
           borderRadius: "var(--radius)",
           padding: "3.5rem 2rem",
           textAlign: "center",
@@ -48,7 +48,7 @@ export function MyRecommendationsPage({ items }) {
               <tr>
                 {["Title", "Author", "ISBN Number", "Publisher", "Edition", "Year", "Binding", "Copies", "Price (LKR)", "Status", "Priority"].map((col) => (
                   <th key={col} style={{
-                    background: "var(--background)",
+                    background: "var(--surface-hover)",
                     padding: "0.875rem 1rem",
                     textAlign: "left",
                     fontSize: "0.7rem",
@@ -78,16 +78,16 @@ export function MyRecommendationsPage({ items }) {
 
 function RecommendationRow({ item }) {
   const statusMap = {
-    submitted:    { bg: "#dbeafe", text: "#1e40af", label: "Submitted" },
-    under_review: { bg: "#fef3c7", text: "#92400e", label: "Under Review" },
-    approved:     { bg: "#dcfce7", text: "#166534", label: "Approved" },
-    rejected:     { bg: "#fee2e2", text: "#991b1b", label: "Rejected" }
+    submitted:    { bg: "var(--admin-action-bg)", text: "var(--primary-light)", border: "var(--border-bright)", label: "Submitted" },
+    under_review: { bg: "var(--warning-bg)", text: "var(--warning-text)", border: "var(--warning-border)", label: "Under Review" },
+    approved:     { bg: "var(--success-bg)", text: "var(--success-text)", border: "var(--success-border)", label: "Approved" },
+    rejected:     { bg: "var(--danger-bg)", text: "var(--danger-text)", border: "var(--danger-border)", label: "Rejected" }
   };
   const priorityMap = {
-    high:       { bg: "#fee2e2", text: "#991b1b" },
-    medium:     { bg: "#fef3c7", text: "#92400e" },
-    low:        { bg: "#dcfce7", text: "#166534" },
-    unassigned: { bg: "#f1f5f9", text: "#64748b" }
+    high:       { bg: "var(--danger-bg)", text: "var(--danger-text)", border: "var(--danger-border)" },
+    medium:     { bg: "var(--warning-bg)", text: "var(--warning-text)", border: "var(--warning-border)" },
+    low:        { bg: "var(--success-bg)", text: "var(--success-text)", border: "var(--success-border)" },
+    unassigned: { bg: "var(--surface-hover)", text: "var(--text-muted)", border: "var(--border)" }
   };
 
   const sc = statusMap[item.status]   ?? statusMap.submitted;
@@ -103,7 +103,7 @@ function RecommendationRow({ item }) {
 
   return (
     <tr style={{ transition: "background 0.15s" }}
-      onMouseEnter={e => Array.from(e.currentTarget.cells).forEach(td => td.style.background = "var(--background)")}
+      onMouseEnter={e => Array.from(e.currentTarget.cells).forEach(td => td.style.background = "var(--table-row-hover)")}
       onMouseLeave={e => Array.from(e.currentTarget.cells).forEach(td => td.style.background = "")}
     >
       <td style={{ ...tdStyle, fontWeight: 600, maxWidth: 220 }}>
@@ -131,6 +131,7 @@ function RecommendationRow({ item }) {
           letterSpacing: "0.05em",
           background: sc.bg,
           color: sc.text,
+          border: `1px solid ${sc.border}`,
           whiteSpace: "nowrap"
         }}>
           {sc.label}
@@ -145,7 +146,8 @@ function RecommendationRow({ item }) {
           textTransform: "uppercase",
           letterSpacing: "0.05em",
           background: pc.bg,
-          color: pc.text
+          color: pc.text,
+          border: `1px solid ${pc.border}`
         }}>
           {item.priority ?? "unassigned"}
         </span>
