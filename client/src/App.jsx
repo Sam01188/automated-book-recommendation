@@ -11,7 +11,6 @@ import { AllRecommendationsPage } from "./pages/librarian/AllRecommendationsPage
 import { ExportDataPage } from "./pages/librarian/ExportDataPage";
 import { LibrarianDashboardPage } from "./pages/librarian/LibrarianDashboardPage";
 import { OrderTimePeriodsPage } from "./pages/librarian/OrderTimePeriodsPage";
-import { EmailAnnouncementsPage } from "./pages/librarian/EmailAnnouncementsPage";
 import { LecturerDashboardPage } from "./pages/lecturer/LecturerDashboardPage";
 import { MyRecommendationsPage } from "./pages/lecturer/MyRecommendationsPage";
 import { SubmitRequestPage } from "./pages/lecturer/SubmitRequestPage";
@@ -199,7 +198,6 @@ function App() {
       {session.user.role === "librarian" && view === "dashboard" && <LibrarianDashboardPage user={session.user} stats={stats} items={items} onHighPriorityClick={() => { setAllFilter("high"); setView("all"); }} />}
       {session.user.role === "librarian" && view === "all" && <AllRecommendationsPage items={items} filterPriority={allFilter} />}
       {session.user.role === "librarian" && view === "periods" && <OrderTimePeriodsPage onViewChange={setView} onSelectPeriod={setSelectedPeriod} />}
-      {session.user.role === "librarian" && view === "announcements" && <EmailAnnouncementsPage selectedPeriod={selectedPeriod} />}
       {session.user.role === "librarian" && view === "export" && <ExportDataPage items={items} />}
 
       {session.user.role === "admin" && view === "dashboard" && (

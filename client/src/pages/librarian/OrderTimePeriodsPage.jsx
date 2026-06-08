@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Plus, Trash2, Mail, Calendar, Clock, Settings } from "lucide-react";
+import { Plus, Trash2, Calendar, Clock, Settings } from "lucide-react";
 import { Card } from "../../components/librarian/Card";
 import { Button } from "../../components/librarian/Button";
 import { DataTable } from "../../components/librarian/DataTable";
 
 const FACULTY = "Engineering Faculty";
 
-export function OrderTimePeriodsPage({ onViewChange, onSelectPeriod }) {
+export function OrderTimePeriodsPage() {
   const [periods, setPeriods] = useState([
     { id: 1, faculty: "Engineering Faculty", startDate: "2026-01-01", endDate: "2026-03-31", status: "active", hodRecommendationDays: 7 }
   ]);
@@ -96,15 +96,6 @@ export function OrderTimePeriodsPage({ onViewChange, onSelectPeriod }) {
 
   const handleCancelDelete = () => {
     setDeleteConfirmId(null);
-  };
-
-  const handleSendEmail = (period) => {
-    if (onSelectPeriod) {
-      onSelectPeriod(period);
-    }
-    if (onViewChange) {
-      onViewChange("announcements");
-    }
   };
 
   // HOD Recommendation Period Handlers
@@ -271,13 +262,6 @@ export function OrderTimePeriodsPage({ onViewChange, onSelectPeriod }) {
                       title="Extend HOD Period"
                     >
                       <Clock size={16} />
-                    </button>
-                    <button
-                      className="btn-icon"
-                      onClick={() => handleSendEmail(period)}
-                      title="Send Email"
-                    >
-                      <Mail size={16} />
                     </button>
                     <button
                       className="btn-icon danger"
