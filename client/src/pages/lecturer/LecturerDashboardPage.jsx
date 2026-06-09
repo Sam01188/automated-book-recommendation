@@ -1,66 +1,74 @@
-import { BookMarked, CheckCircle, Clock } from "lucide-react";
+import { BookMarked, Clock, ShieldX } from "lucide-react";
 
-export function LecturerDashboardPage({ user, stats, items }) {
+export function LecturerDashboardPage({ user, stats, items, isPeriodOpen, currentPeriod }) {
   const firstName = user?.name?.split(" ")[0]?.toUpperCase() ?? "";
   const fullName = user?.name?.toUpperCase() ?? "";
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
-      {/* Welcome Heading */}
-      <h2 style={{
-        fontSize: "1.75rem",
-        fontWeight: 700,
-        color: "var(--text)",
-        letterSpacing: "0.02em",
-        textTransform: "capitalize"
-      }}>
-        Welcome, {user?.name ?? ""}!
-      </h2>
+      {/* Period Status Notification Banner */}
+      {isPeriodOpen && currentPeriod ? (
+        <div style={{
+          background: "linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%)",
+          border: "1px solid rgba(16, 185, 129, 0.35)",
+          color: "var(--success)",
+          borderRadius: "var(--radius)",
+          padding: "1rem 1.5rem",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        }}>
+          <div>
+            <h4 style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "var(--success)" }}>📖 Book Submission Period Open</h4>
+            <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.875rem", color: "var(--text-muted)" }}>
+              The library is accepting book recommendations for the <strong>{currentPeriod.faculty}</strong>.
+            </p>
+          </div>
+          <div style={{ textAlign: "right", fontSize: "0.875rem" }}>
+            <strong>Deadline:</strong> {new Date(currentPeriod.endDate).toLocaleDateString('en-GB')}
+          </div>
+        </div>
+      ) : (
+        <div style={{
+          background: "linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%)",
+          border: "1px solid rgba(239, 68, 68, 0.35)",
+          color: "var(--danger)",
+          borderRadius: "var(--radius)",
+          padding: "1rem 1.5rem"
+        }}>
+          <h4 style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "var(--danger)" }}>🔒 Submissions Closed</h4>
+          <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.875rem", color: "var(--text-muted)" }}>
+            Book recommendation submissions are currently closed. Please wait until the librarian opens a new order period.
+          </p>
+        </div>
+      )}
 
       {/* Metric Cards */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+        gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
         gap: "1.5rem"
       }}>
         <MetricCard
           icon={<BookMarked size={22} />}
           label="Total Submissions"
           value={stats.total ?? 0}
-          sub="ALL TIME"
         />
         <MetricCard
           icon={<Clock size={22} />}
           label="Pending Review"
           value={stats.pending ?? 0}
-          sub="AWAITING APPROVAL"
         />
         <MetricCard
-          icon={<CheckCircle size={22} />}
-          label="Approved"
-          value={stats.approved ?? 0}
-          sub="READY"
+          icon={<ShieldX size={22} />}
+          label="Rejected"
+          value={stats.rejected ?? 0}
         />
       </div>
 
       {/* Recent Submissions Panel */}
-      <div style={{
-        background: "var(--surface)",
-        borderRadius: "var(--radius-lg)",
-        border: "1px solid var(--border)",
-        boxShadow: "var(--shadow)",
-        padding: "2rem"
-      }}>
-        <h3 style={{
-          fontSize: "0.875rem",
-          fontWeight: 700,
-          textTransform: "uppercase",
-          letterSpacing: "0.1em",
-          color: "var(--text)",
-          marginBottom: "1.5rem"
-        }}>
-          Recent Submissions
-        </h3>
+      <div className="large-panel">
+        <h2 className="panel-title">Recent Submissions</h2>
 
         {items.length === 0 ? (
           <div style={{
@@ -70,7 +78,7 @@ export function LecturerDashboardPage({ user, stats, items }) {
             fontSize: "0.9375rem",
             fontWeight: 500,
             letterSpacing: "0.04em",
-            textTransform: "uppercase"
+            
           }}>
             No Submissions Yet
           </div>
@@ -86,65 +94,26 @@ export function LecturerDashboardPage({ user, stats, items }) {
   );
 }
 
-function MetricCard({ icon, label, value, sub }) {
+function MetricCard({ icon, label, value, onClick }) {
+  const Tag = onClick ? "button" : "div";
   return (
-    <div style={{
-      background: "var(--surface)",
-      borderRadius: "var(--radius-lg)",
-      border: "1px solid var(--border)",
-      padding: "1.5rem",
-      display: "flex",
-      flexDirection: "column",
-      gap: "0.75rem",
-      boxShadow: "var(--shadow-sm)",
-      transition: "all 0.25s ease"
-    }}
-      onMouseEnter={e => {
-        e.currentTarget.style.transform = "translateY(-3px)";
-        e.currentTarget.style.boxShadow = "var(--shadow-lg)";
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = "var(--shadow-sm)";
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <span style={{
-          fontSize: "0.8rem",
-          fontWeight: 600,
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          color: "var(--text-muted)"
-        }}>
-          {label}
-        </span>
-        <span style={{
-          color: "var(--primary)",
-          background: "var(--background)",
-          borderRadius: "var(--radius-sm)",
-          padding: "0.35rem",
-          display: "flex",
-          alignItems: "center"
-        }}>
+    <Tag className={`metric-card admin-stat-card${onClick ? " clickable-metric" : ""}`} onClick={onClick} type={onClick ? "button" : undefined}>
+      <div className="metric-header">
+        <span className="metric-label">{label}</span>
+        <span className="metric-icon">
           {icon}
         </span>
       </div>
-      <div style={{ fontSize: "2.5rem", fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>
-        {value}
-      </div>
-      <div style={{ fontSize: "0.7rem", fontWeight: 600, letterSpacing: "0.1em", color: "var(--text-muted)", textTransform: "uppercase" }}>
-        {sub}
-      </div>
-    </div>
+      <strong className="metric-value">{value}</strong>
+    </Tag>
   );
 }
 
 function RecentRow({ item }) {
   const statusColors = {
-    submitted: { bg: "#dbeafe", text: "#1e40af" },
-    under_review: { bg: "#fef3c7", text: "#92400e" },
-    approved: { bg: "#dcfce7", text: "#166534" },
-    rejected: { bg: "#fee2e2", text: "#991b1b" }
+    submitted: { bg: "var(--success-bg)", text: "var(--success-text)", border: "var(--success-border)" },
+    under_review: { bg: "rgba(236, 72, 153, 0.15)", text: "#ec4899", border: "rgba(236, 72, 153, 0.3)" },
+    rejected: { bg: "var(--danger-bg)", text: "var(--danger-text)", border: "var(--danger-border)" }
   };
   const sc = statusColors[item.status] ?? statusColors.submitted;
 
@@ -154,7 +123,7 @@ function RecentRow({ item }) {
       alignItems: "center",
       justifyContent: "space-between",
       padding: "1rem 1.25rem",
-      background: "var(--background)",
+      background: "var(--surface-hover)",
       borderRadius: "var(--radius)",
       border: "1px solid var(--border)"
     }}>
@@ -174,7 +143,8 @@ function RecentRow({ item }) {
         textTransform: "uppercase",
         letterSpacing: "0.06em",
         background: sc.bg,
-        color: sc.text
+        color: sc.text,
+        border: `1px solid ${sc.border}`
       }}>
         {item.status?.replace("_", " ") ?? "submitted"}
       </span>

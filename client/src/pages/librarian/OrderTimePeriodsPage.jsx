@@ -1,52 +1,98 @@
-import { useState } from "react";
-import { Plus, Trash2, Mail, Calendar, Clock, Settings } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Calendar, Pencil, Play, Plus, Settings, Trash2, XCircle } from "lucide-react";
 import { Card } from "../../components/librarian/Card";
 import { Button } from "../../components/librarian/Button";
 import { DataTable } from "../../components/librarian/DataTable";
+import { AppModal } from "../../components/AppModal";
+import {
+  fetchOrderPeriods,
+  createOrderPeriod,
+  updateOrderPeriod,
+  closeOrderPeriod,
+  openHodPeriod,
+  deleteOrderPeriod
+} from "../../api";
 
 const FACULTY = "Engineering Faculty";
 
-export function OrderTimePeriodsPage({ onViewChange, onSelectPeriod }) {
-  const [periods, setPeriods] = useState([
-    { id: 1, faculty: "Engineering Faculty", startDate: "2026-01-01", endDate: "2026-03-31", status: "active", hodRecommendationDays: 7 }
-  ]);
+export function OrderTimePeriodsPage({ token, onViewChange, onSelectPeriod }) {
+  const [periods, setPeriods] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [formData, setFormData] = useState({ startDate: "", endDate: "" });
   const [editingId, setEditingId] = useState(null);
   const [editEndDate, setEditEndDate] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
-  
+
   // HOD Recommendation Period states
   const [defaultHodDays, setDefaultHodDays] = useState(7);
+  const [defaultHodEndDate, setDefaultHodEndDate] = useState("");
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [tempHodDays, setTempHodDays] = useState(7);
+  const [tempHodEndDate, setTempHodEndDate] = useState("");
   const [extendingPeriodId, setExtendingPeriodId] = useState(null);
   const [extendDays, setExtendDays] = useState("");
+  const [modal, setModal] = useState(null);
 
-  const handleEditEndDate = (period) => {
-    setEditingId(period.id);
-    setEditEndDate(period.endDate);
+  const showNotice = (title, message, variant = "default") => {
+    setModal({ title, message, confirmText: "OK", variant, onConfirm: () => setModal(null) });
   };
 
-  const handleConfirmEditEndDate = () => {
+  const showConfirm = ({ title, message, confirmText = "Confirm", variant = "default", onConfirm }) => {
+    setModal({
+      title,
+      message,
+      confirmText,
+      cancelText: "Cancel",
+      variant,
+      onConfirm: async () => {
+        setModal(null);
+        await onConfirm();
+      },
+      onCancel: () => setModal(null)
+    });
+  };
+
+  const loadPeriods = () => {
+    setLoading(true);
+    fetchOrderPeriods(token)
+      .then(setPeriods)
+      .catch((err) => showNotice("Failed to Load Periods", err.message || "Failed to load periods", "danger"))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadPeriods();
+  }, [token]);
+
+  const handleEditEndDate = (period) => {
+    setEditingId(period._id);
+    setEditEndDate(period.endDate ? period.endDate.split("T")[0] : "");
+  };
+
+  const handleConfirmEditEndDate = async () => {
     if (!editEndDate) {
-      alert("Please select an end date");
+      showNotice("Missing End Date", "Please select an end date");
       return;
     }
 
-    const period = periods.find((p) => p.id === editingId);
+    const period = periods.find((p) => p._id === editingId);
     if (new Date(editEndDate) <= new Date(period.startDate)) {
-      alert("End date must be after start date");
+      showNotice("Invalid Date Range", "End date must be after start date");
       return;
     }
 
-    setPeriods(
-      periods.map((p) =>
-        p.id === editingId ? { ...p, endDate: editEndDate } : p
-      )
-    );
-    setEditingId(null);
-    setEditEndDate("");
+    try {
+      await updateOrderPeriod(token, editingId, {
+        endDate: editEndDate,
+        hodRecommendationDays: period.hodRecommendationDays
+      });
+      setEditingId(null);
+      setEditEndDate("");
+      loadPeriods();
+    } catch (err) {
+      showNotice("Failed to Update End Date", err.message || "Failed to update end date", "danger");
+    }
   };
 
   const handleCancelEditEndDate = () => {
@@ -54,74 +100,93 @@ export function OrderTimePeriodsPage({ onViewChange, onSelectPeriod }) {
     setEditEndDate("");
   };
 
-  const handleAddPeriod = () => {
-    // Check if Engineering Faculty already has an active period
-    const facultyExists = periods.some((p) => p.faculty === FACULTY && p.status === "active");
+  const handleAddPeriod = async () => {
+    const facultyExists = periods.some((p) => p.faculty === FACULTY && (p.status === "open" || p.status === "hod_priority"));
     if (facultyExists) {
-      alert(`An active time period already exists for ${FACULTY}. Please delete it first.`);
+      showNotice("Active Period Exists", `An active time period already exists for ${FACULTY}. Please close or delete it first.`);
       return;
     }
 
     if (formData.startDate && formData.endDate) {
       if (new Date(formData.endDate) <= new Date(formData.startDate)) {
-        alert("End date must be after start date");
+        showNotice("Invalid Date Range", "End date must be after start date");
         return;
       }
-      setPeriods([
-        ...periods,
-        {
-          id: periods.length + 1,
+      try {
+        await createOrderPeriod(token, {
           faculty: FACULTY,
           startDate: formData.startDate,
           endDate: formData.endDate,
-          status: "active"
-        }
-      ]);
-      setFormData({ startDate: "", endDate: "" });
+          hodRecommendationDays: defaultHodDays
+        });
+        setFormData({ startDate: "", endDate: "" });
+        loadPeriods();
+      } catch (err) {
+        showNotice("Failed to Add Period", err.message || "Failed to add period", "danger");
+      }
     } else {
-      alert("Please fill in all fields");
+      showNotice("Missing Dates", "Please fill in all fields");
     }
   };
 
-  const facultyHasActivePeriod = periods.some((p) => p.faculty === FACULTY && p.status === "active");
+  const facultyHasActivePeriod = periods.some((p) => p.faculty === FACULTY && (p.status === "open" || p.status === "hod_priority"));
 
   const handleDeleteClick = (id) => {
     setDeleteConfirmId(id);
   };
 
-  const handleConfirmDelete = () => {
-    setPeriods(periods.filter((p) => p.id !== deleteConfirmId));
-    setDeleteConfirmId(null);
+  const handleConfirmDelete = async () => {
+    try {
+      await deleteOrderPeriod(token, deleteConfirmId);
+      setDeleteConfirmId(null);
+      loadPeriods();
+    } catch (err) {
+      showNotice("Failed to Delete Period", err.message || "Failed to delete period", "danger");
+    }
   };
 
   const handleCancelDelete = () => {
     setDeleteConfirmId(null);
   };
 
-  const handleSendEmail = (period) => {
-    if (onSelectPeriod) {
-      onSelectPeriod(period);
-    }
-    if (onViewChange) {
-      onViewChange("announcements");
-    }
-  };
-
-  // HOD Recommendation Period Handlers
   const calculateHodRecommendationDeadline = (endDate, days) => {
     const deadline = new Date(endDate);
     deadline.setDate(deadline.getDate() + days);
     return deadline;
   };
 
-  const handleSaveDefaultHodDays = () => {
+  const handleSaveDefaultHodDays = async () => {
     setDefaultHodDays(tempHodDays);
-    // Update all active periods to use new default
-    setPeriods(
-      periods.map((p) =>
-        p.status === "active" ? { ...p, hodRecommendationDays: tempHodDays } : p
-      )
-    );
+    setDefaultHodEndDate(tempHodEndDate);
+    
+    // Update the current period if it exists
+    const currentPeriod = periods.find((p) => p.status === "open" || p.status === "hod_priority");
+    if (currentPeriod) {
+      try {
+        const updateData = {
+          endDate: currentPeriod.endDate,
+          hodRecommendationDays: tempHodDays
+        };
+        
+        // If a specific HOD end date is set, use that directly and calculate days
+        if (tempHodEndDate) {
+          const lecturerEndDate = new Date(currentPeriod.endDate);
+          const hodEndDate = new Date(tempHodEndDate);
+          const days = Math.ceil((hodEndDate - lecturerEndDate) / (1000 * 60 * 60 * 24));
+          updateData.hodRecommendationDays = Math.max(1, days);
+        } else {
+          // Otherwise use the default days
+          updateData.hodRecommendationDays = tempHodDays;
+        }
+        
+        await updateOrderPeriod(token, currentPeriod._id, updateData);
+        loadPeriods();
+        showNotice("Settings Updated", "HOD period settings and current period have been updated.");
+      } catch (err) {
+        showNotice("Failed to Update Period", err.message || "Failed to update period", "danger");
+      }
+    }
+    
     setShowSettingsModal(false);
   };
 
@@ -130,349 +195,407 @@ export function OrderTimePeriodsPage({ onViewChange, onSelectPeriod }) {
     setExtendDays("");
   };
 
-  const handleConfirmExtension = () => {
+  const handleConfirmExtension = async () => {
     if (!extendDays || extendDays <= 0) {
-      alert("Please enter a valid number of days");
+      showNotice("Invalid Extension", "Please enter a valid number of days");
       return;
     }
 
-    setPeriods(
-      periods.map((p) =>
-        p.id === extendingPeriodId
-          ? { ...p, hodRecommendationDays: p.hodRecommendationDays + parseInt(extendDays) }
-          : p
-      )
-    );
-    setExtendingPeriodId(null);
-    setExtendDays("");
-    alert(`HOD recommendation period extended by ${extendDays} days!`);
+    const period = periods.find((p) => p._id === extendingPeriodId);
+    const newDays = (period.hodRecommendationDays || 7) + parseInt(extendDays);
+
+    try {
+      await updateOrderPeriod(token, extendingPeriodId, {
+        startDate: period.startDate,
+        endDate: period.endDate,
+        hodRecommendationDays: newDays
+      });
+      setExtendingPeriodId(null);
+      setExtendDays("");
+      loadPeriods();
+      showNotice("HOD Period Extended", `HOD recommendation period extended to ${newDays} days.`);
+    } catch (err) {
+      showNotice("Failed to Extend HOD Period", err.message || "Failed to extend HOD period", "danger");
+    }
+  };
+
+  const handleOpenHod = async (id) => {
+    showConfirm({
+      title: "Open HOD Priority Phase?",
+      message: "Lecturer submissions will close and HoDs will be able to rank their department lists.",
+      confirmText: "Open HOD Phase",
+      onConfirm: async () => {
+        try {
+          await openHodPeriod(token, id);
+          loadPeriods();
+        } catch (err) {
+          showNotice("Failed to Open HOD Phase", err.message || "Failed to open HOD phase", "danger");
+        }
+      }
+    });
+  };
+
+  const handleClosePeriod = async (id) => {
+    showConfirm({
+      title: "Close Order Period?",
+      message: "Any active HoD lists will be sent to the librarian before the period is closed.",
+      confirmText: "Close Period",
+      variant: "danger",
+      onConfirm: async () => {
+        try {
+          await closeOrderPeriod(token, id);
+          loadPeriods();
+        } catch (err) {
+          showNotice("Failed to Close Period", err.message || "Failed to close period", "danger");
+        }
+      }
+    });
   };
 
   return (
-    <div className="order-periods-page">
-      <div className="page-header">
-        <div>
-          <h1>Order Time Periods</h1>
-          <p>Manage book recommendation ordering periods for Engineering Faculty</p>
-        </div>
-        <button
-          onClick={() => {
-            setTempHodDays(defaultHodDays);
-            setShowSettingsModal(true);
-          }}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            padding: "0.5rem 1rem",
-            backgroundColor: "#1976d2",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-            fontSize: "0.9rem",
-            fontWeight: "500"
-          }}
-        >
-          <Settings size={18} /> HOD Period Settings
-        </button>
-      </div>
+    <section style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
 
-      <Card title="Add New Period" className="form-card">
-        <div className="form-group">
-          <div className="form-row">
-            <div className="form-field">
-              <label>Start Date</label>
-              <input
-                type="date"
-                value={formData.startDate}
-                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                className="form-input"
-                min={new Date().toISOString().split('T')[0]}
-              />
+      <section className="large-panel">
+        <h3 className="panel-title">Add New Period</h3>
+        <Card className="form-card" style={{ padding: "1rem" }}>
+          <div className="form-group" style={{ gap: "0.75rem" }}>
+            <div className="form-row">
+              <div className="form-field">
+                <label>Start Date</label>
+                <input
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                  className="form-input"
+                  min={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+              <div className="form-field">
+                <label>End Date</label>
+                <input
+                  type="date"
+                  value={formData.endDate}
+                  onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                  className="form-input"
+                  min={formData.startDate || new Date().toISOString().split('T')[0]}
+                />
+              </div>
             </div>
-            <div className="form-field">
-              <label>End Date</label>
-              <input
-                type="date"
-                value={formData.endDate}
-                onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                className="form-input"
-                min={formData.startDate || new Date().toISOString().split('T')[0]}
-              />
-            </div>
+            <Button
+              onClick={handleAddPeriod}
+              variant="primary"
+              disabled={facultyHasActivePeriod}
+              style={{ opacity: facultyHasActivePeriod ? 0.6 : 1, cursor: facultyHasActivePeriod ? "not-allowed" : "pointer" }}
+            >
+              <Plus size={18} /> {facultyHasActivePeriod ? "Period Already Exists" : "Add Period"}
+            </Button>
+            {facultyHasActivePeriod && (
+              <p style={{color: "var(--danger-text)", fontSize: "0.85rem", marginTop: "0.5rem" }}>
+                ⚠️ An active time period already exists.
+              </p>
+            )}
           </div>
-          <Button 
-            onClick={handleAddPeriod} 
+        </Card>
+      </section>
+
+      <section className="large-panel">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
+          <h3 className="panel-title" style={{ margin: 0 }}>Order Periods</h3>
+          <Button
+            onClick={() => {
+              setTempHodDays(defaultHodDays);
+              setTempHodEndDate(defaultHodEndDate);
+              setShowSettingsModal(true);
+            }}
             variant="primary"
-            disabled={facultyHasActivePeriod}
-            style={{ opacity: facultyHasActivePeriod ? 0.6 : 1, cursor: facultyHasActivePeriod ? "not-allowed" : "pointer" }}
           >
-            <Plus size={18} /> {facultyHasActivePeriod ? "Period Already Exists" : "Add Period"}
+            <Settings size={18} /> HoD Period Settings
           </Button>
-          {facultyHasActivePeriod && (
-            <p style={{ color: "#d32f2f", fontSize: "0.85rem", marginTop: "0.5rem" }}>
-              ⚠️ An active time period already exists for {FACULTY}
-            </p>
+        </div>
+        <Card className="full-width" style={{ marginTop: "1rem" }}>
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "2rem" }}>Loading periods...</div>
+          ) : (
+            <DataTable
+              columns={[
+                { key: "startDate", label: "Start Date", width: "20%" },
+                { key: "endDate", label: "End Date", width: "20%" },
+                { key: "hodDeadline", label: "HOD Deadline", width: "20%" },
+                { key: "status", label: "Status", width: "20%" },
+                { key: "actions", label: "Actions", width: "2%" }
+              ]}
+              data={periods}
+              renderRow={(period) => {
+                const hodDeadlineDate = calculateHodRecommendationDeadline(period.endDate, period.hodRecommendationDays || defaultHodDays);
+                const today = new Date();
+                const daysUntilDeadline = Math.ceil((hodDeadlineDate - today) / (1000 * 60 * 60 * 24));
+                const isApproaching = daysUntilDeadline <= 3 && daysUntilDeadline > 0;
+                const isExpired = daysUntilDeadline <= 0;
+
+                return (
+                  <>
+                    <td>{new Date(period.startDate).toLocaleDateString('en-GB')}</td>
+                    <td>{new Date(period.endDate).toLocaleDateString('en-GB')}</td>
+                    <td>
+                      <span style={{
+                        color: isExpired ? "var(--danger-text)" : isApproaching ? "var(--warning-text)" : "var(--success-text)",
+                        fontWeight: isApproaching || isExpired ? "bold" : "normal"
+                      }}>
+                        {hodDeadlineDate.toLocaleDateString('en-GB')}
+                        {isApproaching && " ⏰"}
+                        {isExpired && " ⏱️"}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`badge ${
+                        period.status === "open"
+                          ? "badge-success"
+                          : period.status === "hod_priority"
+                          ? "badge-info"
+                          : period.status === "draft"
+                          ? "badge-warning"
+                          : "badge-default"
+                      }`}>
+                        {period.status === "open"
+                          ? "Open for lecturers"
+                          : period.status === "hod_priority"
+                          ? "HOD Priority Open"
+                          : period.status === "draft"
+                          ? "Draft"
+                          : "Closed"}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="action-buttons" style={{ display: "flex", gap: "0.3rem", justifyContent: "center" }}>
+                        {(period.status === "draft" || period.status === "open") && (
+                          <button
+                            className="btn-icon"
+                            onClick={() => handleEditEndDate(period)}
+                            title="Edit End Date"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                        )}
+                        {period.status === "open" && (
+                          <button
+                            className="btn-icon"
+                            onClick={() => handleOpenHod(period._id)}
+                            title="Open HOD Priority Phase"
+                            style={{ color: "var(--info)", borderColor: "var(--info)" }}
+                          >
+                            <Play size={16} />
+                          </button>
+                        )}
+                        {(period.status === "open" || period.status === "hod_priority") && (
+                          <button
+                            className="btn-icon danger"
+                            onClick={() => handleClosePeriod(period._id)}
+                            title="Close Period"
+                          >
+                            <XCircle size={16} />
+                          </button>
+                        )}
+                        {(period.status === "draft" || period.status === "closed") && (
+                          <button
+                            className="btn-icon danger"
+                            onClick={() => handleDeleteClick(period._id)}
+                            title="Delete"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </>
+                );
+              }}
+            />
           )}
-        </div>
-      </Card>
+        </Card>
+      </section>
 
-      <Card title="Active Periods" className="full-width">
-        <DataTable
-          columns={[
-            { key: "id", label: "ID", width: "8%" },
-            { key: "startDate", label: "Start Date", width: "18%" },
-            { key: "endDate", label: "End Date", width: "18%" },
-            { key: "hodDeadline", label: "HOD Deadline", width: "20%" },
-            { key: "status", label: "Status", width: "10%" },
-            { key: "actions", label: "Actions", width: "26%" }
-          ]}
-          data={periods}
-          renderRow={(period) => {
-            const hodDeadlineDate = calculateHodRecommendationDeadline(period.endDate, period.hodRecommendationDays || defaultHodDays);
-            const today = new Date();
-            const daysUntilDeadline = Math.ceil((hodDeadlineDate - today) / (1000 * 60 * 60 * 24));
-            const isApproaching = daysUntilDeadline <= 3 && daysUntilDeadline > 0;
-            const isExpired = daysUntilDeadline <= 0;
-
-            return (
-              <>
-                <td>#{period.id}</td>
-                <td>{new Date(period.startDate).toLocaleDateString()}</td>
-                <td>{new Date(period.endDate).toLocaleDateString()}</td>
-                <td>
-                  <span style={{
-                    color: isExpired ? "#d32f2f" : isApproaching ? "#ff6f00" : "#2e7d32",
-                    fontWeight: isApproaching || isExpired ? "bold" : "normal"
-                  }}>
-                    {hodDeadlineDate.toLocaleDateString()}
-                    {isApproaching && " ⏰"}
-                    {isExpired && " ⏱️"}
-                  </span>
-                </td>
-                <td>
-                  <span className={`badge badge-${period.status === "active" ? "success" : "secondary"}`}>
-                    {period.status}
-                  </span>
-                </td>
-                <td>
-                  <div className="action-buttons" style={{ display: "flex", gap: "0.3rem", justifyContent: "center" }}>
-                    <button
-                      className="btn-icon"
-                      onClick={() => handleEditEndDate(period)}
-                      title="Edit End Date"
-                    >
-                      <Calendar size={16} />
-                    </button>
-                    <button
-                      className="btn-icon"
-                      onClick={() => handleExtendHodDeadline(period.id)}
-                      title="Extend HOD Period"
-                    >
-                      <Clock size={16} />
-                    </button>
-                    <button
-                      className="btn-icon"
-                      onClick={() => handleSendEmail(period)}
-                      title="Send Email"
-                    >
-                      <Mail size={16} />
-                    </button>
-                    <button
-                      className="btn-icon danger"
-                      onClick={() => handleDeleteClick(period.id)}
-                    >
-                      <Trash2 size={16} title="Delete" />
-                    </button>
-                  </div>
-                </td>
-              </>
-            );
-          }}
-        />
-      </Card>
-
-      {editingId && (
-        <div className="modal-overlay" onClick={handleCancelEditEndDate}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Edit End Date</h2>
-            {(() => {
-              const period = periods.find((p) => p.id === editingId);
-              return (
-                <div className="modal-body">
-                  <p style={{ marginBottom: "1rem" }}>
-                    <strong>{period.faculty}</strong>
-                  </p>
-                  <p style={{ fontSize: "0.9rem", color: "#666", marginBottom: "1.5rem" }}>
-                    Start Date: {new Date(period.startDate).toLocaleDateString()}
-                    <br />
-                    Current End Date: {new Date(period.endDate).toLocaleDateString()}
-                  </p>
-                  <div className="form-field">
-                    <label>New End Date</label>
-                    <input
-                      type="date"
-                      value={editEndDate}
-                      onChange={(e) => setEditEndDate(e.target.value)}
-                      className="form-input"
-                      min={period.startDate}
-                    />
-                  </div>
-                  <div className="modal-actions" style={{ marginTop: "1.5rem", display: "flex", gap: "1rem", justifyContent: "flex-end" }}>
-                    <Button onClick={handleConfirmEditEndDate} variant="primary">
-                      Confirm
-                    </Button>
-                    <Button onClick={handleCancelEditEndDate} variant="secondary">
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        </div>
-      )}
-
-      {deleteConfirmId && (
-        <div className="modal-overlay" onClick={handleCancelDelete}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Delete Period</h2>
-            {(() => {
-              const period = periods.find((p) => p.id === deleteConfirmId);
-              return (
-                <div className="modal-body">
-                  <p style={{ marginBottom: "1.5rem", color: "#333" }}>
-                    Are you sure you want to delete the time period for <strong>{period.faculty}</strong>?
-                  </p>
-                  <p style={{ fontSize: "0.9rem", color: "#666", marginBottom: "1.5rem" }}>
-                    Period: {new Date(period.startDate).toLocaleDateString()} to {new Date(period.endDate).toLocaleDateString()}
-                  </p>
-                  <div className="modal-actions" style={{ marginTop: "1.5rem", display: "flex", gap: "1rem", justifyContent: "flex-end" }}>
-                    <Button onClick={handleConfirmDelete} variant="primary" style={{ background: "#ef4444" }}>
-                      Delete
-                    </Button>
-                    <Button onClick={handleCancelDelete} variant="secondary">
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        </div>
-      )}
-
-      {showSettingsModal && (
-        <div className="modal-overlay" onClick={() => setShowSettingsModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>HOD Recommendation Period Settings</h2>
-            <div className="modal-body">
-              <div style={{ marginBottom: "1.5rem" }}>
-                <p style={{ marginBottom: "1rem", color: "#666" }}>
-                  Set the default number of days HODs have to recommend books after the order period closes.
-                </p>
-                <div className="form-field">
-                  <label>Default Days for HOD Recommendations</label>
-                  <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-                    <input
-                      type="number"
-                      value={tempHodDays}
-                      onChange={(e) => setTempHodDays(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="form-input"
-                      style={{ maxWidth: "120px" }}
-                      min="1"
-                      max="365"
-                    />
-                    <span style={{ fontSize: "0.9rem", color: "#666" }}>days</span>
-                  </div>
-                </div>
+      {/* Edit End Date Modal */}
+      {editingId && (() => {
+        const period = periods.find((p) => p._id === editingId);
+        return (
+          <AppModal title="Edit End Date" confirmText="Save" cancelText="Cancel" onConfirm={handleConfirmEditEndDate} onCancel={handleCancelEditEndDate}>
+            <div className="modal-form-body">
+              <p className="text-muted" style={{ marginBottom: "1.25rem" }}>
+                Start Date: {new Date(period.startDate).toLocaleDateString('en-GB')}<br />
+                Current End Date: {new Date(period.endDate).toLocaleDateString('en-GB')}
+              </p >
+              <div
+                style={{
+                  marginBottom: "0.5rem",
+                  color: "var(--text)",
+                  textAlign: "left",
+                }}
+              >
+                New End Date :
               </div>
+              <input
+                type="date"
+                value={editEndDate}
+                onChange={(e) => setEditEndDate(e.target.value)}
+                className="form-input"
+                min={period.startDate ? period.startDate.split("T")[0] : ""}
+                style={{ marginBottom: "1.5rem" }}
+              />
+            </div>
+          </AppModal>
+        );
+      })()}
 
-              <div style={{
-                backgroundColor: "#e3f2fd",
-                padding: "1rem",
-                borderRadius: "4px",
-                marginBottom: "1.5rem",
-                fontSize: "0.9rem",
-                color: "#1565c0"
-              }}>
-                <strong>ℹ️ Note:</strong> This will update the default for all active periods. Individual periods can still be extended separately.
-              </div>
+      {/* Delete Confirm Modal */}
+      {deleteConfirmId && (() => {
+        const period = periods.find((p) => p._id === deleteConfirmId);
+        return (
+          <AppModal
+            title="Delete Period"
+            message={`Delete the time period for ${period.faculty}? Period: ${new Date(period.startDate).toLocaleDateString('en-GB')} to ${new Date(period.endDate).toLocaleDateString('en-GB')}.`}
+            confirmText="Delete"
+            cancelText="Cancel"
+            variant="danger"
+            onConfirm={handleConfirmDelete}
+            onCancel={handleCancelDelete}
+          />
+        );
+      })()}
 
-              <div className="modal-actions" style={{ display: "flex", gap: "1rem", justifyContent: "flex-end" }}>
-                <Button onClick={handleSaveDefaultHodDays} variant="primary">
-                  Save Settings
-                </Button>
-                <Button onClick={() => setShowSettingsModal(false)} variant="secondary">
-                  Cancel
-                </Button>
+      {/* HOD Period Settings Modal */}
+      {showSettingsModal && (() => {
+        const currentPeriod = periods.find((p) => p.status === "open" || p.status === "hod_priority");
+        return (
+        <AppModal
+          title="HoD Recommendation Period Settings"
+          confirmText="Save"
+          cancelText="Cancel"
+          onConfirm={handleSaveDefaultHodDays}
+          onCancel={() => setShowSettingsModal(false)}
+          
+        >
+          <div className="modal-form-body" style={{ marginBottom: "0rem" }}>
+            <p className="text-muted" style={{ marginTop: "2rem", marginBottom: "1rem", textAlign: "left"}}>
+              Set the default number of days HoDs have to prioritize books after the submission period closes.
+            </p>
+
+            <div className="form-field" style={{ marginBottom: "1.25rem", textAlign: "left" }}>
+              <label>Default Days for HoD Prioritization</label>
+              <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+                <input
+                  type="number"
+                  value={tempHodDays}
+                  onChange={(e) => setTempHodDays(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="form-input"
+                  style={{ maxWidth: "120px" }}
+                  min="1"
+                  max="365"
+                />
+                <span style={{ fontSize: "0.9rem", color: "var(--text-muted)" }}>days</span>
               </div>
             </div>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "0.5rem", textAlign: "left" }}>
+                A specific HOD end date takes priority. If set, it will be used directly. If not set, the default number of days will be applied to the current period and all future periods.
+              </p>
+            <div className="form-field" style={{ marginBottom: "1rem", textAlign: "left" }}>
+              <label>End Date for HOD Period</label>
+              <input
+                type="date"
+                value={tempHodEndDate}
+                onChange={(e) => setTempHodEndDate(e.target.value)}
+                className="form-input"
+                min={currentPeriod && currentPeriod.endDate ? currentPeriod.endDate.split("T")[0] : ""}
+              />
+              {tempHodEndDate && (
+                <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "0.5rem" }}>
+                  New date: {new Date(tempHodEndDate).toLocaleDateString('en-GB')}
+                </p>
+              )}
+            </div>
+
+            <div style={{
+              background: "rgba(var(--primary-rgb), 0.08)",
+              border: "1px solid rgba(var(--primary-rgb), 0.2)",
+              padding: "0.875rem",
+              borderRadius: "var(--radius)",
+              fontSize: "0.875rem",
+              color: "var(--primary)",
+              marginBottom: "2.5rem",
+            }}>             
+            <strong>ℹ️ Note:</strong> Specific HOD end date has priority. If set, it overrides the default days for the current period. If not set, the default days apply to all periods.
+            </div>
           </div>
-        </div>
-      )}
+        </AppModal>
+        );
+      })()}
 
-      {extendingPeriodId && (
-        <div className="modal-overlay" onClick={() => setExtendingPeriodId(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Extend HOD Recommendation Period</h2>
-            {(() => {
-              const period = periods.find((p) => p.id === extendingPeriodId);
-              if (!period) return null;
-              
-              const currentDeadline = calculateHodRecommendationDeadline(period.endDate, period.hodRecommendationDays || defaultHodDays);
-              const newDeadline = new Date(currentDeadline);
-              newDeadline.setDate(newDeadline.getDate() + (parseInt(extendDays) || 0));
+      {/* Extend HOD Period Modal */}
+      {extendingPeriodId && (() => {
+        const period = periods.find((p) => p._id === extendingPeriodId);
+        if (!period) return null;
 
-              return (
-                <div className="modal-body">
-                  <p style={{ marginBottom: "0.5rem" }}>
-                    <strong>Faculty:</strong> {period.faculty}
-                  </p>
-                  <p style={{ marginBottom: "1.5rem", fontSize: "0.9rem", color: "#666" }}>
-                    Current Deadline: <strong>{currentDeadline.toLocaleDateString()}</strong>
-                  </p>
+        const currentDeadline = calculateHodRecommendationDeadline(period.endDate, period.hodRecommendationDays || defaultHodDays);
+        const newDeadline = new Date(currentDeadline);
+        newDeadline.setDate(newDeadline.getDate() + (parseInt(extendDays) || 0));
 
-                  <div className="form-field">
-                    <label>Days to Add</label>
-                    <input
-                      type="number"
-                      value={extendDays}
-                      onChange={(e) => setExtendDays(e.target.value)}
-                      className="form-input"
-                      min="1"
-                      placeholder="Enter number of days"
-                    />
-                  </div>
+        return (
+          <AppModal
+            title="Extend HOD Recommendation Period"
+            confirmText="Extend Period"
+            cancelText="Cancel"
+            onConfirm={handleConfirmExtension}
+            onCancel={() => setExtendingPeriodId(null)}
+          >
+            <div className="modal-form-body">
+              <p style={{ marginBottom: "0.5rem" }}>
+                <strong>Faculty:</strong> {period.faculty}
+              </p>
+              <p style={{ marginBottom: "1.25rem" }} className="text-muted">
+                Current Deadline: <strong>{currentDeadline.toLocaleDateString('en-GB')}</strong>
+              </p>
 
-                  {extendDays && (
-                    <p style={{
-                      marginBottom: "1.5rem",
-                      padding: "0.75rem",
-                      backgroundColor: "#e8f5e9",
-                      borderRadius: "4px",
-                      fontSize: "0.9rem",
-                      color: "#2e7d32"
-                    }}>
-                      <strong>New Deadline:</strong> {newDeadline.toLocaleDateString()}
-                    </p>
-                  )}
+              <div className="form-field">
+                <label>Days to Add</label>
+                <input
+                  type="number"
+                  value={extendDays}
+                  onChange={(e) => setExtendDays(e.target.value)}
+                  className="form-input"
+                  min="1"
+                  placeholder="Enter number of days"
+                />
+              </div>
 
-                  <div className="modal-actions" style={{ display: "flex", gap: "1rem", justifyContent: "flex-end" }}>
-                    <Button onClick={handleConfirmExtension} variant="primary">
-                      Extend Period
-                    </Button>
-                    <Button onClick={() => setExtendingPeriodId(null)} variant="secondary">
-                      Cancel
-                    </Button>
-                  </div>
+              {extendDays && (
+                <div style={{
+                  marginTop: "1rem",
+                  padding: "0.75rem",
+                  background: "var(--success-bg)",
+                  border: "1px solid var(--success-border)",
+                  borderRadius: "var(--radius)",
+                  fontSize: "0.875rem",
+                  color: "var(--success-text)"
+                }}>
+                  <strong>New Deadline:</strong> {newDeadline.toLocaleDateString('en-GB')}
                 </div>
-              );
-            })()}
-          </div>
-        </div>
+              )}
+            </div>
+          </AppModal>
+        );
+      })()}
+
+      {/* Notice / Confirm Modal (used by showNotice and showConfirm) */}
+      {modal && (
+        <AppModal
+          title={modal.title}
+          message={modal.message}
+          confirmText={modal.confirmText}
+          cancelText={modal.cancelText}
+          variant={modal.variant}
+          onConfirm={modal.onConfirm}
+          onCancel={modal.onCancel}
+        />
       )}
-    </div>
+    </section>
   );
 }
