@@ -1,6 +1,5 @@
 const statusBadgeTypes = {
-  pending: "warning",
-  approved: "success",
+  submitted: "warning",
   rejected: "danger",
   under_review: "info"
 };

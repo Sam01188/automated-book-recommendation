@@ -7,7 +7,8 @@ export function AppModal({
   cancelText,
   onConfirm,
   onCancel,
-  variant = "default"
+  variant = "default",
+  children
 }) {
   useEffect(() => {
     function handleKeyDown(e) {
@@ -26,6 +27,7 @@ export function AppModal({
       <div className={`app-modal app-modal-${variant}`}>
         <h3 id="app-modal-title">{title}</h3>
         {message && <p>{message}</p>}
+        {children}
 
         <div className="modal-actions">
           {cancelText && (

@@ -3,7 +3,7 @@ import { getUsers, deleteUser, updateUser } from "../../api";
 import { Trash2, Pencil, Save, X, UserCog, ChevronUp, ChevronDown, RotateCcw } from "lucide-react";
 import { AppModal } from "../../components/AppModal";
 
-const departments = ["DCEE","DEIE","DMME","DMENA","DCE"];
+const departments = ["DCEE","DEIE","DMME","DMENA"];
 
 function formatRole(role) {
   if (role === "hod") return "HoD";

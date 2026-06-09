@@ -132,7 +132,11 @@ export function AdminDashboard({ user, token, items = [] }) {
   
   return (
     <div className="dashboard-container">
-      <section className="metrics admin-metrics" aria-label="System statistics">
+      <section style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+        gap: "1.5rem"
+      }} aria-label="System statistics">
         <StatCard title="Total Users" value={userCounts.total} icon={Users} />
         <StatCard title="Total Lecturers" value={userCounts.lecturer} icon={GraduationCap} />
         <StatCard title="Total HoDs" value={userCounts.hod} icon={UserCheck} />

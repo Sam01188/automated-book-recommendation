@@ -1,4 +1,4 @@
-export function StatCard({ label, value, icon, trend, onClick }) {
+export function StatCard({ label, value, icon: Icon, trend, onClick }) {
   const Tag = onClick ? "button" : "div";
 
   return (
@@ -8,7 +8,7 @@ export function StatCard({ label, value, icon, trend, onClick }) {
       onClick={onClick}
     >
       <div className="stat-header">
-        <div className="stat-icon">{icon}</div>
+        <div className="stat-icon">{Icon && <Icon size={24} />}</div>
         {trend && <span className={`stat-trend ${trend > 0 ? 'positive' : 'negative'}`}>{trend > 0 ? '↑' : '↓'} {Math.abs(trend)}%</span>}
       </div>
       <div className="stat-value">{value}</div>

@@ -2,6 +2,7 @@
 
 :root {
   --primary: #7f1d1d;
+  --primary-rgb: 127, 29, 29;
   --primary-dark: #5f1515;
   --primary-light: #fca5a5;
   --secondary: #a8b3c7;
@@ -11,7 +12,7 @@
   --bg-layer: #0f1524;
   --surface: rgba(255, 255, 255, 0.04);
   --surface-solid: #111827;
-  --surface-hover: rgba(252, 165, 165, 0.06);
+  --surface-hover: rgba(67, 64, 64, 0.06);
   --sidebar-bg: #0b1020;
   --nav-hover-color: #fca5a5;
   --header-bg: rgba(8, 10, 18, 0.86);
@@ -43,19 +44,18 @@
   --success-bg: rgba(74, 222, 128, 0.15);
   --success-text: #86efac;
   --success-border: rgba(74, 222, 128, 0.3);
-
-  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
 }
 
 [data-theme='light'] {
   --primary: #7f1d1d;
+  --primary-rgb: 127, 29, 29;
   --primary-dark: #5f1515;
-  --primary-light: #991b1b;
-  --secondary: #526071;
-  --accent: #9f7a2f;
-  --accent-glow: rgba(159, 122, 47, 0.18);
-  --background: #f7f5f0;
-  --bg-layer: #ede9df;
+  --primary-light: #fca5a5;
+  --secondary: #475569;
+  --accent: #d6b36a;
+  --accent-glow: rgba(214, 179, 106, 0.28);
+  --background: #ffffff;
+  --bg-layer: #f9fafb;
   --surface: rgba(15, 23, 42, 0.04);
   --surface-solid: #ffffff;
   --surface-hover: rgba(127, 29, 29, 0.04);
@@ -678,6 +678,32 @@ tr:hover td {
   background: var(--table-row-hover);
 }
 
+/* Table Input Fields */
+.table-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.table-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: #ffffff;
+  color: #000000;
+  box-shadow: 0 0 0 4px rgba(128, 0, 0, 0.1);
+}
+
+:root:not([data-theme='light']) .table-input:focus {
+  box-shadow: 0 0 0 2px rgba(252, 165, 165, 0.3), 0 0 6px rgba(95, 21, 21, 0.85);
+}
+
 /* Forms */
 .form-grid {
   display: grid;
@@ -731,6 +757,19 @@ textarea:focus {
 .form-panel textarea {
   background: var(--surface);
   color: var(--text);
+}
+
+.price-input-group {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.price-input-group .currency-prefix {
+  min-width: 0;
+  padding-left: 0.75rem;
+  padding-right: 0.5rem;
 }
 
 .form-panel input:focus,
@@ -1073,4 +1112,11 @@ textarea:focus {
   background: var(--success-bg);
   color: var(--success-text);
   border: 1px solid var(--success-border);
+}
+
+/* Dashboard Container - consistent flex layout for all dashboard pages */
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
 }

@@ -6,6 +6,7 @@ import mongoose from "mongoose";
 import path from "path";
 import { fileURLToPath } from "url";
 import authRoutes from "./routes/authRoutes.js";
+import orderPeriodRoutes from "./routes/orderPeriods.js";
 import recommendationRoutes from "./routes/recommendations.js";
 import statsRoutes from "./routes/stats.js";
 import userRoutes from "./routes/userRoutes.js";
@@ -30,6 +31,7 @@ app.use(express.json());
 app.get("/api/health", (_, res) => res.json({ ok: true, service: "Book Recommendation API" }));
 
 app.use("/api/auth", authRoutes);
+app.use("/api/order-periods", orderPeriodRoutes);
 app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/admin/users", userRoutes);
