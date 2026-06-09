@@ -19,8 +19,8 @@ export function DashboardContent({ user, stats, items, onTotalClick, onPendingCl
           onClick={onPendingClick}
         />
         <Metric
-          label={user.role === "lecturer" ? "Approved" : "High Priority"}
-          value={user.role === "lecturer" ? stats.approved : stats.highPriority}
+          label={user.role === "lecturer" ? "Approved" : "Unassigned Priority"}
+          value={user.role === "lecturer" ? stats.approved : stats.priorityPending}
           icon={<ShieldCheck size={20} />}
           onClick={user.role !== "lecturer" ? onHighPriorityClick : undefined}
         />

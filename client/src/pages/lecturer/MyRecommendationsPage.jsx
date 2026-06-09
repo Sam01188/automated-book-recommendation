@@ -89,9 +89,14 @@ function RecommendationRow({ item }) {
     low:        { bg: "#dcfce7", text: "#166534" },
     unassigned: { bg: "#f1f5f9", text: "#64748b" }
   };
+  const numericPriorityStyle = { bg: "#fee2e2", text: "#991b1b" };
 
   const sc = statusMap[item.status]   ?? statusMap.submitted;
-  const pc = priorityMap[item.priority] ?? priorityMap.unassigned;
+  const pc =
+    priorityMap[item.priority] ??
+    (!item.priority || item.priority === "unassigned"
+      ? priorityMap.unassigned
+      : (Number.isFinite(Number(item.priority)) ? numericPriorityStyle : priorityMap.unassigned));
 
   const tdStyle = {
     padding: "1rem",

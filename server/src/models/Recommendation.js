@@ -27,7 +27,6 @@ const recommendationSchema = new mongoose.Schema(
     },
     priority: {
       type: String,
-      enum: ["high", "medium", "low", "unassigned"],
       default: "unassigned",
     },
     priorityReason: { type: String, trim: true },

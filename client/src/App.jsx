@@ -24,7 +24,7 @@ function App() {
   const [session, setSession] = useState(null);
   const [view, setView] = useState("dashboard");
   const [items, setItems] = useState([]);
-  const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, highPriority: 0 });
+  const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, highPriority: 0, priorityPending: 0 });
   const [allFilter, setAllFilter] = useState("all");
   const [selectedPeriod, setSelectedPeriod] = useState(null);
   const [theme, setTheme] = useState(() => {
@@ -74,7 +74,13 @@ function App() {
           ).length
         : records.filter((item) => item.status === "submitted" || item.status === "under_review").length,
     approved: records.filter((item) => item.status === "approved").length,
-    highPriority: records.filter((item) => item.priority === "high").length
+    highPriority: records.filter((item) => item.priority !== "unassigned").length,
+    priorityPending: records.filter(
+      (item) =>
+        item.priority === "unassigned" &&
+        (item.status === "under_review" ||
+          (item.status === "submitted" && !item.reviewedBy))
+    ).length
   });
 
   useEffect(() => {
@@ -172,7 +178,7 @@ function App() {
           onTotalClick={() => setView("submissions")}
           onPendingClick={() => setView("priority")}
           onHighPriorityClick={() => {
-            setAllFilter("high");
+            setAllFilter("prioritized");
             setView("all");
           }}
         />
@@ -195,7 +201,7 @@ function App() {
         <HodSubmissionsPage items={items} currentUserId={session.user.id} />
       )}
 
-      {session.user.role === "librarian" && view === "dashboard" && <LibrarianDashboardPage user={session.user} stats={stats} items={items} onHighPriorityClick={() => { setAllFilter("high"); setView("all"); }} />}
+      {session.user.role === "librarian" && view === "dashboard" && <LibrarianDashboardPage user={session.user} stats={stats} items={items} onHighPriorityClick={() => { setAllFilter("prioritized"); setView("all"); }} />}
       {session.user.role === "librarian" && view === "all" && <AllRecommendationsPage items={items} filterPriority={allFilter} />}
       {session.user.role === "librarian" && view === "periods" && <OrderTimePeriodsPage onViewChange={setView} onSelectPeriod={setSelectedPeriod} />}
       {session.user.role === "librarian" && view === "export" && <ExportDataPage items={items} />}

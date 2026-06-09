@@ -4,8 +4,18 @@ export function AllRecommendationsPage({ items, filterPriority = "all", onPriori
   const activeItems = items.filter(
     (item) => item.status !== "submitted" || !item.reviewedBy
   );
-  const filteredItems = filterPriority === "all" ? activeItems : activeItems.filter((item) => item.priority === filterPriority);
-  const title = filterPriority === "high" ? "High Priority Recommendations" : "All Recommendations";
+  const filteredItems =
+    filterPriority === "all"
+      ? activeItems
+      : filterPriority === "prioritized"
+      ? activeItems.filter((item) => item.priority !== "unassigned")
+      : activeItems.filter((item) => item.priority === filterPriority);
+  const title =
+    filterPriority === "prioritized"
+      ? "Prioritized Recommendations"
+      : filterPriority === "high"
+      ? "High Priority Recommendations"
+      : "All Recommendations";
   const allAssigned = activeItems.length > 0 && activeItems.every((item) => item.priority !== "unassigned");
 
   return (

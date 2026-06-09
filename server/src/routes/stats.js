@@ -9,7 +9,7 @@ router.get("/", requireAuth, async (req, res) => {
     // Fix: use req.user.id (set by auth middleware), NOT req.user._id (undefined)
     const filter = req.user.role === "lecturer" ? { submittedBy: req.user.id } : {};
 
-    const [total, pending, approved, highPriority] = await Promise.all([
+    const [total, pending, approved, prioritized, priorityPending] = await Promise.all([
       Recommendation.countDocuments(filter),
       Recommendation.countDocuments({
         ...filter,
@@ -19,10 +19,18 @@ router.get("/", requireAuth, async (req, res) => {
         ]
       }),
       Recommendation.countDocuments({ ...filter, status: "approved" }),
-      Recommendation.countDocuments({ ...filter, priority: "high" })
+      Recommendation.countDocuments({ ...filter, priority: { $ne: "unassigned" } }),
+      Recommendation.countDocuments({
+        ...filter,
+        priority: "unassigned",
+        $or: [
+          { status: "under_review" },
+          { status: "submitted", reviewedBy: { $exists: false } }
+        ]
+      })
     ]);
 
-    res.json({ total, pending, approved, highPriority });
+    res.json({ total, pending, approved, highPriority: prioritized, priorityPending });
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch stats", error: err.message });
   }

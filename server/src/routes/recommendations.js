@@ -85,10 +85,25 @@ router.post("/", requireAuth, allowRoles("lecturer", "librarian"), async (req, r
 // PATCH - HOD assigns priority
 router.patch("/:id/priority", requireAuth, allowRoles("hod"), async (req, res) => {
   try {
+    const requestedPriority = req.body.priority;
+    if (requestedPriority && requestedPriority !== "unassigned") {
+      const duplicate = await Recommendation.findOne({
+        _id: { $ne: req.params.id },
+        priority: requestedPriority,
+        $or: [
+          { status: "under_review" },
+          { status: "submitted", reviewedBy: { $exists: false } }
+        ]
+      });
+      if (duplicate) {
+        return res.status(400).json({ message: "This priority number is already assigned. Choose a different rank." });
+      }
+    }
+
     const recommendation = await Recommendation.findByIdAndUpdate(
       req.params.id,
       {
-        priority: req.body.priority,
+        priority: requestedPriority,
         priorityReason: req.body.priorityReason || "Assigned during department review",
         status: "under_review",
         reviewedBy: req.user.id

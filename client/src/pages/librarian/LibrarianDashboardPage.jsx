@@ -18,13 +18,13 @@ export function LibrarianDashboardPage({ user, stats, items, onHighPriorityClick
   };
 
   const getPriorityBadgeType = (priority) => {
+    if (!priority || priority === "unassigned") return "secondary";
     const priorityMap = {
       "high": "danger",
       "medium": "warning",
-      "low": "success",
-      "unassigned": "secondary"
+      "low": "success"
     };
-    return priorityMap[priority] || "default";
+    return priorityMap[priority] || (Number.isFinite(Number(priority)) ? "danger" : "default");
   };
 
   return (
@@ -48,7 +48,7 @@ export function LibrarianDashboardPage({ user, stats, items, onHighPriorityClick
           icon={<Clock size={24} />}
         />
         <StatCard
-          label="High Priority"
+          label="Prioritized"
           value={stats.highPriority}
           icon={<Zap size={24} />}
           onClick={onHighPriorityClick}

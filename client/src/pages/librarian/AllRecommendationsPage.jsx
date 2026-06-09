@@ -7,7 +7,7 @@ import { Badge } from "../../components/librarian/Badge";
 export function AllRecommendationsPage({ items, filterPriority: initialFilterPriority = "all" }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDepartment, setFilterDepartment] = useState("all");
-  const [filterPriority, setFilterPriority] = useState("all");
+  const [filterPriority, setFilterPriority] = useState(initialFilterPriority);
   const [filterStatus, setFilterStatus] = useState("all");
 
   const filteredItems = items.filter((item) => {
@@ -22,7 +22,11 @@ export function AllRecommendationsPage({ items, filterPriority: initialFilterPri
       filterDepartment === "all" || item.department === filterDepartment;
 
     const matchesPriority =
-      filterPriority === "all" || item.priority === filterPriority;
+      filterPriority === "all"
+        ? true
+        : filterPriority === "prioritized"
+        ? item.priority !== "unassigned"
+        : item.priority === filterPriority;
 
     const matchesStatus =
       filterStatus === "all" || item.status === filterStatus;
@@ -46,13 +50,13 @@ export function AllRecommendationsPage({ items, filterPriority: initialFilterPri
   };
 
   const getPriorityBadgeType = (priority) => {
+    if (!priority || priority === "unassigned") return "secondary";
     const priorityMap = {
       high: "danger",
       medium: "warning",
       low: "success",
-      unassigned: "secondary",
     };
-    return priorityMap[priority] || "default";
+    return priorityMap[priority] || (Number.isFinite(Number(priority)) ? "danger" : "default");
   };
 
   return (
@@ -96,6 +100,7 @@ export function AllRecommendationsPage({ items, filterPriority: initialFilterPri
               className="filter-select"
             >
               <option value="all">All Priorities</option>
+              <option value="prioritized">Prioritized</option>
               <option value="high">High</option>
               <option value="medium">Medium</option>
               <option value="low">Low</option>

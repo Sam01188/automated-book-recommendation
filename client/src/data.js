@@ -77,6 +77,11 @@ export function buildStats(items) {
     total: items.length,
     pending: items.filter((item) => item.status === "submitted" || item.status === "under_review").length,
     approved: items.filter((item) => item.status === "approved").length,
-    highPriority: items.filter((item) => item.priority === "high").length
+    highPriority: items.filter((item) => item.priority !== "unassigned").length,
+    priorityPending: items.filter(
+      (item) =>
+        item.priority === "unassigned" &&
+        (item.status === "under_review" || item.status === "submitted")
+    ).length
   };
 }

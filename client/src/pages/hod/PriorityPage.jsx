@@ -1,13 +1,14 @@
 import { RecommendationTable } from "../../components/RecommendationTable";
 
+function getPrioritySortValue(item) {
+  const rank = Number(item.priority);
+  if (Number.isFinite(rank)) return rank;
+  return Number.MAX_SAFE_INTEGER;
+}
+
 export function PriorityPage({ items, onPriority }) {
   const activeItems = items.filter((item) => item.status !== "submitted" || !item.reviewedBy);
-  const itemsByLecturer = activeItems.reduce((groups, item) => {
-    const lecturer = item.submittedBy?.name || "Unknown Lecturer";
-    if (!groups[lecturer]) groups[lecturer] = [];
-    groups[lecturer].push(item);
-    return groups;
-  }, {});
+  const sortedItems = activeItems.slice().sort((a, b) => getPrioritySortValue(a) - getPrioritySortValue(b));
 
   return (
     <div className="large-panel">
@@ -15,28 +16,23 @@ export function PriorityPage({ items, onPriority }) {
         <strong>Priority Assignment Guidelines</strong>
         <ul className="guideline-list">
           <li className="guideline-item">
-            <span className="guideline-term high">High</span>
-            Essential for upcoming courses or research
+            <span className="guideline-term high">1</span>
+            Assign rank 1 to the most urgent recommendation
           </li>
           <li className="guideline-item">
-            <span className="guideline-term medium">Medium</span>
-            Beneficial but not immediately critical
+            <span className="guideline-term medium">2</span>
+            Assign rank 2 to the next most important recommendation
           </li>
           <li className="guideline-item">
-            <span className="guideline-term low">Low</span>
-            Nice to have for reference collection
+            <span className="guideline-term low">3+</span>
+            Use higher numbers for lower priority recommendations
           </li>
         </ul>
       </div>
-      {Object.keys(itemsByLecturer).length === 0 ? (
+      {sortedItems.length === 0 ? (
         <p>No pending recommendations available for priority assignment.</p>
       ) : (
-        Object.entries(itemsByLecturer).map(([lecturer, lecturerItems]) => (
-          <div key={lecturer} style={{ marginBottom: "1.5rem" }}>
-            <h3 style={{ marginBottom: "0.75rem" }}>{lecturer}</h3>
-            <RecommendationTable items={lecturerItems} compact onPriority={onPriority} title="" />
-          </div>
-        ))
+        <RecommendationTable items={sortedItems} compact onPriority={onPriority} title="Priority Ranking" />
       )}
     </div>
   );
