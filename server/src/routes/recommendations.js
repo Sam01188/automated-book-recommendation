@@ -266,7 +266,54 @@ router.patch("/:id/priority", requireAuth, allowRoles("hod"), async (req, res) =
   }
 });
 
-// PATCH - Librarian updates status
+// PATCH - HOD restores a rejected recommendation back to active
+router.patch("/:id/restore", requireAuth, allowRoles("hod"), async (req, res) => {
+  try {
+    await finalizeExpiredHodPeriods();
+    const activeHodPeriod = await findCurrentHodPeriod();
+    if (!activeHodPeriod) {
+      return res.status(403).json({ message: "The HOD priority assignment period is closed" });
+    }
+
+    const existing = await Recommendation.findOne({
+      _id: req.params.id,
+      ...buildDepartmentFilter(req.user.department),
+      status: "rejected"
+    });
+
+    if (!existing) {
+      return res.status(404).json({ message: "Rejected recommendation not found" });
+    }
+
+    if (existing.submittedToLibrarianAt) {
+      return res.status(400).json({ message: "This recommendation has already been submitted to the librarian" });
+    }
+
+    const recommendation = await Recommendation.findByIdAndUpdate(
+      req.params.id,
+      {
+        status: "submitted",
+        priority: "unassigned",
+        priorityRank: null,
+        priorityReason: null,
+        reviewedBy: null
+      },
+      { new: true }
+    )
+      .populate("submittedBy", "name department")
+      .populate("reviewedBy", "name")
+      .populate("orderPeriod", "faculty startDate endDate hodRecommendationDays status");
+
+    if (!recommendation) {
+      return res.status(404).json({ message: "Recommendation not found" });
+    }
+    res.json(recommendation);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to restore recommendation" });
+  }
+});
+
+
 router.patch("/:id/status", requireAuth, allowRoles("librarian"), async (req, res) => {
   try {
     const allowedStatuses = ["submitted", "under_review", "rejected"];

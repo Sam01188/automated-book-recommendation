@@ -13,7 +13,7 @@ export function HodDashboardPage({ user, stats, items, isPeriodOpen, currentPeri
         }}>
           <h4 style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "var(--success)" }}>✏️ HOD Priority Assignment Open</h4>
           <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.875rem", color: "var(--text-muted)" }}>
-            The priority assignment period is currently active for <strong>{currentPeriod.faculty}</strong>. Please review and assign priorities to lecturer recommendations.
+            The priority assignment period is currently active. Please review and assign priorities to lecturer recommendations.
           </p>
         </div>
       ) : (

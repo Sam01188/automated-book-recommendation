@@ -110,6 +110,43 @@ export async function updateRecommendationOrder(token, orderedIds) {
   return response.json();
 }
 
+export async function rejectRecommendation(token, id) {
+  if (token === "demo-token") {
+    return {};
+  }
+
+  const response = await fetch(`${api}/recommendations/${id}/priority`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ priority: "rejected", priorityReason: "Rejected by HOD during priority assignment" })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to reject recommendation");
+  }
+
+  return response.json();
+}
+
+export async function restoreRecommendation(token, id) {
+  if (token === "demo-token") {
+    return {};
+  }
+
+  const response = await fetch(`${api}/recommendations/${id}/restore`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to restore recommendation");
+  }
+
+  return response.json();
+}
+
 export async function submitToLibrarian(token) {
   if (token === "demo-token") {
     return [];

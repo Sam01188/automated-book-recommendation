@@ -11,13 +11,14 @@ import {
   fetchCurrentPeriod,
   fetchCurrentHodPeriod,
   fetchOrderPeriods,
-  createUser as apiCreateUser
+  createUser as apiCreateUser,
+  rejectRecommendation,
+  restoreRecommendation
 } from "./api";
 import { AppLayout, roleViews } from "./components/AppLayout";
 import { LoginPage } from "./pages/auth/LoginPage";
 import { HodDashboardPage } from "./pages/hod/HodDashboardPage";
 import { AllRecommendationsPage as HodAllRecommendationsPage } from "./pages/hod/AllRecommendationsPage";
-import { PriorityPage as HodPriorityPage } from "./pages/hod/PriorityPage";
 import { HodSubmissionsPage } from "./pages/hod/HodSubmissionsPage";
 import { AllRecommendationsPage } from "./pages/librarian/AllRecommendationsPage";
 import { ExportDataPage } from "./pages/librarian/ExportDataPage";
@@ -192,6 +193,23 @@ function App() {
     await apiCreateUser(session.token, userData);
   }
 
+  async function handleRejectRecommendation(id) {
+    if (!session) return;
+    const updated = await rejectRecommendation(session.token, id);
+    // Replace the item in local state
+    const next = items.map((item) => (item._id === id ? updated : item));
+    setItems(next);
+    setStats(deriveStats(next, session.user.role));
+  }
+
+  async function handleRestoreRecommendation(id) {
+    if (!session) return;
+    const updated = await restoreRecommendation(session.token, id);
+    const next = items.map((item) => (item._id === id ? updated : item));
+    setItems(next);
+    setStats(deriveStats(next, session.user.role));
+  }
+
   if (!session) {
     return <LoginPage onLogin={handleLogin} />;
   }
@@ -250,20 +268,11 @@ function App() {
           isPeriodOpen={isHodPeriodOpen}
           currentPeriod={currentHodPeriod}
           onTotalClick={() => setView("submissions")}
-          onPendingClick={() => setView("priority")}
+          onPendingClick={() => setView("all")}
           onHighPriorityClick={() => {
             setAllFilter("high");
             setView("all");
           }}
-        />
-      )}
-      {session.user.role === "hod" && view === "priority" && (
-        <HodPriorityPage
-          items={items}
-          onOrderChange={handleRecommendationOrder}
-          isPeriodOpen={isHodPeriodOpen}
-          currentPeriod={currentHodPeriod}
-          onSubmit={handleSubmitToLibrarian}
         />
       )}
       {session.user.role === "hod" && view === "all" && (
@@ -271,13 +280,19 @@ function App() {
           items={items}
           filterPriority={allFilter}
           onOrderChange={handleRecommendationOrder}
-          onSubmit={handleSubmitToLibrarian}
+          onReject={handleRejectRecommendation}
+          onRestore={handleRestoreRecommendation}
           isPeriodOpen={isHodPeriodOpen}
           currentPeriod={currentHodPeriod}
+          token={session.token}
         />
       )}
       {session.user.role === "hod" && view === "submissions" && (
-        <HodSubmissionsPage items={items} currentUserId={session.user.id} />
+        <HodSubmissionsPage
+          items={items}
+          onSubmit={handleSubmitToLibrarian}
+          isPeriodOpen={isHodPeriodOpen}
+        />
       )}
 
       {session.user.role === "librarian" && view === "dashboard" && (

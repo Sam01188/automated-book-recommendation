@@ -3,7 +3,7 @@ import { BookMarked, ClipboardList, Download, Home, ListChecks, LogOut, Send, Us
 
 export const roleViews = {
   lecturer: ["dashboard", "submit", "my"],
-  hod: ["dashboard", "priority", "all", "submissions"],
+  hod: ["dashboard", "all", "submissions"],
   librarian: ["dashboard", "periods", "all", "export"],
   admin: ["dashboard", "users", "createUser"]
 };
@@ -12,9 +12,8 @@ export const viewLabels = {
   dashboard: "Dashboard",
   submit: "Submit Request",
   my: "My Requests",
-  priority: "Assign/Edit Priority",
-  all: "All Recommendations",
-  submissions: "Submissions",
+  all: "Assign Priority",
+  submissions: "All Submissions",
   periods: "Order Periods",
   export: "Export Data",
   users: "User Management",
@@ -27,7 +26,7 @@ export const viewIcons = {
   my: ClipboardList,
   priority: ListChecks,
   all: BookMarked,
-  submissions: ClipboardList,
+  submissions: Send,
   periods: Clock,
   export: Download,
   users: Users,
