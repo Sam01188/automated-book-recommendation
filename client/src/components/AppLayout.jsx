@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { BookMarked, ClipboardList, Download, Home, ListChecks, LogOut, Send, UserCircle, Users, UserPlus, Clock, Mail, ChevronLeft, ChevronRight, Sun, Moon } from "lucide-react";
+import { BookMarked, ClipboardList, Download, Home, ListChecks, LogOut, Send, UserCircle, Users, UserPlus, Clock, ChevronLeft, ChevronRight, Sun, Moon } from "lucide-react";
 
 export const roleViews = {
   lecturer: ["dashboard", "submit", "my"],

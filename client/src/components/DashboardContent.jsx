@@ -1,8 +1,8 @@
-import { BookMarked, ClipboardList, ShieldCheck } from "lucide-react";
+import { BookMarked, ClipboardList, ShieldX } from "lucide-react";
 import { Metric } from "./Metric";
 import { CompactList } from "./RecommendationList";
 
-export function DashboardContent({ user, stats, items, onTotalClick, onPendingClick, onHighPriorityClick }) {
+export function DashboardContent({ user, stats, items }) {
   return (
     <section className="panel-space">
       <div className="metrics">
@@ -10,13 +10,11 @@ export function DashboardContent({ user, stats, items, onTotalClick, onPendingCl
           label="Total Submissions" 
           value={stats.total} 
           icon={<BookMarked size={20} />} 
-          onClick={onTotalClick}
         />
         <Metric 
           label="Pending Review" 
           value={stats.pending} 
           icon={<ClipboardList size={20} />} 
-          onClick={onPendingClick}
         />
         <Metric
           label={user.role === "lecturer" ? "Approved" : "Unassigned Priority"}

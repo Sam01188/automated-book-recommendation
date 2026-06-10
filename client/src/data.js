@@ -14,7 +14,7 @@ export const demoRecommendations = [
     edition: "1st",
     additionalNotes: "Core software engineering reference for final-year design projects.",
     department: "DCEE",
-    status: "approved",
+    status: "submitted",
     priority: "high",
     submittedBy: { name: "Menaka Samaranayake", department: "DCEE" }
   },
@@ -53,8 +53,8 @@ export const demoRecommendations = [
     edition: "Classic",
     additionalNotes: "Recommended for object-oriented design topics.",
     department: "DCEE",
-    status: "approved",
-    priority: "high",
+    status: "rejected",
+    priority: "unassigned",
     submittedBy: { name: "Menaka Samaranayake", department: "DCEE" }
   },
   {
@@ -76,12 +76,7 @@ export function buildStats(items) {
   return {
     total: items.length,
     pending: items.filter((item) => item.status === "submitted" || item.status === "under_review").length,
-    approved: items.filter((item) => item.status === "approved").length,
-    highPriority: items.filter((item) => item.priority !== "unassigned").length,
-    priorityPending: items.filter(
-      (item) =>
-        item.priority === "unassigned" &&
-        (item.status === "under_review" || item.status === "submitted")
-    ).length
+    rejected: items.filter((item) => item.status === "rejected").length,
+    highPriority: items.filter((item) => item.priority === "high").length
   };
 }

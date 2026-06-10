@@ -14,7 +14,7 @@ export function RecommendationTable({ items, title, compact, onPriority }) {
 
   return (
     <div className="large-panel">
-      <h2 className="panel-title">{title}</h2>
+      {title && <h2 className="panel-title">{title}</h2>}
       <div className="table-wrap">
         <table>
           <thead>
@@ -23,7 +23,7 @@ export function RecommendationTable({ items, title, compact, onPriority }) {
               <th>Author</th>
               <th>Publisher</th>
               <th>Submitted By</th>
-              <th>Priority</th>
+              <th>Rank</th>
             </tr>
           </thead>
           <tbody>

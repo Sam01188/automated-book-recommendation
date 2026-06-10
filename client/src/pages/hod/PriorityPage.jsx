@@ -12,6 +12,40 @@ export function PriorityPage({ items, onPriority }) {
 
   return (
     <div className="large-panel">
+      {!isPeriodOpen && (
+        <div style={{
+          background: "linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%)",
+          color: "var(--danger)",
+          borderRadius: "var(--radius)",
+          padding: "1rem 1.25rem",
+          fontWeight: 600,
+          fontSize: "0.95rem",
+          marginBottom: "1.5rem",
+          border: "1px solid rgba(239, 68, 68, 0.35)"
+        }}>
+          ⚠️ HOD Priority Assignment Period is closed. You can view pending requests but cannot assign or change priorities at this time.
+        </div>
+      )}
+
+      {isAlreadySubmitted && (
+        <div style={{
+          background: "linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%)",
+          color: "var(--success)",
+          borderRadius: "var(--radius)",
+          padding: "1rem 1.25rem",
+          fontWeight: 600,
+          fontSize: "0.95rem",
+          marginBottom: "1.5rem",
+          border: "1px solid rgba(16, 185, 129, 0.35)",
+          display: "flex",
+          alignItems: "center",
+          gap: "0.75rem"
+        }}>
+          <CheckCircle size={20} />
+          ✅ Your recommendations have been submitted to the librarian
+        </div>
+      )}
+
       <div className="guidelines priority-guidelines">
         <strong>Priority Assignment Guidelines</strong>
         <ul className="guideline-list">

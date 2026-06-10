@@ -33,6 +33,26 @@ function formatActivityDateTime(dateValue) {
 function getRecentActivities(users, recommendations, adminUser) {
   const adminName = adminUser?.name || "Admin";
 
+  // Get stored activities from localStorage (updates, deletes, creates)
+  const storedActivities = JSON.parse(localStorage.getItem('userActivities') || '[]');
+  const userLogActivities = storedActivities.map(a => {
+    let actionText = '';
+    if (a.type === 'delete') {
+      actionText = `${a.userName} account deleted`;
+    } else if (a.type === 'create') {
+      actionText = `${a.userName} account created`;
+    } else if (a.type === 'update') {
+      actionText = `${a.userName} account updated`;
+    }
+    
+    return {
+      id: `${a.type}-${a.userId}`,
+      text: actionText,
+      time: a.timestamp,
+      label: `by ${adminName}`
+    };
+  });
+
   const userActivities = users.map((item) => {
     const createdAt = item.createdAt;
     const updatedAt = item.updatedAt;
@@ -60,7 +80,7 @@ function getRecentActivities(users, recommendations, adminUser) {
     };
   });
 
-  return [...userActivities, ...recommendationActivities]
+  return [...userLogActivities, ...userActivities, ...recommendationActivities]
     .filter((item) => item.time)
     .sort((a, b) => new Date(b.time) - new Date(a.time))
     .slice(0, 5);
@@ -74,13 +94,6 @@ export function AdminDashboard({ user, token, items = [] }) {
     librarian: 0
   });
   const [recentActivities, setRecentActivities] = useState([]);
-
-  useEffect(() => {
-    if (user && user.role !== "admin") {
-      localStorage.removeItem("book-rec-session");
-      window.location.assign("/");
-    }
-  }, [user]);
 
   useEffect(() => {
     if (!token) {
@@ -119,7 +132,11 @@ export function AdminDashboard({ user, token, items = [] }) {
   
   return (
     <div className="dashboard-container">
-      <section className="metrics admin-metrics" aria-label="System statistics">
+      <section style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+        gap: "1.5rem"
+      }} aria-label="System statistics">
         <StatCard title="Total Users" value={userCounts.total} icon={Users} />
         <StatCard title="Total Lecturers" value={userCounts.lecturer} icon={GraduationCap} />
         <StatCard title="Total HoDs" value={userCounts.hod} icon={UserCheck} />
