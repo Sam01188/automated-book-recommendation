@@ -12,37 +12,61 @@ export function PriorityPage({ items, onPriority }) {
 
   return (
     <div className="large-panel">
-      {!isPeriodOpen && (
-        <div style={{
-          background: "linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%)",
-          color: "var(--danger)",
-          borderRadius: "var(--radius)",
-          padding: "1rem 1.25rem",
-          fontWeight: 600,
-          fontSize: "0.95rem",
-          marginBottom: "1.5rem",
-          border: "1px solid rgba(239, 68, 68, 0.35)"
-        }}>
-          ⚠️ HOD Priority Assignment Period is closed. You can view pending requests but cannot assign or change priorities at this time.
+      <div className="guidelines priority-guidelines">
+        <strong>Assign Priority</strong>
+        <p style={{ marginTop: "0.5rem" }}>
+          Assign a unique priority number to each recommendation. Use the dropdown at the end of each row. Numbers are 1 through the number of recommendations ({count}).
+        </p>
+      </div>
+
+      {count === 0 ? (
+        <p>No pending recommendations available.</p>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style={{ width: 70 }}>Rank</th>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Publisher</th>
+                <th>Submitted By</th>
+                <th style={{ width: 160 }}>Priority</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activeItems.map((item, index) => (
+                <tr key={item._id}>
+                  <td style={{ fontWeight: 700 }}>{index + 1}</td>
+                  <td style={{ fontWeight: 600 }}>{item.title}</td>
+                  <td>{item.author}</td>
+                  <td>{item.publisher}</td>
+                  <td>{item.submittedBy?.name || "Lecturer"}</td>
+                  <td>
+                    <select
+                      value={ranks[item._id] ?? ""}
+                      onChange={(e) => handleSelect(item._id, e.target.value)}
+                      disabled={!isPeriodOpen}
+                      style={{ padding: "0.35rem 0.5rem" }}
+                    >
+                      <option value="">Select priority</option>
+                      {Array.from({ length: count }, (_, i) => i + 1).map((n) => (
+                        <option key={n} value={n}>{n}</option>
+                      ))}
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
-      {isAlreadySubmitted && (
-        <div style={{
-          background: "linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%)",
-          color: "var(--success)",
-          borderRadius: "var(--radius)",
-          padding: "1rem 1.25rem",
-          fontWeight: 600,
-          fontSize: "0.95rem",
-          marginBottom: "1.5rem",
-          border: "1px solid rgba(16, 185, 129, 0.35)",
-          display: "flex",
-          alignItems: "center",
-          gap: "0.75rem"
-        }}>
-          <CheckCircle size={20} />
-          ✅ Your recommendations have been submitted to the librarian
+      {count > 0 && (
+        <div style={{ marginTop: "1rem", display: "flex", gap: "0.75rem" }}>
+          <button className="primary-button" onClick={handleSave} disabled={!isPeriodOpen || saving}>
+            Save Priorities
+          </button>
         </div>
       )}
 

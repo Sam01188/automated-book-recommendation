@@ -8,6 +8,7 @@ import {
   logout as apiLogout,
   submitToLibrarian,
   updateRecommendationOrder,
+  resetRecommendationOrder,
   fetchCurrentPeriod,
   fetchCurrentHodPeriod,
   fetchOrderPeriods,
@@ -35,7 +36,7 @@ function App() {
   const [session, setSession] = useState(null);
   const [view, setView] = useState("dashboard");
   const [items, setItems] = useState([]);
-  const [stats, setStats] = useState({ total: 0, pending: 0, rejected: 0, highPriority: 0 });
+  const [stats, setStats] = useState({ total: 0, pending: 0, rejected: 0, highPriority: 0, lecturersCount: 0 });
   const [allFilter, setAllFilter] = useState("all");
   const [periods, setPeriods] = useState([]);
   const [selectedPeriod, setSelectedPeriod] = useState(null);
@@ -89,7 +90,12 @@ function App() {
 
     fetchRecommendations(session.token, session.user.role).then((records) => {
       setItems(records);
-      fetchStats(session.token, records).then(setStats);
+      // derive client-side stats (ensure HOD pending reflects unassigned items)
+      const derived = deriveStats(records, session.user.role);
+      // fetch server stats but merge with derived pending/lecturersCount
+      fetchStats(session.token, records)
+        .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
+        .catch(() => setStats(derived));
     });
 
     // Fetch periods for filtering
@@ -114,19 +120,21 @@ function App() {
     return roleViews[session.user.role] || [];
   }, [session]);
 
-  const deriveStats = (records, role = session?.user?.role) => ({
-    total: records.length,
-    pending:
+  const deriveStats = (records, role = session?.user?.role) => {
+    const total = records.length;
+    // For HOD dashboard, pending should reflect number of items with an assigned priority number
+    const pending =
       role === "hod"
-        ? records.filter(
-            (item) =>
-              item.status === "under_review" ||
-              (item.status === "submitted" && !item.reviewedBy)
-          ).length
-        : records.filter((item) => item.status === "submitted" || item.status === "under_review").length,
-    rejected: records.filter((item) => item.status === "rejected").length,
-    highPriority: records.filter((item) => item.priorityRank === 1).length
-  });
+        ? records.filter((item) => Number.isFinite(item.priorityRank)).length
+        : records.filter((item) => item.status === "submitted" || item.status === "under_review").length;
+    const rejected = records.filter((item) => item.status === "rejected").length;
+    const highPriority = records.filter((item) => item.priorityRank === 1).length;
+    // Count distinct lecturers who submitted books (exclude null submitters and rejected items)
+    const lecturerIds = new Set(records.filter(r => r.submittedBy && r.status !== 'rejected').map(r => r.submittedBy._id || r.submittedBy));
+    const lecturersCount = lecturerIds.size;
+    return { total, pending, rejected, highPriority, lecturersCount };
+  };
+
 
   useEffect(() => {
     setStats(deriveStats(items, session?.user?.role));
@@ -176,6 +184,15 @@ function App() {
     const updatedRecords = await updateRecommendationOrder(session.token, orderedIds);
     setItems(updatedRecords);
     setStats(deriveStats(updatedRecords, session.user.role));
+    return updatedRecords;
+  }
+
+  async function handleResetRecommendationOrder() {
+    if (!session) return;
+
+    const updatedRecords = await resetRecommendationOrder(session.token);
+    setItems(updatedRecords);
+    setStats(deriveStats(updatedRecords, session.user.role));
   }
 
   async function handleSubmitToLibrarian() {
@@ -185,6 +202,7 @@ function App() {
     setItems(updatedRecords);
     setStats(deriveStats(updatedRecords, session.user.role));
     setView("submissions");
+    return updatedRecords;
   }
 
   async function handleUserCreation(userData) {
@@ -273,6 +291,7 @@ function App() {
           onOrderChange={handleRecommendationOrder}
           onSubmit={handleSubmitToLibrarian}
           isPeriodOpen={isHodPeriodOpen}
+          onReset={handleResetRecommendationOrder}
           currentPeriod={currentHodPeriod}
         />
       )}

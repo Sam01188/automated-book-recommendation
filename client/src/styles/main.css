@@ -797,8 +797,9 @@ textarea:focus {
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
-  background: rgba(8, 11, 20, 0.75);
-  backdrop-filter: blur(8px);
+  /* Use a subtle tint and strong blur so content is blurred rather than blacked-out */
+  background: rgba(var(--primary-rgb), 0.06);
+  backdrop-filter: blur(10px) saturate(120%);
 }
 
 .app-modal {
@@ -1112,6 +1113,34 @@ textarea:focus {
   background: var(--success-bg);
   color: var(--success-text);
   border: 1px solid var(--success-border);
+}
+
+/* Rank Badge (compact) */
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.rank-badge.assigned {
+  background: rgba(var(--primary-rgb), 0.12);
+  color: var(--primary);
+  border: 1px solid rgba(var(--primary-rgb), 0.25);
+}
+
+.rank-badge.unassigned {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px dashed var(--border);
+  font-weight: 600;
 }
 
 /* Dashboard Container - consistent flex layout for all dashboard pages */

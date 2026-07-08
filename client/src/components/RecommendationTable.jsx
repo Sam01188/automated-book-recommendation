@@ -23,7 +23,7 @@ export function RecommendationTable({ items, title, compact, onPriority }) {
               <th>Author</th>
               <th>Publisher</th>
               <th>Submitted By</th>
-              <th>Rank</th>
+              <th style={{ width: 96, textAlign: "center" }}>Rank</th>
             </tr>
           </thead>
           <tbody>

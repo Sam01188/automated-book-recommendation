@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AppModal } from "../../components/AppModal";
 
 const EMPTY_FORM = {
   title: "",
@@ -28,7 +29,7 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
   async function handleSubmit(e) {
     e.preventDefault();
     if (!isPeriodOpen) {
-      alert("Submissions are currently closed.");
+      setModal({ title: "Submissions Closed", message: "Submissions are currently closed.", confirmText: "OK", onConfirm: () => setModal(null) });
       return;
     }
     try {
@@ -40,6 +41,8 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
       console.error("Submit failed:", err);
     }
   }
+
+  const [modal, setModal] = useState(null);
 
   const isFormDisabled = loading || !isPeriodOpen;
 
@@ -188,6 +191,15 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
           {loading ? "Submitting…" : "Submit Recommendation"}
         </button>
       </div>
+      {modal && (
+        <AppModal
+          title={modal.title}
+          message={modal.message}
+          confirmText={modal.confirmText}
+          onConfirm={modal.onConfirm}
+          onCancel={modal.onCancel}
+        />
+      )}
     </form>
   );
 }

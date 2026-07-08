@@ -44,13 +44,13 @@ export function HodRankTable({ items, title, onOrderChange, disabled }) {
               <th>Author</th>
               <th>Publisher</th>
               <th>Submitted By</th>
-              <th style={{ width: 130 }}>Order</th>
+              {!disabled && <th style={{ width: 130 }}>Order</th>}
             </tr>
           </thead>
           <tbody>
             {sortedItems.length === 0 ? (
               <tr>
-                <td colSpan={6}>No recommendations available.</td>
+                <td colSpan={disabled ? 5 : 6}>No recommendations available.</td>
               </tr>
             ) : (
               sortedItems.map((item, index) => (
@@ -66,17 +66,19 @@ export function HodRankTable({ items, title, onOrderChange, disabled }) {
                   <td>{item.author}</td>
                   <td>{item.publisher}</td>
                   <td>{item.submittedBy?.name || "Lecturer"}</td>
-                  <td>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-                      <button className="secondary-button" type="button" disabled={disabled} onClick={() => moveItem(index, -1)} title="Move up">
-                        <ArrowUp size={16} />
-                      </button>
-                      <button className="secondary-button" type="button" disabled={disabled} onClick={() => moveItem(index, 1)} title="Move down">
-                        <ArrowDown size={16} />
-                      </button>
-                      <GripVertical size={18} color="var(--text-muted)" aria-hidden="true" />
-                    </div>
-                  </td>
+                  {!disabled && (
+                    <td>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                        <button className="secondary-button" type="button" disabled={disabled} onClick={() => moveItem(index, -1)} title="Move up">
+                          <ArrowUp size={16} />
+                        </button>
+                        <button className="secondary-button" type="button" disabled={disabled} onClick={() => moveItem(index, 1)} title="Move down">
+                          <ArrowDown size={16} />
+                        </button>
+                        <GripVertical size={18} color="var(--text-muted)" aria-hidden="true" />
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))
             )}

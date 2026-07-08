@@ -91,20 +91,40 @@ export async function updatePriority(token, id, priority) {
   });
 }
 
-export async function updateRecommendationOrder(token, orderedIds) {
+export async function updateRecommendationOrder(token, payload) {
   if (token === "demo-token") {
     return [];
   }
 
+  const body = typeof payload === 'object' && !Array.isArray(payload) ? payload : { orderedIds: payload };
+
   const response = await fetch(`${api}/recommendations/rank-order`, {
     method: "PATCH",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ orderedIds })
+    body: JSON.stringify(body)
   });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.message || "Failed to save recommendation order");
+  }
+
+  return response.json();
+}
+
+export async function resetRecommendationOrder(token) {
+  if (token === "demo-token") {
+    return [];
+  }
+
+  const response = await fetch(`${api}/recommendations/reset-order`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to reset recommendation order");
   }
 
   return response.json();
