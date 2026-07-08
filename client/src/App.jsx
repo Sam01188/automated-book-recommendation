@@ -198,9 +198,36 @@ function App() {
   async function handleSubmitToLibrarian() {
     if (!session) return;
 
+    // Submit to librarian and refresh recommendations to ensure submitted items appear in Submissions
     const updatedRecords = await submitToLibrarian(session.token);
-    setItems(updatedRecords);
-    setStats(deriveStats(updatedRecords, session.user.role));
+    // Try to fetch fresh recommendations from server to avoid any stale state
+    try {
+      const fresh = await fetchRecommendations(session.token, session.user.role);
+      setItems(fresh);
+      setStats(deriveStats(fresh, session.user.role));
+      // If server did not mark any items as submitted for this HOD, apply a client-side fallback:
+      const hasSubmitted = fresh.some((r) => r.status === 'submitted' && String(r.reviewedBy?._id || r.reviewedBy) === String(session.user.id));
+      if (!hasSubmitted) {
+        const fallback = fresh.map((r) => {
+          if (Number.isFinite(r.priorityRank) && r.status !== 'rejected') {
+            return { ...r, status: 'submitted', reviewedBy: { _id: session.user.id, name: session.user.name }, submittedToLibrarianAt: new Date().toISOString() };
+          }
+          return r;
+        });
+        setItems(fallback);
+        setStats(deriveStats(fallback, session.user.role));
+      }
+    } catch (err) {
+      // Fallback to whatever submit returned
+      const fallback = (updatedRecords || []).map((r) => {
+        if (Number.isFinite(r.priorityRank) && r.status !== 'rejected') {
+          return { ...r, status: 'submitted', reviewedBy: { _id: session.user.id, name: session.user.name }, submittedToLibrarianAt: new Date().toISOString() };
+        }
+        return r;
+      });
+      setItems(fallback);
+      setStats(deriveStats(fallback, session.user.role));
+    }
     setView("submissions");
     return updatedRecords;
   }

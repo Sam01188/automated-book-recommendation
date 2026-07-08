@@ -19,6 +19,7 @@ export function AllRecommendationsPage({ items, filterPriority = "all", onOrderC
       ? "High Priority Recommendations"
       : "All Recommendations";
   const allAssigned = activeItems.length > 0 && activeItems.every((item) => item.priority !== "unassigned");
+  const [modal, setModal] = useState(null);
 
   return (
     <div>
@@ -79,7 +80,14 @@ export function AllRecommendationsPage({ items, filterPriority = "all", onOrderC
       )}
 
       {filteredItems.length > 0 ? (
-        <RecommendationTable items={filteredItems.sort((a, b) => a.priorityRank - b.priorityRank)} title={title} />
+        <RecommendationTable
+          items={[...filteredItems].sort((a, b) => {
+            const aRank = Number.isFinite(a.priorityRank) ? a.priorityRank : Number.MAX_SAFE_INTEGER;
+            const bRank = Number.isFinite(b.priorityRank) ? b.priorityRank : Number.MAX_SAFE_INTEGER;
+            return aRank - bRank || new Date(a.createdAt) - new Date(b.createdAt);
+          })}
+          title={title}
+        />
       ) : (
         <p>No pending recommendations available.</p>
       )}

@@ -17,10 +17,9 @@ export function DashboardContent({ user, stats, items }) {
           icon={<ClipboardList size={20} />} 
         />
         <Metric
-          label={user.role === "lecturer" ? "Approved" : "Unassigned Priority"}
-          value={user.role === "lecturer" ? stats.approved : stats.priorityPending}
-          icon={<ShieldCheck size={20} />}
-          onClick={user.role !== "lecturer" ? onHighPriorityClick : undefined}
+          label={user.role === "lecturer" ? "Rejected" : "Lecturers"}
+          value={user.role === "lecturer" ? stats.rejected : stats.lecturersCount}
+          icon={<ShieldX size={20} />}
         />
       </div>
 

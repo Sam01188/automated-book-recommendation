@@ -1,14 +1,92 @@
-import { RecommendationTable } from "../../components/RecommendationTable";
+import { useEffect, useMemo, useState } from "react";
+import { AppModal } from "../../components/AppModal";
 
-function getPrioritySortValue(item) {
-  const rank = Number(item.priority);
-  if (Number.isFinite(rank)) return rank;
-  return Number.MAX_SAFE_INTEGER;
-}
+export function PriorityPage({ items, onOrderChange, isPeriodOpen }) {
+  const activeItems = useMemo(
+    () => items.filter((item) => item.status !== "rejected" && (item.status !== "submitted" || !item.reviewedBy)),
+    [items]
+  );
 
-export function PriorityPage({ items, onPriority }) {
-  const activeItems = items.filter((item) => item.status !== "submitted" || !item.reviewedBy);
-  const sortedItems = activeItems.slice().sort((a, b) => getPrioritySortValue(a) - getPrioritySortValue(b));
+  const count = activeItems.length;
+  const [ranks, setRanks] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const initial = {};
+    activeItems.forEach((it, idx) => {
+      initial[it._id] = Number.isFinite(it.priorityRank) ? it.priorityRank : null;
+    });
+    setRanks(initial);
+  }, [items]);
+
+  function handleSelect(id, value) {
+    const newRank = value === "" ? null : Number(value);
+    setRanks((prev) => {
+      const prevRank = prev[id];
+      if (prevRank === newRank) return prev;
+
+      const next = { ...prev };
+      // If selecting null, just clear this id
+      if (newRank === null) {
+        next[id] = null;
+        return next;
+      }
+
+      // If another item already has the selected rank, swap their ranks
+      const swappedId = Object.keys(prev).find((k) => prev[k] === newRank);
+      next[id] = newRank;
+      if (swappedId) next[swappedId] = prevRank ?? null;
+      return next;
+    });
+  }
+
+  async function handleSave() {
+    if (!onOrderChange) return;
+    setSaving(true);
+    try {
+      // Only persist ranks that the user explicitly selected (keep others null)
+      const selected = { ...ranks };
+      const rankedIds = Object.keys(selected).filter((k) => Number.isFinite(selected[k]));
+      // If no ranks selected, abort and inform user
+      if (rankedIds.length === 0) {
+        setModal({ title: "No Priorities Selected", message: "Please select at least one priority before saving.", confirmText: "OK", onConfirm: () => setModal(null) });
+        return;
+      }
+
+      // Prevent duplicate priority numbers
+      const rankValues = rankedIds.map((id) => selected[id]);
+      const uniqueRanks = new Set(rankValues);
+      if (uniqueRanks.size !== rankValues.length) {
+        setModal({ title: "Duplicate Ranks", message: "Each priority number must be unique. Please remove duplicate numbers before saving.", confirmText: "OK", onConfirm: () => setModal(null) });
+        return;
+      }
+      // Build ordered list of items that have a selected rank
+      const ordered = [...activeItems]
+        .filter((it) => Number.isFinite(selected[it._id]))
+        .sort((a, b) => selected[a._id] - selected[b._id]);
+
+      // update local ranks to reflect saved selected values (leave others null)
+      const finalRanks = {};
+      activeItems.forEach((it) => {
+        finalRanks[it._id] = Number.isFinite(selected[it._id]) ? selected[it._id] : null;
+      });
+      setRanks(finalRanks);
+      const orderedIds = ordered.map((it) => it._id);
+      // detect items that were previously ranked but now left unassigned
+      const clearedIds = activeItems
+        .filter((it) => !Number.isFinite(selected[it._id]) && Number.isFinite(it.priorityRank))
+        .map((it) => it._id);
+      await onOrderChange({ orderedIds, clearedIds });
+      setModal({ title: "Success", message: "Priorities saved successfully.", confirmText: "OK", onConfirm: () => setModal(null) });
+    } catch (err) {
+      console.error(err);
+      setModal({ title: "Failed to Save", message: err.message || "Failed to save priorities", variant: "danger", confirmText: "OK", onConfirm: () => setModal(null) });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const [modal, setModal] = useState(null);
 
   return (
     <div className="large-panel">
@@ -70,27 +148,16 @@ export function PriorityPage({ items, onPriority }) {
         </div>
       )}
 
-      <div className="guidelines priority-guidelines">
-        <strong>Priority Assignment Guidelines</strong>
-        <ul className="guideline-list">
-          <li className="guideline-item">
-            <span className="guideline-term high">1</span>
-            Assign rank 1 to the most urgent recommendation
-          </li>
-          <li className="guideline-item">
-            <span className="guideline-term medium">2</span>
-            Assign rank 2 to the next most important recommendation
-          </li>
-          <li className="guideline-item">
-            <span className="guideline-term low">3+</span>
-            Use higher numbers for lower priority recommendations
-          </li>
-        </ul>
-      </div>
-      {sortedItems.length === 0 ? (
-        <p>No pending recommendations available for priority assignment.</p>
-      ) : (
-        <RecommendationTable items={sortedItems} compact onPriority={onPriority} title="Priority Ranking" />
+      {modal && (
+        <AppModal
+          title={modal.title}
+          message={modal.message}
+          confirmText={modal.confirmText}
+          cancelText={modal.cancelText}
+          variant={modal.variant}
+          onConfirm={modal.onConfirm}
+          onCancel={modal.onCancel}
+        />
       )}
     </div>
   );

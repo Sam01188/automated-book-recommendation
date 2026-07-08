@@ -1,6 +1,6 @@
 import { DashboardContent } from "../../components/DashboardContent";
 
-export function HodDashboardPage({ user, stats, items, isPeriodOpen, currentPeriod }) {
+export function HodDashboardPage({ user, stats, items, isPeriodOpen, currentPeriod, onTotalClick, onPendingClick, onHighPriorityClick }) {
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
       {isPeriodOpen && currentPeriod ? (
@@ -34,6 +34,9 @@ export function HodDashboardPage({ user, stats, items, isPeriodOpen, currentPeri
         user={user}
         stats={stats}
         items={items}
+        onTotalClick={onTotalClick}
+        onPendingClick={onPendingClick}
+        onHighPriorityClick={onHighPriorityClick}
       />
     </section>
   );
