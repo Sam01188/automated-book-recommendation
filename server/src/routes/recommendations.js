@@ -80,7 +80,6 @@ router.patch("/submit", requireAuth, allowRoles("hod"), async (req, res) => {
     const departmentFilter = buildDepartmentFilter(req.user.department);
     const unrankedCount = await Recommendation.countDocuments({
       ...departmentFilter,
-      orderPeriod: activeHodPeriod._id,
       status: { $ne: "rejected" },
       submittedToLibrarianAt: { $exists: false },
       $or: [{ priorityRank: { $exists: false } }, { priorityRank: null }]
@@ -90,7 +89,6 @@ router.patch("/submit", requireAuth, allowRoles("hod"), async (req, res) => {
     }
 
     await submitDepartmentListToLibrarian({
-      orderPeriodId: activeHodPeriod._id,
       department: req.user.department,
       hodId: req.user.id
     });

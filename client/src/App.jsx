@@ -115,6 +115,41 @@ function App() {
     refreshPeriodStatus();
   }, [session]);
 
+  useEffect(() => {
+    if (!session) return;
+    if (session.user.role === "librarian" && view === "all") {
+      fetchRecommendations(session.token, session.user.role)
+        .then((records) => {
+          setItems(records);
+          const derived = deriveStats(records, session.user.role);
+          fetchStats(session.token, records)
+            .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
+            .catch(() => setStats(derived));
+        })
+        .catch((err) => console.error("Failed to refresh librarian recommendations:", err));
+    }
+  }, [session, view]);
+
+  useEffect(() => {
+    if (!session || session.user.role !== "librarian" || view !== "all") {
+      return undefined;
+    }
+
+    const interval = setInterval(() => {
+      fetchRecommendations(session.token, session.user.role)
+        .then((records) => {
+          setItems(records);
+          const derived = deriveStats(records, session.user.role);
+          fetchStats(session.token, records)
+            .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
+            .catch(() => setStats(derived));
+        })
+        .catch((err) => console.error("Failed to polling refresh librarian recommendations:", err));
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [session, view]);
+
   const allowedViews = useMemo(() => {
     if (!session || !session.user || !session.user.role) return [];
     return roleViews[session.user.role] || [];
