@@ -48,6 +48,18 @@ function App() {
     return localStorage.getItem("book-rec-theme") || "dark";
   });
 
+  const resolveLibrarianDisplayPeriod = (periods) => {
+    if (!Array.isArray(periods) || periods.length === 0) {
+      return null;
+    }
+
+    return (
+      periods.find((period) => period.status === "open" || period.status === "hod_priority") ||
+      periods.find((period) => period.status === "closed") ||
+      null
+    );
+  };
+
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem("book-rec-theme", theme);
@@ -140,9 +152,11 @@ function App() {
   useEffect(() => {
     if (!session) return;
     if (session.user.role === "librarian" && view === "all") {
-      fetchRecommendations(session.token, session.user.role)
-        .then((records) => {
+      Promise.all([fetchRecommendations(session.token, session.user.role), fetchOrderPeriods(session.token)])
+        .then(([records, periodList]) => {
           setItems(records);
+          setPeriods(periodList);
+          setSelectedPeriod(resolveLibrarianDisplayPeriod(periodList)?._id || null);
           const derived = deriveStats(records, session.user.role);
           fetchStats(session.token, records)
             .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
@@ -158,9 +172,11 @@ function App() {
     }
 
     const interval = setInterval(() => {
-      fetchRecommendations(session.token, session.user.role)
-        .then((records) => {
+      Promise.all([fetchRecommendations(session.token, session.user.role), fetchOrderPeriods(session.token)])
+        .then(([records, periodList]) => {
           setItems(records);
+          setPeriods(periodList);
+          setSelectedPeriod(resolveLibrarianDisplayPeriod(periodList)?._id || null);
           const derived = deriveStats(records, session.user.role);
           return fetchStats(session.token, records)
             .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
@@ -402,7 +418,7 @@ function App() {
         />
       )}
       {session.user.role === "librarian" && view === "all" && (
-        <AllRecommendationsPage items={items} filterPriority={allFilter} />
+        <AllRecommendationsPage items={items} filterPriority={allFilter} currentPeriod={resolveLibrarianDisplayPeriod(periods)} />
       )}
       {session.user.role === "librarian" && view === "periods" && (
         <OrderTimePeriodsPage
