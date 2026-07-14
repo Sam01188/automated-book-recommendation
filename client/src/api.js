@@ -2,6 +2,18 @@ import { buildStats, demoRecommendations, demoUsers } from "./data";
 
 const api = "/api";
 
+async function checkApiResponse(response) {
+  if (response.ok) {
+    return response.json();
+  }
+
+  const errorData = await response.json().catch(() => ({}));
+  const message = errorData.message || response.statusText || "Request failed";
+  const error = new Error(message);
+  error.status = response.status;
+  throw error;
+}
+
 export async function login(email, password) {
   const response = await fetch(`${api}/auth/login`, {
     method: "POST",
@@ -40,7 +52,8 @@ export async function fetchRecommendations(token, role) {
   const response = await fetch(`${api}/recommendations`, {
     headers: { Authorization: `Bearer ${token}` }
   });
-  return response.json();
+
+  return checkApiResponse(response);
 }
 
 export async function fetchStats(token, items) {
@@ -51,7 +64,8 @@ export async function fetchStats(token, items) {
   const response = await fetch(`${api}/stats`, {
     headers: { Authorization: `Bearer ${token}` }
   });
-  return response.json();
+
+  return checkApiResponse(response);
 }
 
 export async function createRecommendation(token, payload) {
@@ -240,24 +254,21 @@ export async function fetchOrderPeriods(token) {
   const response = await fetch(`${api}/order-periods`, {
     headers: { Authorization: `Bearer ${token}` }
   });
-  if (!response.ok) throw new Error("Failed to fetch order periods");
-  return response.json();
+  return checkApiResponse(response);
 }
 
 export async function fetchCurrentPeriod(token) {
   const response = await fetch(`${api}/order-periods/current`, {
     headers: { Authorization: `Bearer ${token}` }
   });
-  if (!response.ok) throw new Error("Failed to fetch current order period");
-  return response.json();
+  return checkApiResponse(response);
 }
 
 export async function fetchCurrentHodPeriod(token) {
   const response = await fetch(`${api}/order-periods/current-hod`, {
     headers: { Authorization: `Bearer ${token}` }
   });
-  if (!response.ok) throw new Error("Failed to fetch current HOD order period");
-  return response.json();
+  return checkApiResponse(response);
 }
 
 export async function createOrderPeriod(token, payload) {
