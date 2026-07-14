@@ -98,19 +98,17 @@ function App() {
         .catch(() => setStats(derived));
     });
 
-    // Fetch periods for filtering
-    if (session.user.role === "lecturer") {
-      fetchOrderPeriods(session.token)
-        .then((res) => {
-          setPeriods(res);
-          // Set current period as default selected period
-          if (res.length > 0) {
-            const currentPeriod = res.find((p) => p.status === "open") || res[res.length - 1];
-            setSelectedPeriod(currentPeriod._id);
-          }
-        })
-        .catch((err) => console.error("Failed to fetch periods:", err));
-    }
+    // Fetch periods for filtering (needed by lecturer and HOD views)
+    fetchOrderPeriods(session.token)
+      .then((res) => {
+        setPeriods(res);
+        // For lecturer view pick a sensible default selected period
+        if (session.user.role === "lecturer" && res.length > 0) {
+          const currentPeriod = res.find((p) => p.status === "open") || res[res.length - 1];
+          setSelectedPeriod(currentPeriod._id);
+        }
+      })
+      .catch((err) => console.error("Failed to fetch periods:", err));
 
     refreshPeriodStatus();
   }, [session]);
@@ -358,7 +356,12 @@ function App() {
         />
       )}
       {session.user.role === "hod" && view === "submissions" && (
-        <HodSubmissionsPage items={items} currentUserId={session.user.id} />
+        <HodSubmissionsPage
+          items={items}
+          currentUserId={session.user.id}
+          periods={periods}
+          currentPeriod={currentHodPeriod}
+        />
       )}
 
       {session.user.role === "librarian" && view === "dashboard" && (

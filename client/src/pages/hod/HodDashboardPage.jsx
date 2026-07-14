@@ -1,6 +1,25 @@
 import { DashboardContent } from "../../components/DashboardContent";
 
 export function HodDashboardPage({ user, stats, items, isPeriodOpen, currentPeriod, onTotalClick, onPendingClick, onHighPriorityClick }) {
+  // Filter items to only those in the current HOD order period (if available)
+  // Only show books belonging to the active HOD order period. If none is active show no books.
+  const hodItems = currentPeriod
+    ? items.filter((it) => {
+        const op = it.orderPeriod;
+        const opId = op ? (op._id || op) : null;
+        return opId && String(opId) === String(currentPeriod._id);
+      })
+    : [];
+
+  // derive simple stats for the HOD view
+  const hodStats = {
+    total: hodItems.length,
+    pending: hodItems.filter((item) => Number.isFinite(item.priorityRank)).length,
+    rejected: hodItems.filter((item) => item.status === "rejected").length,
+    highPriority: hodItems.filter((item) => item.priorityRank === 1).length,
+    lecturersCount: new Set(hodItems.filter(r => r.submittedBy && r.status !== 'rejected').map(r => r.submittedBy._id || r.submittedBy)).size
+  };
+
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
       {isPeriodOpen && currentPeriod ? (
@@ -32,8 +51,8 @@ export function HodDashboardPage({ user, stats, items, isPeriodOpen, currentPeri
       )}
       <DashboardContent
         user={user}
-        stats={stats}
-        items={items}
+        stats={hodStats}
+        items={hodItems}
         onTotalClick={onTotalClick}
         onPendingClick={onPendingClick}
         onHighPriorityClick={onHighPriorityClick}
