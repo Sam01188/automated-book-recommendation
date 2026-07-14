@@ -21,7 +21,7 @@ export function LecturerDashboardPage({ user, stats, items, isPeriodOpen, curren
           <div>
             <h4 style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "var(--success)" }}>📖 Book Submission Period Open</h4>
             <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.875rem", color: "var(--text-muted)" }}>
-              The library is accepting book recommendations for the <strong>{currentPeriod.faculty}</strong>.
+              The library is accepting book recommendations for the <strong>Engineering</strong> faculty.
             </p>
           </div>
           <div style={{ textAlign: "right", fontSize: "0.875rem" }}>
