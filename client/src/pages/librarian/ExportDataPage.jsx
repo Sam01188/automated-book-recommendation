@@ -11,6 +11,40 @@ function getOrderedItems(items) {
   });
 }
 
+function getDepartmentKey(item) {
+  return item.department || "Unassigned";
+}
+
+function buildWorksheetData(items) {
+  return items.map((item) => ({
+    Rank: item.priorityRank || "",
+    Title: item.title || "",
+    Author: item.author || "",
+    ISBN: item.isbn || "",
+    Publisher: item.publisher || "",
+    "Publisher Place": item.publisherPlace || "",
+    Edition: item.edition || "",
+    Binding: item.binding || "",
+    "Agree Latest/Cheapest": item.agreeLatest || "",
+    "Publication Year": item.publicationYear || "",
+    "No. of Pages": item.numberOfPages || "",
+    "Submitted By": item.submittedBy?.name || "",
+    Status: item.status || "",
+    Copies: item.copies || "",
+    Price: item.price ? `${item.currency || "LKR"} ${item.price}` : "",
+    "Additional Notes": item.additionalNotes || ""
+  }));
+}
+
+function sanitizeSheetName(name) {
+  const cleaned = String(name)
+    .replace(/[\\/?*\[\]:]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return (cleaned || "Unassigned").slice(0, 31);
+}
+
 export function ExportDataPage({ items }) {
   const orderedItems = getOrderedItems(items);
 
@@ -26,29 +60,29 @@ export function ExportDataPage({ items }) {
   }
 
   function downloadExcel() {
-    const worksheetData = orderedItems.map((item) => ({
-      Department: item.department || "",
-      Rank: item.priorityRank || "",
-      Title: item.title || "",
-      Author: item.author || "",
-      ISBN: item.isbn || "",
-      Publisher: item.publisher || "",
-      "Publisher Place": item.publisherPlace || "",
-      Edition: item.edition || "",
-      Binding: item.binding || "",
-      "Agree Latest/Cheapest": item.agreeLatest || "",
-      "Publication Year": item.publicationYear || "",
-      "No. of Pages": item.numberOfPages || "",
-      "Submitted By": item.submittedBy?.name || "",
-      Status: item.status || "",
-      Copies: item.copies || "",
-      Price: item.price ? `${item.currency || "LKR"} ${item.price}` : "",
-      "Additional Notes": item.additionalNotes || ""
+    const workbook = XLSX.utils.book_new();
+
+    const departments = orderedItems.reduce((grouped, item) => {
+      const department = getDepartmentKey(item);
+      if (!grouped[department]) {
+        grouped[department] = [];
+      }
+      grouped[department].push(item);
+      return grouped;
+    }, {});
+
+    const summaryData = orderedItems.map((item) => ({
+      Department: getDepartmentKey(item),
+      ...buildWorksheetData([item])[0]
     }));
 
-    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Recommendations");
+    const summarySheet = XLSX.utils.json_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(workbook, summarySheet, "All Recommendations");
+
+    Object.entries(departments).forEach(([department, departmentItems]) => {
+      const worksheet = XLSX.utils.json_to_sheet(buildWorksheetData(departmentItems));
+      XLSX.utils.book_append_sheet(workbook, worksheet, sanitizeSheetName(department));
+    });
 
     const workbookArray = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
     downloadBlob(
