@@ -141,10 +141,10 @@ function MetricCard({ icon, label, value, sub }) {
 
 function RecentRow({ item }) {
   const statusColors = {
-    submitted: { bg: "#dbeafe", text: "#1e40af" },
-    under_review: { bg: "#fef3c7", text: "#92400e" },
-    approved: { bg: "#dcfce7", text: "#166534" },
-    rejected: { bg: "#fee2e2", text: "#991b1b" }
+    submitted: { bg: "#dbeafe", text: "#7288d3" },
+    under_review: { bg: "#fef3c7", text: "#c49171" },
+    approved: { bg: "#dcfce7", text: "#2da55b" },
+    rejected: { bg: "#fee2e2", text: "#b73030" }
   };
   const sc = statusColors[item.status] ?? statusColors.submitted;
 
