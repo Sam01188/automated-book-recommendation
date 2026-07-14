@@ -112,38 +112,27 @@ function App() {
       return;
     }
 
-    fetchRecommendations(session.token, session.user.role)
-      .then((records) => {
-        setItems(records);
-        const derived = deriveStats(records, session.user.role);
-        return fetchStats(session.token, records)
-          .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
-          .catch(() => setStats(derived));
-      })
-      .catch((err) => {
-        console.error("Failed to fetch recommendations:", err);
-        if (err.status === 401) {
-          localStorage.removeItem("book-rec-session");
-          setSession(null);
-          return;
-        }
-        setItems([]);
-        setStats({ total: 0, pending: 0, rejected: 0, highPriority: 0, lecturersCount: 0 });
-      });
+    fetchRecommendations(session.token, session.user.role).then((records) => {
+      setItems(records);
+      // derive client-side stats (ensure HOD pending reflects unassigned items)
+      const derived = deriveStats(records, session.user.role);
+      // fetch server stats but merge with derived pending/lecturersCount
+      fetchStats(session.token, records)
+        .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
+        .catch(() => setStats(derived));
+    });
 
-    if (session.user.role === "lecturer") {
-      fetchOrderPeriods(session.token)
-        .then((res) => {
-          setPeriods(res);
-          if (res.length > 0) {
-            const currentPeriod = res.find((p) => p.status === "open") || res[res.length - 1];
-            setSelectedPeriod(currentPeriod._id);
-          }
-        })
-        .catch((err) => {
-          console.error("Failed to fetch periods:", err);
-        });
-    }
+    // Fetch periods for filtering (needed by lecturer and HOD views)
+    fetchOrderPeriods(session.token)
+      .then((res) => {
+        setPeriods(res);
+        // For lecturer view pick a sensible default selected period
+        if (session.user.role === "lecturer" && res.length > 0) {
+          const currentPeriod = res.find((p) => p.status === "open") || res[res.length - 1];
+          setSelectedPeriod(currentPeriod._id);
+        }
+      })
+      .catch((err) => console.error("Failed to fetch periods:", err));
 
     refreshPeriodStatus();
   }, [session]);
@@ -391,7 +380,12 @@ function App() {
         />
       )}
       {session.user.role === "hod" && view === "submissions" && (
-        <HodSubmissionsPage items={items} currentUserId={session.user.id} />
+        <HodSubmissionsPage
+          items={items}
+          currentUserId={session.user.id}
+          periods={periods}
+          currentPeriod={currentHodPeriod}
+        />
       )}
 
       {session.user.role === "librarian" && view === "dashboard" && (
