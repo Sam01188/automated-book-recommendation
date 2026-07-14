@@ -59,8 +59,20 @@ function App() {
 
   useEffect(() => {
     const stored = localStorage.getItem("book-rec-session");
-    if (stored) {
-      setSession(JSON.parse(stored));
+    if (!stored) {
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(stored);
+      if (!parsed || !parsed.token || !parsed.user || !parsed.user.role) {
+        throw new Error("Invalid stored session");
+      }
+      setSession(parsed);
+    } catch (error) {
+      console.warn("Failed to restore session from localStorage:", error);
+      localStorage.removeItem("book-rec-session");
+      setSession(null);
     }
   }, []);
 
@@ -72,14 +84,26 @@ function App() {
           setIsPeriodOpen(res.isOpen);
           setCurrentPeriod(res.period);
         })
-        .catch((err) => console.error(err));
+        .catch((err) => {
+          console.error(err);
+          if (err.status === 401) {
+            localStorage.removeItem("book-rec-session");
+            setSession(null);
+          }
+        });
     } else if (session.user.role === "hod") {
       fetchCurrentHodPeriod(session.token)
         .then((res) => {
           setIsHodPeriodOpen(res.isOpen);
           setCurrentHodPeriod(res.period);
         })
-        .catch((err) => console.error(err));
+        .catch((err) => {
+          console.error(err);
+          if (err.status === 401) {
+            localStorage.removeItem("book-rec-session");
+            setSession(null);
+          }
+        });
     }
   };
 
@@ -88,28 +112,37 @@ function App() {
       return;
     }
 
-    fetchRecommendations(session.token, session.user.role).then((records) => {
-      setItems(records);
-      // derive client-side stats (ensure HOD pending reflects unassigned items)
-      const derived = deriveStats(records, session.user.role);
-      // fetch server stats but merge with derived pending/lecturersCount
-      fetchStats(session.token, records)
-        .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
-        .catch(() => setStats(derived));
-    });
+    fetchRecommendations(session.token, session.user.role)
+      .then((records) => {
+        setItems(records);
+        const derived = deriveStats(records, session.user.role);
+        return fetchStats(session.token, records)
+          .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
+          .catch(() => setStats(derived));
+      })
+      .catch((err) => {
+        console.error("Failed to fetch recommendations:", err);
+        if (err.status === 401) {
+          localStorage.removeItem("book-rec-session");
+          setSession(null);
+          return;
+        }
+        setItems([]);
+        setStats({ total: 0, pending: 0, rejected: 0, highPriority: 0, lecturersCount: 0 });
+      });
 
-    // Fetch periods for filtering
     if (session.user.role === "lecturer") {
       fetchOrderPeriods(session.token)
         .then((res) => {
           setPeriods(res);
-          // Set current period as default selected period
           if (res.length > 0) {
             const currentPeriod = res.find((p) => p.status === "open") || res[res.length - 1];
             setSelectedPeriod(currentPeriod._id);
           }
         })
-        .catch((err) => console.error("Failed to fetch periods:", err));
+        .catch((err) => {
+          console.error("Failed to fetch periods:", err);
+        });
     }
 
     refreshPeriodStatus();
@@ -140,7 +173,7 @@ function App() {
         .then((records) => {
           setItems(records);
           const derived = deriveStats(records, session.user.role);
-          fetchStats(session.token, records)
+          return fetchStats(session.token, records)
             .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
             .catch(() => setStats(derived));
         })
