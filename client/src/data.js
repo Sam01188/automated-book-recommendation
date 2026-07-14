@@ -77,7 +77,7 @@ export function buildStats(items) {
     total: items.length,
     // Pending counts items awaiting HOD action (unassigned priority) for HOD dashboard demo
     pending: items.filter((item) => !Number.isFinite(item.priorityRank) && item.status !== 'rejected').length,
-    rejected: items.filter((item) => item.status === "rejected").length,
+    approved: items.filter((item) => item.status === "submitted" || item.status === "approved").length,
     highPriority: items.filter((item) => item.priority === "high").length,
     lecturersCount: new Set(items.filter(r => r.submittedBy && r.status !== 'rejected').map(r => r.submittedBy._id || r.submittedBy.name || r.submittedBy)).size
   };

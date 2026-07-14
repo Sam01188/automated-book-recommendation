@@ -59,8 +59,20 @@ function App() {
 
   useEffect(() => {
     const stored = localStorage.getItem("book-rec-session");
-    if (stored) {
-      setSession(JSON.parse(stored));
+    if (!stored) {
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(stored);
+      if (!parsed || !parsed.token || !parsed.user || !parsed.user.role) {
+        throw new Error("Invalid stored session");
+      }
+      setSession(parsed);
+    } catch (error) {
+      console.warn("Failed to restore session from localStorage:", error);
+      localStorage.removeItem("book-rec-session");
+      setSession(null);
     }
   }, []);
 
@@ -72,14 +84,26 @@ function App() {
           setIsPeriodOpen(res.isOpen);
           setCurrentPeriod(res.period);
         })
-        .catch((err) => console.error(err));
+        .catch((err) => {
+          console.error(err);
+          if (err.status === 401) {
+            localStorage.removeItem("book-rec-session");
+            setSession(null);
+          }
+        });
     } else if (session.user.role === "hod") {
       fetchCurrentHodPeriod(session.token)
         .then((res) => {
           setIsHodPeriodOpen(res.isOpen);
           setCurrentHodPeriod(res.period);
         })
-        .catch((err) => console.error(err));
+        .catch((err) => {
+          console.error(err);
+          if (err.status === 401) {
+            localStorage.removeItem("book-rec-session");
+            setSession(null);
+          }
+        });
     }
   };
 
@@ -138,7 +162,7 @@ function App() {
         .then((records) => {
           setItems(records);
           const derived = deriveStats(records, session.user.role);
-          fetchStats(session.token, records)
+          return fetchStats(session.token, records)
             .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
             .catch(() => setStats(derived));
         })

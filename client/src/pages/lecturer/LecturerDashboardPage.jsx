@@ -1,4 +1,4 @@
-import { BookMarked, Clock, ShieldX } from "lucide-react";
+import { BookMarked, Clock, CheckCircle } from "lucide-react";
 
 export function LecturerDashboardPage({ user, stats, items, isPeriodOpen, currentPeriod }) {
   const firstName = user?.name?.split(" ")[0]?.toUpperCase() ?? "";
@@ -60,9 +60,9 @@ export function LecturerDashboardPage({ user, stats, items, isPeriodOpen, curren
           value={stats.pending ?? 0}
         />
         <MetricCard
-          icon={<ShieldX size={22} />}
-          label="Rejected"
-          value={stats.rejected ?? 0}
+          icon={<CheckCircle size={22} />}
+          label="Total Approved"
+          value={stats.approved ?? 0}
         />
       </div>
 
