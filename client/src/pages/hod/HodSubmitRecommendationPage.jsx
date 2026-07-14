@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AppModal } from "../../components/AppModal";
 import { Plus } from "lucide-react";
 import { Card } from "../../components/librarian/Card";
 import { Button } from "../../components/librarian/Button";
@@ -29,7 +30,7 @@ export function HodSubmitRecommendationPage({ user, items }) {
     e.preventDefault();
 
     if (!formData.title.trim() || !formData.author.trim()) {
-      alert("Please fill in at least Title and Author");
+      setModal({ title: "Missing Information", message: "Please fill in at least Title and Author", confirmText: "OK", onConfirm: () => setModal(null) });
       return;
     }
 
@@ -51,6 +52,8 @@ export function HodSubmitRecommendationPage({ user, items }) {
       }, 3000);
     }, 500);
   };
+
+  const [modal, setModal] = useState(null);
 
   const departmentItems = items ? items.filter(item => item.department === (user?.department || "DCEE")) : [];
 
@@ -165,6 +168,16 @@ export function HodSubmitRecommendationPage({ user, items }) {
           </div>
         </form>
       </Card>
+
+      {modal && (
+        <AppModal
+          title={modal.title}
+          message={modal.message}
+          confirmText={modal.confirmText}
+          onConfirm={modal.onConfirm}
+          onCancel={modal.onCancel}
+        />
+      )}
 
       {departmentItems.length > 0 && (
         <Card title={`Your Department Recommendations (${departmentItems.length})`} className="full-width" style={{ marginTop: "2rem" }}>

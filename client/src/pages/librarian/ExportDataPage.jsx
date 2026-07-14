@@ -1,4 +1,4 @@
-import { Download, FileText, Table } from "lucide-react";
+import { Download, Table } from "lucide-react";
 import { Card } from "../../components/librarian/Card";
 
 function getOrderedItems(items) {

@@ -45,14 +45,28 @@ router.get("/", requireAuth, async (req, res) => {
     const filter = buildStatsFilter(req.user);
     const pendingFilter = buildPendingFilter(req.user, filter);
 
-    const [total, pending, rejected, highPriority] = await Promise.all([
+    const [total, pending, approved, prioritized, priorityPending] = await Promise.all([
       Recommendation.countDocuments(filter),
-      Recommendation.countDocuments(pendingFilter),
-      Recommendation.countDocuments({ ...filter, status: "rejected" }),
-      Recommendation.countDocuments({ ...filter, priority: "high" })
+      Recommendation.countDocuments({
+        ...filter,
+        $or: [
+          { status: "under_review" },
+          { status: "submitted", reviewedBy: { $exists: false } }
+        ]
+      }),
+      Recommendation.countDocuments({ ...filter, status: "approved" }),
+      Recommendation.countDocuments({ ...filter, priority: { $ne: "unassigned" } }),
+      Recommendation.countDocuments({
+        ...filter,
+        priority: "unassigned",
+        $or: [
+          { status: "under_review" },
+          { status: "submitted", reviewedBy: { $exists: false } }
+        ]
+      })
     ]);
 
-    res.json({ total, pending, rejected, highPriority });
+    res.json({ total, pending, approved, highPriority: prioritized, priorityPending });
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch stats", error: err.message });
   }

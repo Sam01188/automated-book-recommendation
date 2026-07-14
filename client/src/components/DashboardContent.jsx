@@ -17,8 +17,8 @@ export function DashboardContent({ user, stats, items }) {
           icon={<ClipboardList size={20} />} 
         />
         <Metric
-          label={user.role === "lecturer" ? "Rejected" : "Ranked Items"}
-          value={user.role === "lecturer" ? stats.rejected : stats.highPriority}
+          label={user.role === "lecturer" ? "Rejected" : "Lecturers"}
+          value={user.role === "lecturer" ? stats.rejected : stats.lecturersCount}
           icon={<ShieldX size={20} />}
         />
       </div>

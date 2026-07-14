@@ -253,9 +253,14 @@ function RecommendationRow({ item, isPeriodOpen, onDelete, onEdit, onSave, onCan
     low:        { bg: "var(--success-bg)", text: "var(--success-text)", border: "var(--success-border)" },
     unassigned: { bg: "var(--surface-hover)", text: "var(--text-muted)", border: "var(--border)" }
   };
+  const numericPriorityStyle = { bg: "#fee2e2", text: "#991b1b" };
 
   const sc = statusMap[item.status]   ?? statusMap.submitted;
-  const pc = priorityMap[item.priority] ?? priorityMap.unassigned;
+  const pc =
+    priorityMap[item.priority] ??
+    (!item.priority || item.priority === "unassigned"
+      ? priorityMap.unassigned
+      : (Number.isFinite(Number(item.priority)) ? numericPriorityStyle : priorityMap.unassigned));
 
   const tdStyle = {
     padding: "1rem",

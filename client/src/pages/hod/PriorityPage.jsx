@@ -1,116 +1,163 @@
-import { CheckCircle, Send } from "lucide-react";
-import { HodRankTable } from "../../components/HodRankTable";
-import { Card } from "../../components/librarian/Card";
+import { useEffect, useMemo, useState } from "react";
+import { AppModal } from "../../components/AppModal";
 
-export function PriorityPage({ items, onOrderChange, isPeriodOpen, currentPeriod, onSubmit }) {
-  const activeItems = items.filter(
-    (item) => item.status !== "rejected" && (item.status !== "submitted" || !item.reviewedBy)
+export function PriorityPage({ items, onOrderChange, isPeriodOpen }) {
+  const activeItems = useMemo(
+    () => items.filter((item) => item.status !== "rejected" && (item.status !== "submitted" || !item.reviewedBy)),
+    [items]
   );
 
-  const allRanked = activeItems.length > 0 && activeItems.every((item) => Number.isFinite(item.priorityRank));
-  const submittedItems = items.filter((item) => item.submittedToLibrarianAt);
-  const isAlreadySubmitted = submittedItems.length > 0;
+  const count = activeItems.length;
+  const [ranks, setRanks] = useState({});
+  const [saving, setSaving] = useState(false);
 
-  const handleSubmit = async () => {
-    if (!allRanked) {
-      alert("Please rank all recommendations before submitting.");
-      return;
-    }
+  useEffect(() => {
+    const initial = {};
+    activeItems.forEach((it, idx) => {
+      initial[it._id] = Number.isFinite(it.priorityRank) ? it.priorityRank : null;
+    });
+    setRanks(initial);
+  }, [items]);
+
+  function handleSelect(id, value) {
+    const newRank = value === "" ? null : Number(value);
+    setRanks((prev) => {
+      const prevRank = prev[id];
+      if (prevRank === newRank) return prev;
+
+      const next = { ...prev };
+      // If selecting null, just clear this id
+      if (newRank === null) {
+        next[id] = null;
+        return next;
+      }
+
+      // If another item already has the selected rank, swap their ranks
+      const swappedId = Object.keys(prev).find((k) => prev[k] === newRank);
+      next[id] = newRank;
+      if (swappedId) next[swappedId] = prevRank ?? null;
+      return next;
+    });
+  }
+
+  async function handleSave() {
+    if (!onOrderChange) return;
+    setSaving(true);
     try {
-      await onSubmit?.();
-    } catch (error) {
-      alert(error.message || "Failed to submit recommendations");
+      // Only persist ranks that the user explicitly selected (keep others null)
+      const selected = { ...ranks };
+      const rankedIds = Object.keys(selected).filter((k) => Number.isFinite(selected[k]));
+      // If no ranks selected, abort and inform user
+      if (rankedIds.length === 0) {
+        setModal({ title: "No Priorities Selected", message: "Please select at least one priority before saving.", confirmText: "OK", onConfirm: () => setModal(null) });
+        return;
+      }
+
+      // Prevent duplicate priority numbers
+      const rankValues = rankedIds.map((id) => selected[id]);
+      const uniqueRanks = new Set(rankValues);
+      if (uniqueRanks.size !== rankValues.length) {
+        setModal({ title: "Duplicate Ranks", message: "Each priority number must be unique. Please remove duplicate numbers before saving.", confirmText: "OK", onConfirm: () => setModal(null) });
+        return;
+      }
+      // Build ordered list of items that have a selected rank
+      const ordered = [...activeItems]
+        .filter((it) => Number.isFinite(selected[it._id]))
+        .sort((a, b) => selected[a._id] - selected[b._id]);
+
+      // update local ranks to reflect saved selected values (leave others null)
+      const finalRanks = {};
+      activeItems.forEach((it) => {
+        finalRanks[it._id] = Number.isFinite(selected[it._id]) ? selected[it._id] : null;
+      });
+      setRanks(finalRanks);
+      const orderedIds = ordered.map((it) => it._id);
+      // detect items that were previously ranked but now left unassigned
+      const clearedIds = activeItems
+        .filter((it) => !Number.isFinite(selected[it._id]) && Number.isFinite(it.priorityRank))
+        .map((it) => it._id);
+      await onOrderChange({ orderedIds, clearedIds });
+      setModal({ title: "Success", message: "Priorities saved successfully.", confirmText: "OK", onConfirm: () => setModal(null) });
+    } catch (err) {
+      console.error(err);
+      setModal({ title: "Failed to Save", message: err.message || "Failed to save priorities", variant: "danger", confirmText: "OK", onConfirm: () => setModal(null) });
+    } finally {
+      setSaving(false);
     }
-  };
+  }
+
+  const [modal, setModal] = useState(null);
 
   return (
     <div className="large-panel">
-      {!isPeriodOpen && (
-        <div style={{
-          background: "linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%)",
-          color: "var(--danger)",
-          borderRadius: "var(--radius)",
-          padding: "1rem 1.25rem",
-          fontWeight: 600,
-          fontSize: "0.95rem",
-          marginBottom: "1.5rem",
-          border: "1px solid rgba(239, 68, 68, 0.35)"
-        }}>
-          ⚠️ HOD Priority Assignment Period is closed. You can view pending requests but cannot assign or change priorities at this time.
-        </div>
-      )}
-
-      {isAlreadySubmitted && (
-        <div style={{
-          background: "linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%)",
-          color: "var(--success)",
-          borderRadius: "var(--radius)",
-          padding: "1rem 1.25rem",
-          fontWeight: 600,
-          fontSize: "0.95rem",
-          marginBottom: "1.5rem",
-          border: "1px solid rgba(16, 185, 129, 0.35)",
-          display: "flex",
-          alignItems: "center",
-          gap: "0.75rem"
-        }}>
-          <CheckCircle size={20} />
-          ✅ Your recommendations have been submitted to the librarian
-        </div>
-      )}
-
       <div className="guidelines priority-guidelines">
-        <strong>Priority Assignment Guidelines</strong>
-        <ul className="guideline-list">
-          <li className="guideline-item">
-            <span className="guideline-term high">1</span>
-            Most important recommendation for the department
-          </li>
-          <li className="guideline-item">
-            <span className="guideline-term medium">2, 3, 4...</span>
-            Continue in descending order by dragging rows or using the arrow buttons
-          </li>
-        </ul>
+        <strong>Assign Priority</strong>
+        <p style={{ marginTop: "0.5rem" }}>
+          Assign a unique priority number to each recommendation. Use the dropdown at the end of each row. Numbers are 1 through the number of recommendations ({count}).
+        </p>
       </div>
-      {activeItems.length === 0 ? (
-        <p>No pending recommendations available for priority assignment.</p>
+
+      {count === 0 ? (
+        <p>No pending recommendations available.</p>
       ) : (
-        <>
-          <HodRankTable
-            items={activeItems}
-            title="Department Recommendation Order"
-            onOrderChange={onOrderChange}
-            disabled={!isPeriodOpen || isAlreadySubmitted}
-          />
-          {isPeriodOpen && !isAlreadySubmitted && (
-            <Card style={{ marginTop: "1.5rem", padding: "1rem" }}>
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: "1rem"
-              }}>
-                <div>
-                  <p style={{ margin: 0, fontSize: "0.9rem", color: "var(--text-muted)" }}>
-                    {allRanked ? "✅ All recommendations ranked" : "⚠️ Not all recommendations are ranked"}
-                  </p>
-                </div>
-                <button
-                  className="primary-button"
-                  onClick={handleSubmit}
-                  disabled={!allRanked}
-                  style={{
-                    opacity: allRanked ? 1 : 0.6,
-                    cursor: allRanked ? "pointer" : "not-allowed"
-                  }}
-                >
-                  <Send size={16} style={{ marginRight: "0.5rem" }} />
-                  Submit to Librarian
-                </button>
-              </div>
-            </Card>
-          )}
-        </>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style={{ width: 70 }}>Rank</th>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Publisher</th>
+                <th>Submitted By</th>
+                <th style={{ width: 160 }}>Priority</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activeItems.map((item, index) => (
+                <tr key={item._id}>
+                  <td style={{ fontWeight: 700 }}>{index + 1}</td>
+                  <td style={{ fontWeight: 600 }}>{item.title}</td>
+                  <td>{item.author}</td>
+                  <td>{item.publisher}</td>
+                  <td>{item.submittedBy?.name || "Lecturer"}</td>
+                  <td>
+                    <select
+                      value={ranks[item._id] ?? ""}
+                      onChange={(e) => handleSelect(item._id, e.target.value)}
+                      disabled={!isPeriodOpen}
+                      style={{ padding: "0.35rem 0.5rem" }}
+                    >
+                      <option value="">Select priority</option>
+                      {Array.from({ length: count }, (_, i) => i + 1).map((n) => (
+                        <option key={n} value={n}>{n}</option>
+                      ))}
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {count > 0 && (
+        <div style={{ marginTop: "1rem", display: "flex", gap: "0.75rem" }}>
+          <button className="primary-button" onClick={handleSave} disabled={!isPeriodOpen || saving}>
+            Save Priorities
+          </button>
+        </div>
+      )}
+
+      {modal && (
+        <AppModal
+          title={modal.title}
+          message={modal.message}
+          confirmText={modal.confirmText}
+          cancelText={modal.cancelText}
+          variant={modal.variant}
+          onConfirm={modal.onConfirm}
+          onCancel={modal.onCancel}
+        />
       )}
     </div>
   );

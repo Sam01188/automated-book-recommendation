@@ -8,6 +8,7 @@ import {
   logout as apiLogout,
   submitToLibrarian,
   updateRecommendationOrder,
+  resetRecommendationOrder,
   fetchCurrentPeriod,
   fetchCurrentHodPeriod,
   fetchOrderPeriods,
@@ -35,7 +36,7 @@ function App() {
   const [session, setSession] = useState(null);
   const [view, setView] = useState("dashboard");
   const [items, setItems] = useState([]);
-  const [stats, setStats] = useState({ total: 0, pending: 0, rejected: 0, highPriority: 0 });
+  const [stats, setStats] = useState({ total: 0, pending: 0, rejected: 0, highPriority: 0, lecturersCount: 0 });
   const [allFilter, setAllFilter] = useState("all");
   const [periods, setPeriods] = useState([]);
   const [selectedPeriod, setSelectedPeriod] = useState(null);
@@ -89,7 +90,12 @@ function App() {
 
     fetchRecommendations(session.token, session.user.role).then((records) => {
       setItems(records);
-      fetchStats(session.token, records).then(setStats);
+      // derive client-side stats (ensure HOD pending reflects unassigned items)
+      const derived = deriveStats(records, session.user.role);
+      // fetch server stats but merge with derived pending/lecturersCount
+      fetchStats(session.token, records)
+        .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
+        .catch(() => setStats(derived));
     });
 
     // Fetch periods for filtering
@@ -109,24 +115,61 @@ function App() {
     refreshPeriodStatus();
   }, [session]);
 
+  useEffect(() => {
+    if (!session) return;
+    if (session.user.role === "librarian" && view === "all") {
+      fetchRecommendations(session.token, session.user.role)
+        .then((records) => {
+          setItems(records);
+          const derived = deriveStats(records, session.user.role);
+          fetchStats(session.token, records)
+            .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
+            .catch(() => setStats(derived));
+        })
+        .catch((err) => console.error("Failed to refresh librarian recommendations:", err));
+    }
+  }, [session, view]);
+
+  useEffect(() => {
+    if (!session || session.user.role !== "librarian" || view !== "all") {
+      return undefined;
+    }
+
+    const interval = setInterval(() => {
+      fetchRecommendations(session.token, session.user.role)
+        .then((records) => {
+          setItems(records);
+          const derived = deriveStats(records, session.user.role);
+          fetchStats(session.token, records)
+            .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
+            .catch(() => setStats(derived));
+        })
+        .catch((err) => console.error("Failed to polling refresh librarian recommendations:", err));
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [session, view]);
+
   const allowedViews = useMemo(() => {
     if (!session || !session.user || !session.user.role) return [];
     return roleViews[session.user.role] || [];
   }, [session]);
 
-  const deriveStats = (records, role = session?.user?.role) => ({
-    total: records.length,
-    pending:
+  const deriveStats = (records, role = session?.user?.role) => {
+    const total = records.length;
+    // For HOD dashboard, pending should reflect number of items with an assigned priority number
+    const pending =
       role === "hod"
-        ? records.filter(
-            (item) =>
-              item.status === "under_review" ||
-              (item.status === "submitted" && !item.reviewedBy)
-          ).length
-        : records.filter((item) => item.status === "submitted" || item.status === "under_review").length,
-    rejected: records.filter((item) => item.status === "rejected").length,
-    highPriority: records.filter((item) => item.priorityRank === 1).length
-  });
+        ? records.filter((item) => Number.isFinite(item.priorityRank)).length
+        : records.filter((item) => item.status === "submitted" || item.status === "under_review").length;
+    const rejected = records.filter((item) => item.status === "rejected").length;
+    const highPriority = records.filter((item) => item.priorityRank === 1).length;
+    // Count distinct lecturers who submitted books (exclude null submitters and rejected items)
+    const lecturerIds = new Set(records.filter(r => r.submittedBy && r.status !== 'rejected').map(r => r.submittedBy._id || r.submittedBy));
+    const lecturersCount = lecturerIds.size;
+    return { total, pending, rejected, highPriority, lecturersCount };
+  };
+
 
   useEffect(() => {
     setStats(deriveStats(items, session?.user?.role));
@@ -176,15 +219,52 @@ function App() {
     const updatedRecords = await updateRecommendationOrder(session.token, orderedIds);
     setItems(updatedRecords);
     setStats(deriveStats(updatedRecords, session.user.role));
+    return updatedRecords;
+  }
+
+  async function handleResetRecommendationOrder() {
+    if (!session) return;
+
+    const updatedRecords = await resetRecommendationOrder(session.token);
+    setItems(updatedRecords);
+    setStats(deriveStats(updatedRecords, session.user.role));
   }
 
   async function handleSubmitToLibrarian() {
     if (!session) return;
 
+    // Submit to librarian and refresh recommendations to ensure submitted items appear in Submissions
     const updatedRecords = await submitToLibrarian(session.token);
-    setItems(updatedRecords);
-    setStats(deriveStats(updatedRecords, session.user.role));
+    // Try to fetch fresh recommendations from server to avoid any stale state
+    try {
+      const fresh = await fetchRecommendations(session.token, session.user.role);
+      setItems(fresh);
+      setStats(deriveStats(fresh, session.user.role));
+      // If server did not mark any items as submitted for this HOD, apply a client-side fallback:
+      const hasSubmitted = fresh.some((r) => r.status === 'submitted' && String(r.reviewedBy?._id || r.reviewedBy) === String(session.user.id));
+      if (!hasSubmitted) {
+        const fallback = fresh.map((r) => {
+          if (Number.isFinite(r.priorityRank) && r.status !== 'rejected') {
+            return { ...r, status: 'submitted', reviewedBy: { _id: session.user.id, name: session.user.name }, submittedToLibrarianAt: new Date().toISOString() };
+          }
+          return r;
+        });
+        setItems(fallback);
+        setStats(deriveStats(fallback, session.user.role));
+      }
+    } catch (err) {
+      // Fallback to whatever submit returned
+      const fallback = (updatedRecords || []).map((r) => {
+        if (Number.isFinite(r.priorityRank) && r.status !== 'rejected') {
+          return { ...r, status: 'submitted', reviewedBy: { _id: session.user.id, name: session.user.name }, submittedToLibrarianAt: new Date().toISOString() };
+        }
+        return r;
+      });
+      setItems(fallback);
+      setStats(deriveStats(fallback, session.user.role));
+    }
     setView("submissions");
+    return updatedRecords;
   }
 
   async function handleUserCreation(userData) {
@@ -252,7 +332,7 @@ function App() {
           onTotalClick={() => setView("submissions")}
           onPendingClick={() => setView("priority")}
           onHighPriorityClick={() => {
-            setAllFilter("high");
+            setAllFilter("prioritized");
             setView("all");
           }}
         />
@@ -273,6 +353,7 @@ function App() {
           onOrderChange={handleRecommendationOrder}
           onSubmit={handleSubmitToLibrarian}
           isPeriodOpen={isHodPeriodOpen}
+          onReset={handleResetRecommendationOrder}
           currentPeriod={currentHodPeriod}
         />
       )}

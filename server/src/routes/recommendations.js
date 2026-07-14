@@ -80,7 +80,6 @@ router.patch("/submit", requireAuth, allowRoles("hod"), async (req, res) => {
     const departmentFilter = buildDepartmentFilter(req.user.department);
     const unrankedCount = await Recommendation.countDocuments({
       ...departmentFilter,
-      orderPeriod: activeHodPeriod._id,
       status: { $ne: "rejected" },
       submittedToLibrarianAt: { $exists: false },
       $or: [{ priorityRank: { $exists: false } }, { priorityRank: null }]
@@ -90,7 +89,6 @@ router.patch("/submit", requireAuth, allowRoles("hod"), async (req, res) => {
     }
 
     await submitDepartmentListToLibrarian({
-      orderPeriodId: activeHodPeriod._id,
       department: req.user.department,
       hodId: req.user.id
     });
@@ -109,30 +107,37 @@ router.patch("/submit", requireAuth, allowRoles("hod"), async (req, res) => {
 
 router.patch("/rank-order", requireAuth, allowRoles("hod"), async (req, res) => {
   try {
-    await finalizeExpiredHodPeriods();
     const activeHodPeriod = await findCurrentHodPeriod();
     if (!activeHodPeriod) {
       return res.status(403).json({ message: "The HOD priority assignment period is closed" });
     }
 
     const orderedIds = Array.isArray(req.body.orderedIds) ? req.body.orderedIds : [];
-    if (orderedIds.length === 0) {
-      return res.status(400).json({ message: "No recommendation order was provided" });
+    const clearedIds = Array.isArray(req.body.clearedIds) ? req.body.clearedIds : [];
+
+    if (orderedIds.length === 0 && clearedIds.length === 0) {
+      return res.status(400).json({ message: "No recommendation changes were provided" });
     }
 
     const departmentFilter = buildDepartmentFilter(req.user.department);
-    const recommendations = await Recommendation.find({
-      _id: { $in: orderedIds },
-      ...departmentFilter,
-      orderPeriod: activeHodPeriod._id,
-      status: { $ne: "rejected" },
-      submittedToLibrarianAt: { $exists: false }
-    });
 
-    if (recommendations.length !== orderedIds.length) {
-      return res.status(400).json({ message: "The ordered list contains recommendations outside your department or active period." });
+    // Validate orderedIds
+    if (orderedIds.length > 0) {
+      const recs = await Recommendation.find({ _id: { $in: orderedIds }, ...departmentFilter, status: { $ne: "rejected" }, submittedToLibrarianAt: { $exists: false } });
+      if (recs.length !== orderedIds.length) {
+        return res.status(400).json({ message: "The ordered list contains recommendations outside your department or already submitted." });
+      }
     }
 
+    // Validate clearedIds
+    if (clearedIds.length > 0) {
+      const clearedRecs = await Recommendation.find({ _id: { $in: clearedIds }, ...departmentFilter, status: { $ne: "rejected" }, submittedToLibrarianAt: { $exists: false } });
+      if (clearedRecs.length !== clearedIds.length) {
+        return res.status(400).json({ message: "The cleared list contains recommendations outside your department or already submitted." });
+      }
+    }
+
+    // Apply rankings to orderedIds
     await Promise.all(
       orderedIds.map((id, index) =>
         Recommendation.findByIdAndUpdate(id, {
@@ -145,6 +150,17 @@ router.patch("/rank-order", requireAuth, allowRoles("hod"), async (req, res) => 
       )
     );
 
+    // Clear ranks for explicitly clearedIds
+    if (clearedIds.length > 0) {
+      await Recommendation.updateMany(
+        { _id: { $in: clearedIds }, ...departmentFilter, status: { $ne: "rejected" }, submittedToLibrarianAt: { $exists: false } },
+        {
+          $set: { priorityRank: null, priority: "unassigned", priorityReason: "", status: "submitted" },
+          $unset: { reviewedBy: "" }
+        }
+      );
+    }
+
     const updated = await Recommendation.find(buildRecommendationFilter(req.user))
       .populate("submittedBy", "name department")
       .populate("reviewedBy", "name")
@@ -154,6 +170,47 @@ router.patch("/rank-order", requireAuth, allowRoles("hod"), async (req, res) => 
     res.json(updated);
   } catch (err) {
     res.status(500).json({ message: "Failed to save recommendation order" });
+  }
+});
+
+// PATCH - Reset priority ranks for current HOD period and department
+router.patch("/reset-order", requireAuth, allowRoles("hod"), async (req, res) => {
+  try {
+    const activeHodPeriod = await findCurrentHodPeriod();
+    if (!activeHodPeriod) {
+      return res.status(403).json({ message: "The HOD priority assignment period is closed" });
+    }
+
+    const departmentFilter = buildDepartmentFilter(req.user.department);
+
+    // Clear ranking and related review fields for the department's recommendations in the active period
+    await Recommendation.updateMany(
+      {
+        ...departmentFilter,
+        orderPeriod: activeHodPeriod._id,
+        status: { $ne: "rejected" },
+        submittedToLibrarianAt: { $exists: false }
+      },
+      {
+        $set: {
+          priorityRank: null,
+          priority: "unassigned",
+          priorityReason: "",
+          status: "submitted"
+        },
+        $unset: { reviewedBy: "" }
+      }
+    );
+
+    const updated = await Recommendation.find(buildRecommendationFilter(req.user))
+      .populate("submittedBy", "name department")
+      .populate("reviewedBy", "name")
+      .populate("orderPeriod", "faculty startDate endDate hodRecommendationDays status")
+      .sort({ createdAt: -1 });
+
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to reset recommendation order" });
   }
 });
 

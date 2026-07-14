@@ -42,12 +42,15 @@ async function findDepartmentHod(department) {
 
 export async function submitDepartmentListToLibrarian({ orderPeriodId, department, hodId, requireCompleteRanking = true }) {
   const departmentFilter = buildDepartmentFilter(department);
-  const recommendations = await Recommendation.find({
+  const query = {
     ...departmentFilter,
-    orderPeriod: orderPeriodId,
     status: { $ne: "rejected" },
     submittedToLibrarianAt: { $exists: false }
-  }).sort({ priorityRank: 1, createdAt: 1 });
+  };
+  if (orderPeriodId) {
+    query.orderPeriod = orderPeriodId;
+  }
+  const recommendations = await Recommendation.find(query).sort({ priorityRank: 1, createdAt: 1 });
 
   if (recommendations.length === 0) {
     return { submittedCount: 0 };

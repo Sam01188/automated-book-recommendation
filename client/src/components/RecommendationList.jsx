@@ -21,7 +21,10 @@ export function CompactList({ items }) {
               {item.author} • {item.publisher}
             </span>
           </div>
-          <span className={`priority ${item.priority}`}>{item.priority}</span>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontWeight: 700 }}>{item.submittedBy?.name || 'Lecturer'}</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{item.department}</div>
+          </div>
         </div>
       ))}
     </div>
