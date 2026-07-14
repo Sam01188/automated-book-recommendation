@@ -104,8 +104,8 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
         </div>
 
         <div style={gridStyle}>
-          <Field label="Publisher Place">
-            <input value={form.publisherPlace} placeholder="Enter publisher place"
+          <Field label="Publisher Place" required>
+            <input value={form.publisherPlace} required placeholder="Enter publisher place"
               onChange={(e) => set("publisherPlace", e.target.value)} disabled={isFormDisabled} />
           </Field>
           <Field label="Edition" required>
@@ -133,8 +133,8 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
         </div>
 
         <div style={gridStyle}>
-          <Field label="Publication Year">
-            <input type="number" value={form.publicationYear} placeholder="e.g., 2024"
+          <Field label="Publication Year" required>
+            <input type="number" value={form.publicationYear} required placeholder="e.g., 2024"
               min="1900" max="2099" onChange={(e) => set("publicationYear", e.target.value)} disabled={isFormDisabled} />
           </Field>
           <Field label="Number of Pages">
@@ -144,7 +144,7 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
         </div>
 
         <div style={gridStyle}>
-          <Field label="Price">
+          <Field label="Price" required>
             <div className="price-input-group">
               <select
                 className="currency-prefix"
@@ -159,12 +159,12 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
                 <option value="GBP">GBP</option>
                 <option value="INR">INR</option>
               </select>
-              <input type="number" value={form.price} placeholder="e.g., 15000"
+              <input type="number" value={form.price} required placeholder="e.g., 15000"
                 min="0" onChange={(e) => set("price", e.target.value)} disabled={isFormDisabled} />
             </div>
           </Field>
-          <Field label="No. of Copies">
-            <input type="number" value={form.copies} placeholder="e.g., 2"
+          <Field label="No. of Copies" required>
+            <input type="number" value={form.copies} required placeholder="e.g., 2"
               min="1" onChange={(e) => set("copies", e.target.value)} disabled={isFormDisabled} />
           </Field>
         </div>

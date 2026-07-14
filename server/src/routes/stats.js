@@ -100,7 +100,7 @@ router.get("/", requireAuth, async (req, res) => {
           { status: "submitted", reviewedBy: { $exists: false } }
         ]
       }),
-      Recommendation.countDocuments({ ...filter, status: "approved" }),
+      Recommendation.countDocuments({ ...filter, status: { $in: ["approved", "submitted"] } }),
       Recommendation.countDocuments({ ...filter, priority: { $ne: "unassigned" } }),
       Recommendation.countDocuments({
         ...filter,

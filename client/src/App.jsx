@@ -71,8 +71,20 @@ function App() {
 
   useEffect(() => {
     const stored = localStorage.getItem("book-rec-session");
-    if (stored) {
-      setSession(JSON.parse(stored));
+    if (!stored) {
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(stored);
+      if (!parsed || !parsed.token || !parsed.user || !parsed.user.role) {
+        throw new Error("Invalid stored session");
+      }
+      setSession(parsed);
+    } catch (error) {
+      console.warn("Failed to restore session from localStorage:", error);
+      localStorage.removeItem("book-rec-session");
+      setSession(null);
     }
   }, []);
 
@@ -84,14 +96,26 @@ function App() {
           setIsPeriodOpen(res.isOpen);
           setCurrentPeriod(res.period);
         })
-        .catch((err) => console.error(err));
+        .catch((err) => {
+          console.error(err);
+          if (err.status === 401) {
+            localStorage.removeItem("book-rec-session");
+            setSession(null);
+          }
+        });
     } else if (session.user.role === "hod") {
       fetchCurrentHodPeriod(session.token)
         .then((res) => {
           setIsHodPeriodOpen(res.isOpen);
           setCurrentHodPeriod(res.period);
         })
-        .catch((err) => console.error(err));
+        .catch((err) => {
+          console.error(err);
+          if (err.status === 401) {
+            localStorage.removeItem("book-rec-session");
+            setSession(null);
+          }
+        });
     }
   };
 
@@ -110,23 +134,17 @@ function App() {
         .catch(() => setStats(derived));
     });
 
-    // Fetch periods for filtering
-    if (session.user.role === "lecturer") {
-      fetchCurrentPeriod(session.token)
-        .then((res) => {
-          const activePeriod = res.period ? [res.period] : [];
-          setPeriods(activePeriod);
-          setSelectedPeriod(res.period?._id || null);
-        })
-        .catch((err) => console.error("Failed to fetch periods:", err));
-    } else if (session.user.role === "librarian") {
-      fetchOrderPeriods(session.token)
-        .then((res) => {
-          setPeriods(res);
-          setSelectedPeriod(resolveLibrarianDisplayPeriod(res)?._id || null);
-        })
-        .catch((err) => console.error("Failed to fetch librarian periods:", err));
-    }
+    // Fetch periods for filtering (needed by lecturer and HOD views)
+    fetchOrderPeriods(session.token)
+      .then((res) => {
+        setPeriods(res);
+        // For lecturer view pick a sensible default selected period
+        if (session.user.role === "lecturer" && res.length > 0) {
+          const currentPeriod = res.find((p) => p.status === "open") || res[res.length - 1];
+          setSelectedPeriod(currentPeriod._id);
+        }
+      })
+      .catch((err) => console.error("Failed to fetch periods:", err));
 
     refreshPeriodStatus();
   }, [session]);
@@ -160,7 +178,7 @@ function App() {
           setPeriods(periodList);
           setSelectedPeriod(resolveLibrarianDisplayPeriod(periodList)?._id || null);
           const derived = deriveStats(records, session.user.role);
-          fetchStats(session.token, records)
+          return fetchStats(session.token, records)
             .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
             .catch(() => setStats(derived));
         })
@@ -378,7 +396,12 @@ function App() {
         />
       )}
       {session.user.role === "hod" && view === "submissions" && (
-        <HodSubmissionsPage items={items} currentUserId={session.user.id} />
+        <HodSubmissionsPage
+          items={items}
+          currentUserId={session.user.id}
+          periods={periods}
+          currentPeriod={currentHodPeriod}
+        />
       )}
 
       {session.user.role === "librarian" && view === "dashboard" && (
