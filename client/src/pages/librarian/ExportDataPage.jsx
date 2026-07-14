@@ -1,4 +1,6 @@
-import { Download, Table } from "lucide-react";
+import { Download, FileText, Table } from "lucide-react";
+import * as XLSX from "xlsx";
+import { jsPDF } from "jspdf";
 import { Card } from "../../components/librarian/Card";
 
 function getOrderedItems(items) {
@@ -9,77 +11,6 @@ function getOrderedItems(items) {
   });
 }
 
-function escapeCsv(value) {
-  return `"${String(value ?? "").replace(/"/g, '""')}"`;
-}
-
-function escapePdfText(value) {
-  return String(value ?? "")
-    .replace(/\\/g, "\\\\")
-    .replace(/\(/g, "\\(")
-    .replace(/\)/g, "\\)");
-}
-
-function buildSimplePdf(lines) {
-  const pageWidth = 595;
-  const pageHeight = 842;
-  const margin = 42;
-  const lineHeight = 14;
-  const maxLinesPerPage = Math.floor((pageHeight - margin * 2) / lineHeight);
-  const pages = [];
-
-  for (let i = 0; i < lines.length; i += maxLinesPerPage) {
-    pages.push(lines.slice(i, i + maxLinesPerPage));
-  }
-
-  const objects = [];
-  const catalogId = 1;
-  const pagesId = 2;
-  let nextId = 3;
-  const pageIds = [];
-  const contentIds = [];
-
-  pages.forEach((pageLines) => {
-    const pageId = nextId++;
-    const contentId = nextId++;
-    pageIds.push(pageId);
-    contentIds.push(contentId);
-
-    const text = [
-      "BT",
-      "/F1 10 Tf",
-      `${margin} ${pageHeight - margin} Td`,
-      ...pageLines.flatMap((line, index) => [
-        index === 0 ? "" : `0 -${lineHeight} Td`,
-        `(${escapePdfText(line).slice(0, 95)}) Tj`
-      ]).filter(Boolean),
-      "ET"
-    ].join("\n");
-
-    objects[contentId] = `<< /Length ${text.length} >>\nstream\n${text}\nendstream`;
-    objects[pageId] = `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> /Contents ${contentId} 0 R >>`;
-  });
-
-  objects[catalogId] = `<< /Type /Catalog /Pages ${pagesId} 0 R >>`;
-  objects[pagesId] = `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageIds.length} >>`;
-
-  let pdf = "%PDF-1.4\n";
-  const offsets = [0];
-  for (let id = 1; id < nextId; id += 1) {
-    offsets[id] = pdf.length;
-    pdf += `${id} 0 obj\n${objects[id]}\nendobj\n`;
-  }
-
-  const xrefOffset = pdf.length;
-  pdf += `xref\n0 ${nextId}\n0000000000 65535 f \n`;
-  for (let id = 1; id < nextId; id += 1) {
-    pdf += `${String(offsets[id]).padStart(10, "0")} 00000 n \n`;
-  }
-  pdf += `trailer\n<< /Size ${nextId} /Root ${catalogId} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
-
-  return new Blob([pdf], { type: "application/pdf" });
-}
-
 export function ExportDataPage({ items }) {
   const orderedItems = getOrderedItems(items);
 
@@ -88,69 +19,111 @@ export function ExportDataPage({ items }) {
     const link = document.createElement("a");
     link.href = url;
     link.download = filename;
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(url);
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   function downloadExcel() {
-    const header = "Department,Rank,Title,Author,ISBN,Publisher,Publisher Place,Edition,Binding,Agree Latest/Cheapest,Publication Year,No. of Pages,Submitted By,Status,Copies,Price,Additional Notes";
-    const rows = orderedItems.map((item) =>
-      [
-        item.department,
-        item.priorityRank,
-        item.title,
-        item.author,
-        item.isbn,
-        item.publisher,
-        item.publisherPlace || "",
-        item.edition,
-        item.binding || "",
-        item.agreeLatest || "",
-        item.publicationYear || "",
-        item.numberOfPages || "",
-        item.submittedBy?.name || "",
-        item.status,
-        item.copies,
-        item.price ? `${item.currency || "LKR"} ${item.price}` : "",
-        item.additionalNotes || ""
-      ].map(escapeCsv).join(",")
-    );
+    const worksheetData = orderedItems.map((item) => ({
+      Department: item.department || "",
+      Rank: item.priorityRank || "",
+      Title: item.title || "",
+      Author: item.author || "",
+      ISBN: item.isbn || "",
+      Publisher: item.publisher || "",
+      "Publisher Place": item.publisherPlace || "",
+      Edition: item.edition || "",
+      Binding: item.binding || "",
+      "Agree Latest/Cheapest": item.agreeLatest || "",
+      "Publication Year": item.publicationYear || "",
+      "No. of Pages": item.numberOfPages || "",
+      "Submitted By": item.submittedBy?.name || "",
+      Status: item.status || "",
+      Copies: item.copies || "",
+      Price: item.price ? `${item.currency || "LKR"} ${item.price}` : "",
+      "Additional Notes": item.additionalNotes || ""
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Recommendations");
+
+    const workbookArray = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
     downloadBlob(
-      new Blob([[header, ...rows].join("\n")], { type: "text/csv" }),
-      `recommendations-${new Date().toISOString().split("T")[0]}.csv`
+      new Blob([workbookArray], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      }),
+      `recommendations-${new Date().toISOString().split("T")[0]}.xlsx`
     );
   }
 
   function downloadPdf() {
-    const lines = [
-      "HoD Submitted Recommendation Lists",
-      `Generated: ${new Date().toLocaleString()}`,
-      ""
-    ];
+    const pdf = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const margin = 36;
+    const top = 44;
+    const lineHeight = 16;
+    const maxWidth = pageWidth - margin * 2;
+
+    pdf.setFontSize(16);
+    pdf.text("HoD Submitted Recommendation Lists", margin, top);
+    pdf.setFontSize(10);
+    pdf.text(`Generated: ${new Date().toLocaleString()}`, margin, top + 20);
+
+    let y = top + 44;
     let currentDepartment = "";
 
     orderedItems.forEach((item) => {
-      if (item.department !== currentDepartment) {
-        currentDepartment = item.department || "Unassigned";
-        lines.push("", `--- Department: ${currentDepartment} ---`);
+      const department = item.department || "Unassigned";
+      if (department !== currentDepartment) {
+        currentDepartment = department;
+        if (y > pdf.internal.pageSize.getHeight() - 120) {
+          pdf.addPage();
+          y = top;
+        }
+        pdf.setFontSize(12);
+        pdf.setFont(undefined, "bold");
+        pdf.text(`Department: ${department}`, margin, y);
+        pdf.setFont(undefined, "normal");
+        y += 18;
       }
-      lines.push(`Rank: ${item.priorityRank || "-"}`);
-      lines.push(`Title: ${item.title}`);
-      lines.push(`Author: ${item.author}`);
-      lines.push(`ISBN: ${item.isbn || "N/A"}`);
-      lines.push(`Publisher: ${item.publisher} (${item.publisherPlace || "N/A"})`);
-      lines.push(`Edition: ${item.edition}`);
-      lines.push(`Binding: ${item.binding || "N/A"} | Agree Latest: ${item.agreeLatest || "N/A"}`);
-      lines.push(`Year: ${item.publicationYear || "N/A"} | Pages: ${item.numberOfPages || "N/A"}`);
-      lines.push(`Copies: ${item.copies} | Price: ${item.price ? `${item.currency || "LKR"} ${item.price}` : "N/A"}`);
-      lines.push(`Submitted By: ${item.submittedBy?.name || "N/A"} | Status: ${item.status}`);
+
+      const blockLines = [
+        `Rank: ${item.priorityRank || "-"}`,
+        `Title: ${item.title || "N/A"}`,
+        `Author: ${item.author || "N/A"}`,
+        `ISBN: ${item.isbn || "N/A"}`,
+        `Publisher: ${item.publisher || "N/A"} (${item.publisherPlace || "N/A"})`,
+        `Edition: ${item.edition || "N/A"}`,
+        `Binding: ${item.binding || "N/A"} | Agree Latest: ${item.agreeLatest || "N/A"}`,
+        `Year: ${item.publicationYear || "N/A"} | Pages: ${item.numberOfPages || "N/A"}`,
+        `Copies: ${item.copies || "N/A"} | Price: ${item.price ? `${item.currency || "LKR"} ${item.price}` : "N/A"}`,
+        `Submitted By: ${item.submittedBy?.name || "N/A"} | Status: ${item.status || "N/A"}`
+      ];
+
       if (item.additionalNotes) {
-        lines.push(`Notes: ${item.additionalNotes}`);
+        blockLines.push(`Notes: ${item.additionalNotes}`);
       }
-      lines.push("--------------------------------------------------------------------------------");
+
+      blockLines.forEach((line) => {
+        const wrappedLines = pdf.splitTextToSize(line, maxWidth);
+        wrappedLines.forEach((wrappedLine) => {
+          if (y > pdf.internal.pageSize.getHeight() - 40) {
+            pdf.addPage();
+            y = top;
+          }
+          pdf.text(wrappedLine, margin, y);
+          y += lineHeight;
+        });
+      });
+
+      y += 8;
     });
 
-    downloadBlob(buildSimplePdf(lines), `recommendations-${new Date().toISOString().split("T")[0]}.pdf`);
+    const pdfBlob = pdf.output("blob");
+    downloadBlob(pdfBlob, `recommendations-${new Date().toISOString().split("T")[0]}.pdf`);
   }
 
   function handleDownloadClick(event, download) {
@@ -168,7 +141,7 @@ export function ExportDataPage({ items }) {
               <Table size={32} />
             </div>
             <h3>Export as Excel</h3>
-            <p>Download ranked HoD lists as a CSV file compatible with Excel and spreadsheet applications.</p>
+            <p>Download ranked HoD lists as an XLSX workbook compatible with Excel and spreadsheet applications.</p>
             <button className="btn btn-primary btn-sm" onClick={(event) => handleDownloadClick(event, downloadExcel)}>
               <Download size={16} /> Download Excel
             </button>
