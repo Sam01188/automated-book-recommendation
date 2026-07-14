@@ -31,13 +31,19 @@ function buildRecommendationFilter(user) {
   return {};
 }
 
+function buildLibrarianFilter(activePeriodId) {
+  return {
+    status: "submitted",
+    submittedToLibrarianAt: { $exists: true, $ne: null },
+    priorityRank: { $exists: true, $ne: null },
+    orderPeriod: activePeriodId
+  };
+}
+
 async function findCurrentOpenPeriod() {
-  const now = new Date();
   return OrderPeriod.findOne({
-    status: "open",
-    startDate: { $lte: now },
-    endDate: { $gte: now }
-  }).sort({ startDate: -1 });
+    status: "open"
+  }).sort({ createdAt: -1, startDate: -1 });
 }
 
 async function findActiveHodPeriod(periodId) {
@@ -53,11 +59,58 @@ async function findCurrentHodPeriod() {
   return OrderPeriod.findOne({ status: "hod_priority" }).sort({ startDate: -1 });
 }
 
+async function findCurrentLecturerPeriod() {
+  return findCurrentOpenPeriod();
+}
+
+async function findLibrarianDisplayPeriod() {
+  const activePeriod = await OrderPeriod.findOne({
+    status: { $in: ["open", "hod_priority"] }
+  }).sort({ createdAt: -1, startDate: -1 });
+
+  if (activePeriod) {
+    return activePeriod;
+  }
+
+  return OrderPeriod.findOne({ status: "closed" }).sort({ endDate: -1, updatedAt: -1 });
+}
+
 // GET recommendations by role.
 router.get("/", requireAuth, async (req, res) => {
   try {
     await finalizeExpiredHodPeriods();
-    const filter = buildRecommendationFilter(req.user);
+    const activeLibrarianPeriod = req.user.role === "librarian" ? await findLibrarianDisplayPeriod() : null;
+    const activeLecturerPeriod = req.user.role === "lecturer" ? await findCurrentLecturerPeriod() : null;
+    const activeHodPeriod = req.user.role === "hod" ? await findCurrentHodPeriod() : null;
+
+    if (req.user.role === "librarian" && !activeLibrarianPeriod) {
+      return res.json([]);
+    }
+
+    if (req.user.role === "lecturer" && !activeLecturerPeriod) {
+      return res.json([]);
+    }
+
+    if (req.user.role === "hod" && !activeHodPeriod) {
+      return res.json([]);
+    }
+
+    let filter = buildRecommendationFilter(req.user);
+
+    if (req.user.role === "librarian") {
+      filter = buildLibrarianFilter(activeLibrarianPeriod._id);
+    } else if (req.user.role === "lecturer") {
+      filter = {
+        ...filter,
+        orderPeriod: activeLecturerPeriod._id
+      };
+    } else if (req.user.role === "hod") {
+      filter = {
+        ...filter,
+        orderPeriod: activeHodPeriod._id
+      };
+    }
+
     const recommendations = await Recommendation.find(filter)
       .populate("submittedBy", "name department")
       .populate("reviewedBy", "name")
@@ -352,7 +405,20 @@ router.patch("/:id/status", requireAuth, allowRoles("librarian"), async (req, re
 // GET - Export CSV (librarian only)
 router.get("/export/:format", requireAuth, allowRoles("librarian"), async (req, res) => {
   try {
-    const rows = await Recommendation.find(buildRecommendationFilter(req.user))
+    await finalizeExpiredHodPeriods();
+    const activeLibrarianPeriod = await findLibrarianDisplayPeriod();
+
+    if (!activeLibrarianPeriod) {
+      if (req.params.format === "pdf") {
+        return res.json({ message: "No active order period found", data: [] });
+      }
+
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", "attachment; filename=recommendations.csv");
+      return res.send("");
+    }
+
+    const rows = await Recommendation.find(buildLibrarianFilter(activeLibrarianPeriod._id))
       .populate("submittedBy", "name department")
       .populate("reviewedBy", "name")
       .populate("orderPeriod", "faculty startDate endDate hodRecommendationDays status")

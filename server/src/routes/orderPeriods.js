@@ -31,12 +31,7 @@ router.get("/", requireAuth, allowRoles("librarian", "hod", "admin"), async (req
 router.get("/current", requireAuth, async (req, res) => {
   try {
     await finalizeExpiredHodPeriods();
-    const now = new Date();
-    const period = await OrderPeriod.findOne({
-      status: "open",
-      startDate: { $lte: now },
-      endDate: { $gte: now }
-    }).sort({ startDate: -1 });
+    const period = await OrderPeriod.findOne({ status: "open" }).sort({ createdAt: -1, startDate: -1 });
 
     res.json({ isOpen: Boolean(period), period });
   } catch (err) {

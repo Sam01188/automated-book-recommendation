@@ -4,9 +4,13 @@ import { Card } from "../../components/librarian/Card";
 import { DataTable } from "../../components/librarian/DataTable";
 import { Badge } from "../../components/librarian/Badge";
 
-export function AllRecommendationsPage({ items, filterPriority = "all" }) {
+export function AllRecommendationsPage({ items, filterPriority = "all", currentPeriod = null }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const period = currentPeriod || items[0]?.orderPeriod;
+  const periodStatus = period?.status;
+  const isCurrentPeriod = periodStatus === "open" || periodStatus === "hod_priority";
+  const periodLabel = period ? (isCurrentPeriod ? "Current Period" : "Previous Period") : "No Period Selected";
 
   // Get distinct list of departments present in items with a fallback to default departments
   const defaultDepartments = ["DCEE", "DEIE", "DMENA", "DMME"];
@@ -61,6 +65,20 @@ export function AllRecommendationsPage({ items, filterPriority = "all" }) {
 
   return (
     <div className="dashboard-container">
+      <section className="large-panel" style={{ marginBottom: "1rem" }}>
+        <Card className="full-width" style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
+              All Recommendations
+            </div>
+            <h3 style={{ margin: 0 }}>{period ? period.faculty || "Engineering Faculty" : "Engineering Faculty"}</h3>
+          </div>
+          <span className={`badge ${isCurrentPeriod ? "badge-success" : "badge-secondary"}`}>
+            {periodLabel}
+          </span>
+        </Card>
+      </section>
+
             <div className="search-wrapper" style={{ flex: 1, minWidth: "250px", position: "relative" }}>
               <Search size={18} className="search-icon" style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
               <input
