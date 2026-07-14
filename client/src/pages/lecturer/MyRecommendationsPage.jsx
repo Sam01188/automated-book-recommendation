@@ -25,10 +25,10 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
 
   // Filter items by search term and selected period
   const filteredItems = items.filter((item) => {
-    // Filter by period
-    if (selectedPeriod && item.orderPeriod && item.orderPeriod._id !== selectedPeriod) {
-      // Also check if orderPeriod is a string ID (for compatibility)
-      if (typeof item.orderPeriod === "string" && item.orderPeriod !== selectedPeriod) {
+    // Filter by period - if selectedPeriod is set, only show items from that period
+    if (selectedPeriod && item.orderPeriod) {
+      const itemPeriodId = typeof item.orderPeriod === "string" ? item.orderPeriod : item.orderPeriod._id;
+      if (String(itemPeriodId) !== String(selectedPeriod)) {
         return false;
       }
     }

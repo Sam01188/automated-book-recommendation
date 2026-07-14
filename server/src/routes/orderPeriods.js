@@ -15,7 +15,7 @@ function normalizePeriodPayload(body) {
   };
 }
 
-router.get("/", requireAuth, allowRoles("librarian", "hod", "admin"), async (req, res) => {
+router.get("/", requireAuth, allowRoles("librarian", "hod", "admin", "lecturer"), async (req, res) => {
   try {
     await finalizeExpiredHodPeriods();
     const periods = await OrderPeriod.find()
