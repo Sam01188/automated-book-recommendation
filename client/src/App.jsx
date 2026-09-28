@@ -48,6 +48,18 @@ function App() {
     return localStorage.getItem("book-rec-theme") || "dark";
   });
 
+  const resolveLibrarianDisplayPeriod = (periods) => {
+    if (!Array.isArray(periods) || periods.length === 0) {
+      return null;
+    }
+
+    return (
+      periods.find((period) => period.status === "open" || period.status === "hod_priority") ||
+      periods.find((period) => period.status === "closed") ||
+      null
+    );
+  };
+
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem("book-rec-theme", theme);
@@ -59,20 +71,8 @@ function App() {
 
   useEffect(() => {
     const stored = localStorage.getItem("book-rec-session");
-    if (!stored) {
-      return;
-    }
-
-    try {
-      const parsed = JSON.parse(stored);
-      if (!parsed || !parsed.token || !parsed.user || !parsed.user.role) {
-        throw new Error("Invalid stored session");
-      }
-      setSession(parsed);
-    } catch (error) {
-      console.warn("Failed to restore session from localStorage:", error);
-      localStorage.removeItem("book-rec-session");
-      setSession(null);
+    if (stored) {
+      setSession(JSON.parse(stored));
     }
   }, []);
 
@@ -84,26 +84,14 @@ function App() {
           setIsPeriodOpen(res.isOpen);
           setCurrentPeriod(res.period);
         })
-        .catch((err) => {
-          console.error(err);
-          if (err.status === 401) {
-            localStorage.removeItem("book-rec-session");
-            setSession(null);
-          }
-        });
+        .catch((err) => console.error(err));
     } else if (session.user.role === "hod") {
       fetchCurrentHodPeriod(session.token)
         .then((res) => {
           setIsHodPeriodOpen(res.isOpen);
           setCurrentHodPeriod(res.period);
         })
-        .catch((err) => {
-          console.error(err);
-          if (err.status === 401) {
-            localStorage.removeItem("book-rec-session");
-            setSession(null);
-          }
-        });
+        .catch((err) => console.error(err));
     }
   };
 
@@ -122,17 +110,23 @@ function App() {
         .catch(() => setStats(derived));
     });
 
-    // Fetch periods for filtering (needed by lecturer and HOD views)
-    fetchOrderPeriods(session.token)
-      .then((res) => {
-        setPeriods(res);
-        // For lecturer view pick a sensible default selected period
-        if (session.user.role === "lecturer" && res.length > 0) {
-          const currentPeriod = res.find((p) => p.status === "open") || res[res.length - 1];
-          setSelectedPeriod(currentPeriod._id);
-        }
-      })
-      .catch((err) => console.error("Failed to fetch periods:", err));
+    // Fetch periods for filtering
+    if (session.user.role === "lecturer") {
+      fetchCurrentPeriod(session.token)
+        .then((res) => {
+          const activePeriod = res.period ? [res.period] : [];
+          setPeriods(activePeriod);
+          setSelectedPeriod(res.period?._id || null);
+        })
+        .catch((err) => console.error("Failed to fetch periods:", err));
+    } else if (session.user.role === "librarian") {
+      fetchOrderPeriods(session.token)
+        .then((res) => {
+          setPeriods(res);
+          setSelectedPeriod(resolveLibrarianDisplayPeriod(res)?._id || null);
+        })
+        .catch((err) => console.error("Failed to fetch librarian periods:", err));
+    }
 
     refreshPeriodStatus();
   }, [session]);
@@ -140,9 +134,11 @@ function App() {
   useEffect(() => {
     if (!session) return;
     if (session.user.role === "librarian" && view === "all") {
-      fetchRecommendations(session.token, session.user.role)
-        .then((records) => {
+      Promise.all([fetchRecommendations(session.token, session.user.role), fetchOrderPeriods(session.token)])
+        .then(([records, periodList]) => {
           setItems(records);
+          setPeriods(periodList);
+          setSelectedPeriod(resolveLibrarianDisplayPeriod(periodList)?._id || null);
           const derived = deriveStats(records, session.user.role);
           fetchStats(session.token, records)
             .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
@@ -158,11 +154,13 @@ function App() {
     }
 
     const interval = setInterval(() => {
-      fetchRecommendations(session.token, session.user.role)
-        .then((records) => {
+      Promise.all([fetchRecommendations(session.token, session.user.role), fetchOrderPeriods(session.token)])
+        .then(([records, periodList]) => {
           setItems(records);
+          setPeriods(periodList);
+          setSelectedPeriod(resolveLibrarianDisplayPeriod(periodList)?._id || null);
           const derived = deriveStats(records, session.user.role);
-          return fetchStats(session.token, records)
+          fetchStats(session.token, records)
             .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
             .catch(() => setStats(derived));
         })
@@ -380,12 +378,7 @@ function App() {
         />
       )}
       {session.user.role === "hod" && view === "submissions" && (
-        <HodSubmissionsPage
-          items={items}
-          currentUserId={session.user.id}
-          periods={periods}
-          currentPeriod={currentHodPeriod}
-        />
+        <HodSubmissionsPage items={items} currentUserId={session.user.id} />
       )}
 
       {session.user.role === "librarian" && view === "dashboard" && (
@@ -402,7 +395,7 @@ function App() {
         />
       )}
       {session.user.role === "librarian" && view === "all" && (
-        <AllRecommendationsPage items={items} filterPriority={allFilter} />
+        <AllRecommendationsPage items={items} filterPriority={allFilter} currentPeriod={resolveLibrarianDisplayPeriod(periods)} />
       )}
       {session.user.role === "librarian" && view === "periods" && (
         <OrderTimePeriodsPage
