@@ -26,7 +26,17 @@ const recommendationSchema = new mongoose.Schema(
     department:     { type: String, default: "" },
     status: {
       type: String,
-      enum: ["submitted", "under_review", "rejected"],
+      enum: [
+        "submitted",
+        "under_review",
+        "rejected",
+        // Librarian lifecycle states
+        "selected",
+        "ordered",
+        "bought",
+        "delivered",
+        "ready"
+      ],
       default: "submitted",
     },
     priority: {
