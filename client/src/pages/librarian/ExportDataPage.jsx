@@ -15,9 +15,16 @@ function getDepartmentKey(item) {
   return item.department || "Unassigned";
 }
 
+function getFinalDepartmentItems(items) {
+  return getOrderedItems(
+    items.filter((item) => item.status !== "rejected" && Number.isFinite(item.priorityRank))
+  );
+}
+
 function buildWorksheetData(items) {
   return items.map((item) => ({
     Rank: item.priorityRank || "",
+    Department: item.department || "Unassigned",
     Title: item.title || "",
     Author: item.author || "",
     ISBN: item.isbn || "",
@@ -46,7 +53,7 @@ function sanitizeSheetName(name) {
 }
 
 export function ExportDataPage({ items }) {
-  const orderedItems = getOrderedItems(items);
+  const finalDepartmentItems = getFinalDepartmentItems(items);
 
   function downloadBlob(blob, filename) {
     const url = URL.createObjectURL(blob);
@@ -62,7 +69,7 @@ export function ExportDataPage({ items }) {
   function downloadExcel() {
     const workbook = XLSX.utils.book_new();
 
-    const departments = orderedItems.reduce((grouped, item) => {
+    const departments = finalDepartmentItems.reduce((grouped, item) => {
       const department = getDepartmentKey(item);
       if (!grouped[department]) {
         grouped[department] = [];
@@ -71,13 +78,13 @@ export function ExportDataPage({ items }) {
       return grouped;
     }, {});
 
-    const summaryData = orderedItems.map((item) => ({
+    const summaryData = finalDepartmentItems.map((item) => ({
       Department: getDepartmentKey(item),
       ...buildWorksheetData([item])[0]
     }));
 
     const summarySheet = XLSX.utils.json_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(workbook, summarySheet, "All Recommendations");
+    XLSX.utils.book_append_sheet(workbook, summarySheet, "HoD Final List");
 
     Object.entries(departments).forEach(([department, departmentItems]) => {
       const worksheet = XLSX.utils.json_to_sheet(buildWorksheetData(departmentItems));
@@ -89,7 +96,7 @@ export function ExportDataPage({ items }) {
       new Blob([workbookArray], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       }),
-      `recommendations-${new Date().toISOString().split("T")[0]}.xlsx`
+      `hod-final-list-${new Date().toISOString().split("T")[0]}.xlsx`
     );
   }
 
@@ -102,14 +109,14 @@ export function ExportDataPage({ items }) {
     const maxWidth = pageWidth - margin * 2;
 
     pdf.setFontSize(16);
-    pdf.text("HoD Submitted Recommendation Lists", margin, top);
+    pdf.text("HoD Final Recommendation List by Department", margin, top);
     pdf.setFontSize(10);
     pdf.text(`Generated: ${new Date().toLocaleString()}`, margin, top + 20);
 
     let y = top + 44;
     let currentDepartment = "";
 
-    orderedItems.forEach((item) => {
+    finalDepartmentItems.forEach((item) => {
       const department = item.department || "Unassigned";
       if (department !== currentDepartment) {
         currentDepartment = department;
@@ -157,7 +164,7 @@ export function ExportDataPage({ items }) {
     });
 
     const pdfBlob = pdf.output("blob");
-    downloadBlob(pdfBlob, `recommendations-${new Date().toISOString().split("T")[0]}.pdf`);
+    downloadBlob(pdfBlob, `hod-final-list-${new Date().toISOString().split("T")[0]}.pdf`);
   }
 
   function handleDownloadClick(event, download) {
@@ -174,8 +181,8 @@ export function ExportDataPage({ items }) {
             <div className="export-icon excel">
               <Table size={32} />
             </div>
-            <h3>Export as Excel</h3>
-            <p>Download ranked HoD lists as an XLSX workbook compatible with Excel and spreadsheet applications.</p>
+            <h3>Export HoD Final List (Excel)</h3>
+            <p>Download the department-wise final ranked list as an XLSX workbook with one sheet per department.</p>
             <button className="btn btn-primary btn-sm" onClick={(event) => handleDownloadClick(event, downloadExcel)}>
               <Download size={16} /> Download Excel
             </button>
@@ -185,8 +192,8 @@ export function ExportDataPage({ items }) {
             <div className="export-icon pdf">
               <FileText size={32} />
             </div>
-            <h3>Export as PDF</h3>
-            <p>Download a department-grouped PDF report of the ordered recommendation lists.</p>
+            <h3>Export HoD Final List (PDF)</h3>
+            <p>Download the final department-wise recommendation summary as a grouped PDF report.</p>
             <button className="btn btn-primary btn-sm" onClick={(event) => handleDownloadClick(event, downloadPdf)}>
               <Download size={16} /> Download PDF
             </button>
@@ -198,7 +205,8 @@ export function ExportDataPage({ items }) {
         <h3 className="panel-title">Export Information</h3>
         <Card className="info-card">
           <div className="info-content">
-            <p><strong>Total Records:</strong> {items.length} recommendations</p>
+            <p><strong>Final HoD Records:</strong> {finalDepartmentItems.length} ranked recommendations</p>
+            <p><strong>Departments Included:</strong> {new Set(finalDepartmentItems.map((item) => getDepartmentKey(item))).size}</p>
             <p><strong>Last Updated:</strong> {new Date().toLocaleDateString('en-GB')}</p>
           </div>
         </Card>
