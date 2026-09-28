@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Pencil, Trash2, ChevronDown, Save, X as XIcon } from "lucide-react";
-import { deleteRecommendation, updateRecommendation } from "../../api";
+import { deleteRecommendation, updateRecommendation, fetchRecommendations } from "../../api";
 import { AppModal } from "../../components/AppModal";
 
 export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, token, periods, selectedPeriod, onSelectedPeriodChange, onItemsUpdate }) {
@@ -11,6 +11,7 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
   const [isLoading, setIsLoading] = useState(false);
   const [modal, setModal] = useState(null);
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
+  const [activeTab, setActiveTab] = useState("requests");
 
   useEffect(() => {
     const handleThemeChange = () => {
@@ -42,6 +43,28 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
       item.publisher?.toLowerCase().includes(search)
     );
   });
+
+  // Poll for status updates when viewing Status tab
+  useEffect(() => {
+    if (activeTab !== "status") return undefined;
+    let cancelled = false;
+    async function refresh() {
+      try {
+        const fresh = await fetchRecommendations(token, "lecturer");
+        if (!cancelled && onItemsUpdate) onItemsUpdate(fresh);
+      } catch (err) {
+        // ignore polling errors
+      }
+    }
+
+    // initial refresh and interval
+    refresh();
+    const id = setInterval(refresh, 8000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [activeTab, token, onItemsUpdate]);
 
   const handleDelete = (itemId) => {
     setPendingDeleteId(itemId);
@@ -119,6 +142,33 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
   return (
     <div className="dashboard-container">
       <div className="large-panel">
+        <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
+          <button
+            onClick={() => setActiveTab("requests")}
+            style={{
+              padding: "0.5rem 0.75rem",
+              border: "none",
+              background: activeTab === "requests" ? "var(--surface)" : "transparent",
+              fontWeight: activeTab === "requests" ? 700 : 600,
+              cursor: "pointer"
+            }}
+          >
+            My Requests
+          </button>
+          <button
+            onClick={() => setActiveTab("status")}
+            style={{
+              padding: "0.5rem 0.75rem",
+              border: "none",
+              background: activeTab === "status" ? "var(--surface)" : "transparent",
+              fontWeight: activeTab === "status" ? 700 : 600,
+              cursor: "pointer"
+            }}
+          >
+            Status
+          </button>
+        </div>
+
         <div style={{ display: "flex", alignItems: "center", gap: "2.5rem", marginBottom: "1.5rem" }}>
           <h2 className="panel-title" style={{ margin: 0 }}>My Book Recommendations</h2>
           
@@ -163,7 +213,8 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
           </div>
         </div>
 
-        {filteredItems.length === 0 ? (
+        {activeTab === "requests" ? (
+          filteredItems.length === 0 ? (
           /* Empty State */
           <div style={{
           borderRadius: "var(--radius)",
@@ -175,55 +226,107 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
         }}>
           {items.length === 0 ? "No Book Recommendations Found." : "No Results Found."}
         </div>
-      ) : (
-        /* Table */
-        <div style={{
-          borderRadius: "var(--radius)",
-          border: "1px solid var(--border)",
-          overflow: "hidden"
-        }}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ minWidth: "1100px", width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                {["Title", "Author", "ISBN Number", "Publisher", "Edition", "Year", "Binding", "Copies", "Price (LKR)", "Status", "Rank", "Actions"].map((col) => (
-                  <th key={col} style={{
-                    background: "var(--surface-hover)",
-                    padding: "0.875rem 1rem",
-                    textAlign: "left",
-                    fontSize: "0.7rem",
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.07em",
-                    color: "var(--text-muted)",
-                    whiteSpace: "nowrap"
-                  }}>
-                    {col}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredItems.map((item) => (
-                <RecommendationRow 
-                  key={item._id} 
-                  item={item}
-                  isPeriodOpen={isPeriodOpen}
-                  onDelete={() => handleDelete(item._id)}
-                  onEdit={() => handleOpenEdit(item)}
-                  onSave={() => handleSaveEdit(item._id)}
-                  onCancel={handleCancelEdit}
-                  isEditing={editingId === item._id}
-                  editForm={editForm}
-                  onFormChange={setEditForm}
-                  isLoading={isLoading}
-                />
-              ))}
-            </tbody>
-            </table>
+          ) : (
+            /* Table */
+            <div style={{
+              borderRadius: "var(--radius)",
+              border: "1px solid var(--border)",
+              overflow: "hidden"
+            }}>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ minWidth: "1100px", width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    {["Title", "Author", "ISBN Number", "Publisher", "Edition", "Year", "Binding", "Copies", "Price (LKR)", "Status", "Rank", "Actions"].map((col) => (
+                      <th key={col} style={{
+                        background: "var(--surface-hover)",
+                        padding: "0.875rem 1rem",
+                        textAlign: "left",
+                        fontSize: "0.7rem",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.07em",
+                        color: "var(--text-muted)",
+                        whiteSpace: "nowrap"
+                      }}>
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredItems.map((item) => (
+                    <RecommendationRow 
+                      key={item._id} 
+                      item={item}
+                      isPeriodOpen={isPeriodOpen}
+                      onDelete={() => handleDelete(item._id)}
+                      onEdit={() => handleOpenEdit(item)}
+                      onSave={() => handleSaveEdit(item._id)}
+                      onCancel={handleCancelEdit}
+                      isEditing={editingId === item._id}
+                      editForm={editForm}
+                      onFormChange={setEditForm}
+                      isLoading={isLoading}
+                    />
+                  ))}
+                </tbody>
+                </table>
+              </div>
+            </div>
+          )
+        ) : (
+          /* Status tab */
+          <div style={{
+            borderRadius: "var(--radius)",
+            border: "1px solid var(--border)",
+            overflow: "hidden"
+          }}>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ minWidth: "700px", width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    {['Title','Edition','ISBN','Status'].map(col => (
+                      <th key={col} style={{
+                        background: "var(--surface-hover)",
+                        padding: "0.875rem 1rem",
+                        textAlign: "left",
+                        fontSize: "0.7rem",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.07em",
+                        color: "var(--text-muted)",
+                        whiteSpace: "nowrap"
+                      }}>{col}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredItems.map(item => (
+                    <tr key={item._id} style={{ borderTop: '1px solid var(--border)' }}>
+                      <td style={{ padding: '0.875rem 1rem', fontWeight: 700 }}>{item.title}</td>
+                      <td style={{ padding: '0.875rem 1rem' }}>{item.edition || '—'}</td>
+                      <td style={{ padding: '0.875rem 1rem' }}>{item.isbn || '—'}</td>
+                      <td style={{ padding: '0.875rem 1rem' }}>
+                        <span style={{
+                          padding: '0.2rem 0.65rem',
+                          borderRadius: '2rem',
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                          background: item.status === 'selected' ? 'rgba(var(--primary-rgb), 0.15)' : 'var(--surface-hover)',
+                          color: item.status === 'selected' ? 'var(--primary)' : 'var(--text-muted)',
+                          border: `1px solid ${item.status === 'selected' ? 'rgba(var(--primary-rgb), 0.3)' : 'var(--border)'}`
+                        }}>{(item.status || 'submitted').replace(/_/g,' ')}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
 
       {modal && (

@@ -21,8 +21,9 @@ function buildRecommendationFilter(user) {
   }
 
   if (user.role === "librarian") {
+    // Librarians should see recommendations that have been submitted to them and have a priority rank,
+    // regardless of the finer-grained lifecycle status (selected/ordered/delivered/etc.).
     return {
-      status: "submitted",
       submittedToLibrarianAt: { $exists: true, $ne: null },
       priorityRank: { $exists: true, $ne: null }
     };
@@ -379,7 +380,17 @@ router.patch("/:id/priority", requireAuth, allowRoles("hod"), async (req, res) =
 // PATCH - Librarian updates status
 router.patch("/:id/status", requireAuth, allowRoles("librarian"), async (req, res) => {
   try {
-    const allowedStatuses = ["submitted", "under_review", "rejected"];
+    const allowedStatuses = [
+      "submitted",
+      "under_review",
+      "rejected",
+      // Librarian lifecycle
+      "selected",
+      "ordered",
+      "bought",
+      "delivered",
+      "ready"
+    ];
     if (!allowedStatuses.includes(req.body.status)) {
       return res.status(400).json({ message: "Invalid recommendation status" });
     }

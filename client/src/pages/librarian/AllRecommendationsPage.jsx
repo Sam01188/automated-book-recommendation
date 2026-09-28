@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { Card } from "../../components/librarian/Card";
 import { DataTable } from "../../components/librarian/DataTable";
 import { Badge } from "../../components/librarian/Badge";
+import { updateRecommendationStatus, fetchRecommendations } from "../../api";
 
 export function AllRecommendationsPage({ items, filterPriority = "all", currentPeriod = null }) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -21,7 +22,7 @@ export function AllRecommendationsPage({ items, filterPriority = "all", currentP
     ])
   ).sort();
 
-  const filteredItems = items.filter((item) => {
+  const filteredItems = localItems.filter((item) => {
     const search = searchTerm.toLowerCase();
     const matchesSearch =
       item.title?.toLowerCase().includes(search) ||
@@ -37,11 +38,24 @@ export function AllRecommendationsPage({ items, filterPriority = "all", currentP
     return (a.priorityRank || 9999) - (b.priorityRank || 9999);
   });
 
+  useEffect(() => {
+    // Sync local copy when prop changes but preserve manual selections where possible.
+    const next = items || [];
+    setLocalItems(next);
+    // Remove any selected ids that no longer exist in the new items list, but keep others.
+    setSelectedIds((prev) => prev.filter(id => next.some(it => String(it._id) === String(id))));
+  }, [items]);
+
   const getStatusBadgeType = (status) => {
     const statusMap = {
       submitted: "warning",
       rejected: "danger",
-      under_review: "info"
+      under_review: "info",
+      selected: "primary",
+      ordered: "info",
+      bought: "success",
+      delivered: "success",
+      ready: "success"
     };
     return statusMap[status] || "default";
   };
@@ -144,29 +158,90 @@ export function AllRecommendationsPage({ items, filterPriority = "all", currentP
               No recommendations found matching the criteria.
             </div>
           ) : (
-            <DataTable
-              columns={tableColumns}
-              data={filteredItems}
-              renderRow={(item) => (
-                <>
-                  {activeTab === "all" && <td><span className="badge badge-info">{item.department || "Unassigned"}</span></td>}
-                  <td><strong>{item.priorityRank || "N/A"}</strong></td>
-                  <td><strong>{item.title}</strong></td>
-                  <td>{item.author}</td>
-                  <td>{item.isbn || "N/A"}</td>
-                  <td>{item.edition || "N/A"}</td>
-                  <td>{item.copies ?? 0}</td>
-                  <td>
-                    {item.price
-                      ? `${item.currency || "LKR"} ${Number(item.price).toLocaleString()}`
-                      : "N/A"}
-                  </td>
-                  <td>{item.publisher}</td>
-                  <td><Badge label={item.status} type={getStatusBadgeType(item.status)} /></td>
-                  <td className="text-muted">{item.submittedBy?.name || "N/A"}</td>
-                </>
-              )}
-            />
+            <div>
+              <div style={{ marginBottom: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button
+                  className="secondary-button"
+                  onClick={async () => {
+                    // select cheapest item per department (numeric price compare)
+                    const byDept = {};
+                    filteredItems.forEach(it => {
+                      const price = Number(it.price);
+                      if (!Number.isFinite(price)) return;
+                      const key = it.department || '___';
+                      if (!byDept[key] || price < Number(byDept[key].price)) byDept[key] = it;
+                    });
+                    const ids = Array.from(new Set(Object.values(byDept).map(i => i._id)));
+                    // Set selection only for items found; preserve any manual selections
+                    setSelectedIds((prev) => Array.from(new Set([...prev.filter(id => ids.indexOf(id) === -1), ...ids])));
+                    // mark selected on server and refresh localItems
+                    try {
+                      const token = localStorage.getItem('book-rec-session') ? JSON.parse(localStorage.getItem('book-rec-session')).token : 'demo-token';
+                      await Promise.all(ids.map(id => updateRecommendationStatus(token, id, 'selected')));
+                      const fresh = await fetchRecommendations(token, 'librarian');
+                      setLocalItems(fresh);
+                    } catch (err) {
+                      console.error('Failed to select items', err);
+                    }
+                  }}
+                >Select cheapest per department</button>
+
+                <select value={applyStatus} onChange={(e) => setApplyStatus(e.target.value)} style={{ padding: '0.35rem' }}>
+                  <option value="">Set status for selected</option>
+                  <option value="ordered">Placed Order</option>
+                  <option value="bought">Bought</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="ready">Ready in Library</option>
+                </select>
+
+                <button className="primary-button" onClick={async () => {
+                  if (!applyStatus || selectedIds.length === 0) return;
+                  try {
+                    const token = localStorage.getItem('book-rec-session') ? JSON.parse(localStorage.getItem('book-rec-session')).token : 'demo-token';
+                    await Promise.all(selectedIds.map(id => updateRecommendationStatus(token, id, applyStatus)));
+                    const fresh = await fetchRecommendations(token, 'librarian');
+                    // update local items immediately and preserve manual selections
+                    setLocalItems(fresh);
+                  } catch (err) {
+                    console.error('Failed to apply status', err);
+                  }
+                }}>Apply</button>
+              </div>
+
+                <DataTable
+                columns={[{ key: 'select', label: '' }, ...tableColumns]}
+                data={filteredItems}
+                renderRow={(item) => (
+                  <>
+                    <td>
+                      <input type="checkbox" checked={selectedIds.includes(item._id)} onChange={(e) => {
+                        setSelectedIds(prev => {
+                          const next = new Set(prev);
+                          if (e.target.checked) next.add(item._id);
+                          else next.delete(item._id);
+                          return Array.from(next);
+                        });
+                      }} />
+                    </td>
+                    {activeTab === "all" && <td><span className="badge badge-info">{item.department || "Unassigned"}</span></td>}
+                    <td><strong>{item.priorityRank || "N/A"}</strong></td>
+                    <td><strong>{item.title}</strong></td>
+                    <td>{item.author}</td>
+                    <td>{item.isbn || "N/A"}</td>
+                    <td>{item.edition || "N/A"}</td>
+                    <td>{item.copies ?? 0}</td>
+                    <td>
+                      {item.price
+                        ? `${item.currency || "LKR"} ${Number(item.price).toLocaleString()}`
+                        : "N/A"}
+                    </td>
+                    <td>{item.publisher}</td>
+                    <td><Badge label={item.status} type={getStatusBadgeType(item.status)} /></td>
+                    <td className="text-muted">{item.submittedBy?.name || "N/A"}</td>
+                  </>
+                )}
+              />
+            </div>
           )}
         </Card>
 

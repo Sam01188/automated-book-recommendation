@@ -199,6 +199,23 @@ export async function updateRecommendation(token, id, payload) {
   return response.json();
 }
 
+export async function updateRecommendationStatus(token, id, status) {
+  if (token === "demo-token") return;
+
+  const response = await fetch(`${api}/recommendations/${id}/status`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ status })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to update recommendation status");
+  }
+
+  return response.json();
+}
+
 // ADMIN METHODS
 export async function getUsers(token) {
   const response = await fetch(`${api}/admin/users`, {
