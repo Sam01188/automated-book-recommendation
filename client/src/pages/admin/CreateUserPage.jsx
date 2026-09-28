@@ -1,7 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { AppModal } from "../../components/AppModal";
 
-const departments = ["DCEE"];
+const departments = ["DCEE","DEIE","DMME","DMENA"];
+
+function roleHasDepartment(role) {
+  return role === "lecturer" || role === "hod";
+}
 
 export function CreateUserPage({ onCreateUser }) {
   const [form, setForm] = useState({
@@ -13,18 +17,41 @@ export function CreateUserPage({ onCreateUser }) {
   });
   const [busy, setBusy] = useState(false);
   const [modal, setModal] = useState(null);
+  const [emailError, setEmailError] = useState("");
+  const emailInputRef = useRef(null);
 
   async function submit(e) {
     e.preventDefault();
+    
+    // Validate email domain
+    if (!form.email.endsWith("@ruh.ac.lk")) {
+      setEmailError("Please enter a valid email address (name@ruh.ac.lk)");
+      emailInputRef.current?.focus();
+      return;
+    }
+    
+    setEmailError("");
+    
     setBusy(true);
 
     try {
       const payload = {
         ...form,
-        department: form.role === "lecturer" || form.role === "hod" ? form.department : ""
+        department: roleHasDepartment(form.role) ? form.department : ""
       };
 
       await onCreateUser(payload);
+      
+      // Log the creation activity
+      const activities = JSON.parse(localStorage.getItem('userActivities') || '[]');
+      activities.push({
+        type: 'create',
+        userId: `new-${Date.now()}`,
+        userName: form.name,
+        timestamp: new Date().toISOString()
+      });
+      localStorage.setItem('userActivities', JSON.stringify(activities.slice(-20)));
+      
       setForm({ name: "", email: "", password: "", role: "lecturer", department: "DCEE" });
       setModal({
         title: "Account created successfully.",
@@ -52,7 +79,11 @@ export function CreateUserPage({ onCreateUser }) {
 
           <div className="field">
             <label>Email Address *</label>
-            <input type="email" value={form.email} required onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="name@ruh.ac.lk" />
+            <input ref={emailInputRef} type="email" value={form.email} required onChange={(e) => {
+              setForm({ ...form, email: e.target.value });
+              setEmailError("");
+            }} placeholder="name@ruh.ac.lk" />
+            {emailError && <div style={{ color: "#dc3545", fontSize: "0.875rem", marginTop: "0.25rem" }}>{emailError}</div>}
           </div>
 
           <div className="field">
@@ -69,7 +100,7 @@ export function CreateUserPage({ onCreateUser }) {
                 setForm({
                   ...form,
                   role: e.target.value,
-                  department: e.target.value === "lecturer" || e.target.value === "hod" ? form.department || "DCEE" : ""
+                  department: roleHasDepartment(e.target.value) ? form.department || "DCEE" : ""
                 })
               }
             >
@@ -80,7 +111,7 @@ export function CreateUserPage({ onCreateUser }) {
             </select>
           </div>
 
-          {(form.role === "lecturer" || form.role === "hod") && (
+          {roleHasDepartment(form.role) && (
             <div className="field">
               <label>Department *</label>
               <select value={form.department} required onChange={(e) => setForm({ ...form, department: e.target.value })}>

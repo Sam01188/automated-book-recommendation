@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
 import { getUsers, deleteUser, updateUser } from "../../api";
-import { Trash2, Pencil, Save, X, UserCog, ChevronUp, ChevronDown } from "lucide-react";
+import { Trash2, Pencil, Save, X, UserCog, ChevronUp, ChevronDown, RotateCcw } from "lucide-react";
 import { AppModal } from "../../components/AppModal";
 
-const departments = ["DCEE"];
+const departments = ["DCEE","DEIE","DMME","DMENA"];
 
 function formatRole(role) {
   if (role === "hod") return "HoD";
   return role.charAt(0).toUpperCase() + role.slice(1);
+}
+
+function roleHasDepartment(role) {
+  return role === "lecturer" || role === "hod";
 }
 
 function SortHeader({ label, column, sortConfig, onSort }) {
@@ -57,7 +61,7 @@ export function UsersListPage({ token }) {
     try {
       const data = await getUsers(token);
       setUsers(data);
-    } catch (err) {
+    } catch {
       setModal({
         title: "Failed to load users",
         message: "Please refresh the page or try again later."
@@ -81,9 +85,23 @@ export function UsersListPage({ token }) {
   async function confirmDelete(id) {
     try {
       setModal(null);
+      const deletedUser = users.find(u => u._id === id);
       await deleteUser(token, id);
-      setUsers(users.filter((u) => u._id !== id));
-    } catch (err) {
+      
+      // Log the deletion activity by storing it in localStorage temporarily
+      if (deletedUser) {
+        const activities = JSON.parse(localStorage.getItem('userActivities') || '[]');
+        activities.push({
+          type: 'delete',
+          userId: id,
+          userName: deletedUser.name,
+          timestamp: new Date().toISOString()
+        });
+        localStorage.setItem('userActivities', JSON.stringify(activities.slice(-20))); // Keep last 20
+      }
+      
+      setUsers((current) => current.filter((u) => u._id !== id));
+    } catch {
       setModal({
         title: "Failed to delete user",
         message: "Please try again later."
@@ -119,19 +137,40 @@ export function UsersListPage({ token }) {
       name: editForm.name.trim(),
       email: editForm.email.trim(),
       role: editForm.role,
-      department: editForm.role === "lecturer" || editForm.role === "hod" ? editForm.department.trim() : ""
+      department: roleHasDepartment(editForm.role) ? editForm.department.trim() : ""
     };
 
     try {
       setSaving(true);
-      const updated = await updateUser(token, id, payload);
+      await updateUser(token, id, payload);
 
-      setUsers(
-        users.map((u) => (u._id === id ? updated : u))
+      // Log the update activity
+      const activities = JSON.parse(localStorage.getItem('userActivities') || '[]');
+      activities.push({
+        type: 'update',
+        userId: id,
+        userName: payload.name,
+        timestamp: new Date().toISOString()
+      });
+      localStorage.setItem('userActivities', JSON.stringify(activities.slice(-20))); // Keep last 20
+
+      // Update the user with the edited form data to ensure visibility
+      setUsers((current) =>
+        current.map((u) =>
+          u._id === id
+            ? {
+                ...u,
+                name: payload.name,
+                email: payload.email,
+                role: payload.role,
+                department: payload.department
+              }
+            : u
+        )
       );
 
       cancelEdit();
-    } catch (err) {
+    } catch {
       setModal({
         title: "Failed to update user",
         message: "Please check the changes and try again."
@@ -176,7 +215,6 @@ export function UsersListPage({ token }) {
     <div className="large-panel">
       <div className="panel-toolbar">
         <h2 className="panel-title">
-          <UserCog size={24} />
           System Users
         </h2>
 
@@ -191,7 +229,13 @@ export function UsersListPage({ token }) {
             />
           </div>
 
-          <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} aria-label="Filter by role">
+          <select value={roleFilter} onChange={(event) => {
+            setRoleFilter(event.target.value);
+            // Clear department filter if librarian or admin is selected
+            if (event.target.value === "librarian" || event.target.value === "admin") {
+              setDepartmentFilter("");
+            }
+          }} aria-label="Filter by role">
             <option value="">All Roles</option>
             <option value="lecturer">Lecturer</option>
             <option value="hod">HoD</option>
@@ -199,7 +243,12 @@ export function UsersListPage({ token }) {
             <option value="admin">Admin</option>
           </select>
 
-          <select value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)} aria-label="Filter by department">
+          <select 
+            value={departmentFilter} 
+            onChange={(event) => setDepartmentFilter(event.target.value)} 
+            aria-label="Filter by department"
+            disabled={roleFilter === "librarian" || roleFilter === "admin"}
+          >
             <option value="">All Departments</option>
             {departments.map((department) => (
               <option key={department} value={department}>
@@ -207,6 +256,19 @@ export function UsersListPage({ token }) {
               </option>
             ))}
           </select>
+
+          <button
+            className="secondary-button"
+            onClick={() => {
+              setSearchQuery("");
+              setRoleFilter("");
+              setDepartmentFilter("");
+            }}
+            aria-label="Reset filters"
+            title="Reset all filters"
+          >
+            <RotateCcw size={16} />
+          </button>
         </div>
       </div>
 
@@ -282,7 +344,7 @@ export function UsersListPage({ token }) {
                         setEditForm({
                           ...editForm,
                           role: e.target.value,
-                          department: e.target.value === "lecturer" || e.target.value === "hod" ? editForm.department || "DCEE" : ""
+                          department: roleHasDepartment(e.target.value) ? editForm.department || "DCEE" : ""
                         })
                       }
                     >
@@ -297,7 +359,7 @@ export function UsersListPage({ token }) {
                 </td>
 
                 <td>
-                  {editingUserId === u._id && (editForm.role === "lecturer" || editForm.role === "hod") ? (
+                  {editingUserId === u._id && roleHasDepartment(editForm.role) ? (
                     <select
                       value={editForm.department}
                       onChange={(e) =>

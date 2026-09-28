@@ -2,6 +2,18 @@ import { buildStats, demoRecommendations, demoUsers } from "./data";
 
 const api = "/api";
 
+async function checkApiResponse(response) {
+  if (response.ok) {
+    return response.json();
+  }
+
+  const errorData = await response.json().catch(() => ({}));
+  const message = errorData.message || response.statusText || "Request failed";
+  const error = new Error(message);
+  error.status = response.status;
+  throw error;
+}
+
 export async function login(email, password) {
   const response = await fetch(`${api}/auth/login`, {
     method: "POST",
@@ -40,7 +52,8 @@ export async function fetchRecommendations(token, role) {
   const response = await fetch(`${api}/recommendations`, {
     headers: { Authorization: `Bearer ${token}` }
   });
-  return response.json();
+
+  return checkApiResponse(response);
 }
 
 export async function fetchStats(token, items) {
@@ -51,7 +64,8 @@ export async function fetchStats(token, items) {
   const response = await fetch(`${api}/stats`, {
     headers: { Authorization: `Bearer ${token}` }
   });
-  return response.json();
+
+  return checkApiResponse(response);
 }
 
 export async function createRecommendation(token, payload) {
@@ -89,6 +103,100 @@ export async function updatePriority(token, id, priority) {
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ priority, priorityReason: "Assigned during department review" })
   });
+}
+
+export async function updateRecommendationOrder(token, payload) {
+  if (token === "demo-token") {
+    return [];
+  }
+
+  const body = typeof payload === 'object' && !Array.isArray(payload) ? payload : { orderedIds: payload };
+
+  const response = await fetch(`${api}/recommendations/rank-order`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to save recommendation order");
+  }
+
+  return response.json();
+}
+
+export async function resetRecommendationOrder(token) {
+  if (token === "demo-token") {
+    return [];
+  }
+
+  const response = await fetch(`${api}/recommendations/reset-order`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to reset recommendation order");
+  }
+
+  return response.json();
+}
+
+export async function submitToLibrarian(token) {
+  if (token === "demo-token") {
+    return [];
+  }
+
+  const response = await fetch(`${api}/recommendations/submit`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to submit recommendations");
+  }
+
+  return response.json();
+}
+
+export async function deleteRecommendation(token, id) {
+  if (token === "demo-token") {
+    return;
+  }
+
+  const response = await fetch(`${api}/recommendations/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to delete recommendation");
+  }
+
+  return response.ok;
+}
+
+export async function updateRecommendation(token, id, payload) {
+  if (token === "demo-token") {
+    return payload;
+  }
+
+  const response = await fetch(`${api}/recommendations/${id}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to update recommendation");
+  }
+
+  return response.json();
 }
 
 // ADMIN METHODS
@@ -141,3 +249,94 @@ export const updateUser = async (token, id, data) => {
 
   return response.json();
 };
+
+export async function fetchOrderPeriods(token) {
+  const response = await fetch(`${api}/order-periods`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return checkApiResponse(response);
+}
+
+export async function fetchCurrentPeriod(token) {
+  const response = await fetch(`${api}/order-periods/current`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return checkApiResponse(response);
+}
+
+export async function fetchCurrentHodPeriod(token) {
+  const response = await fetch(`${api}/order-periods/current-hod`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return checkApiResponse(response);
+}
+
+export async function createOrderPeriod(token, payload) {
+  const response = await fetch(`${api}/order-periods`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create order period");
+  }
+  return response.json();
+}
+
+export async function updateOrderPeriod(token, id, payload) {
+  const response = await fetch(`${api}/order-periods/${id}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to update order period");
+  }
+  return response.json();
+}
+
+export async function closeOrderPeriod(token, id) {
+  const response = await fetch(`${api}/order-periods/${id}/close`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to close order period");
+  }
+  return response.json();
+}
+
+export async function openHodPeriod(token, id) {
+  const response = await fetch(`${api}/order-periods/${id}/open-hod`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to open HOD period");
+  }
+  return response.json();
+}
+
+export async function deleteOrderPeriod(token, id) {
+  const response = await fetch(`${api}/order-periods/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to delete order period");
+  }
+  return response.json();
+}
+
+

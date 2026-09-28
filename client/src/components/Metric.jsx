@@ -1,11 +1,13 @@
-export function Metric({ label, value, icon }) {
+export function Metric({ label, value, icon, onClick }) {
+  const Tag = onClick ? "button" : "div";
+
   return (
-    <div className="metric-card">
+    <Tag className={`metric-card admin-stat-card${onClick ? " clickable-metric" : ""}`} onClick={onClick} type={onClick ? "button" : undefined}>
       <div className="metric-header">
         <span className="metric-label">{label}</span>
-        <div className="metric-icon">{icon}</div>
+        <span className="metric-icon">{icon}</span>
       </div>
-      <div className="metric-value">{value}</div>
-    </div>
+      <strong className="metric-value">{value}</strong>
+    </Tag>
   );
 }

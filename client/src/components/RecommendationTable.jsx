@@ -1,7 +1,7 @@
-export function RecommendationTable({ items, title, compact, onPriority }) {
+export function RecommendationTable({ items, title, compact }) {
   return (
     <div className="large-panel">
-      <h2 className="panel-title">{title}</h2>
+      {title && <h2 className="panel-title">{title}</h2>}
       <div className="table-wrap">
         <table>
           <thead>
@@ -10,7 +10,7 @@ export function RecommendationTable({ items, title, compact, onPriority }) {
               <th>Author</th>
               <th>Publisher</th>
               <th>Submitted By</th>
-              <th>Priority</th>
+              <th style={{ width: 96, textAlign: "center" }}>Rank</th>
             </tr>
           </thead>
           <tbody>
@@ -20,21 +20,10 @@ export function RecommendationTable({ items, title, compact, onPriority }) {
                 <td>{item.author}</td>
                 <td>{item.publisher}</td>
                 <td>{item.submittedBy?.name || "Lecturer"}</td>
-                <td>
-                  {onPriority ? (
-                    <select 
-                      value={item.priority} 
-                      onChange={(event) => onPriority(item._id, event.target.value)}
-                      style={{ padding: '0.4rem', borderRadius: '8px', border: '1px solid var(--border)' }}
-                    >
-                      <option value="unassigned">Set priority</option>
-                      <option value="high">High</option>
-                      <option value="medium">Medium</option>
-                      <option value="low">Low</option>
-                    </select>
-                  ) : (
-                    <span className={`priority ${item.priority}`}>{item.priority}</span>
-                  )}
+                <td style={{ textAlign: "center" }}>
+                  <span className={`rank-badge ${item.priorityRank ? 'assigned' : 'unassigned'}`} title={item.priorityRank ? `Rank ${item.priorityRank}` : 'Unassigned'}>
+                    {item.priorityRank ?? "-"}
+                  </span>
                 </td>
               </tr>
             ))}

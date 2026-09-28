@@ -1,34 +1,64 @@
 import { useEffect, useMemo, useState } from "react";
 import { UserPlus, Users } from "lucide-react";
-import { createRecommendation, fetchRecommendations, fetchStats, login, logout as apiLogout, updatePriority } from "./api";
+import {
+  createRecommendation,
+  fetchRecommendations,
+  fetchStats,
+  login,
+  logout as apiLogout,
+  submitToLibrarian,
+  updateRecommendationOrder,
+  resetRecommendationOrder,
+  fetchCurrentPeriod,
+  fetchCurrentHodPeriod,
+  fetchOrderPeriods,
+  createUser as apiCreateUser
+} from "./api";
 import { AppLayout, roleViews } from "./components/AppLayout";
 import { LoginPage } from "./pages/auth/LoginPage";
 import { HodDashboardPage } from "./pages/hod/HodDashboardPage";
 import { AllRecommendationsPage as HodAllRecommendationsPage } from "./pages/hod/AllRecommendationsPage";
 import { PriorityPage as HodPriorityPage } from "./pages/hod/PriorityPage";
+import { HodSubmissionsPage } from "./pages/hod/HodSubmissionsPage";
 import { AllRecommendationsPage } from "./pages/librarian/AllRecommendationsPage";
 import { ExportDataPage } from "./pages/librarian/ExportDataPage";
 import { LibrarianDashboardPage } from "./pages/librarian/LibrarianDashboardPage";
 import { OrderTimePeriodsPage } from "./pages/librarian/OrderTimePeriodsPage";
-import { EmailAnnouncementsPage } from "./pages/librarian/EmailAnnouncementsPage";
 import { LecturerDashboardPage } from "./pages/lecturer/LecturerDashboardPage";
 import { MyRecommendationsPage } from "./pages/lecturer/MyRecommendationsPage";
 import { SubmitRequestPage } from "./pages/lecturer/SubmitRequestPage";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { CreateUserPage } from "./pages/admin/CreateUserPage";
 import { UsersListPage } from "./pages/admin/UsersListPage";
-import { createUser as apiCreateUser } from "./api";
 import "./styles/librarian.css";
 
 function App() {
   const [session, setSession] = useState(null);
   const [view, setView] = useState("dashboard");
   const [items, setItems] = useState([]);
-  const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, highPriority: 0 });
+  const [stats, setStats] = useState({ total: 0, pending: 0, rejected: 0, highPriority: 0, lecturersCount: 0 });
+  const [allFilter, setAllFilter] = useState("all");
+  const [periods, setPeriods] = useState([]);
   const [selectedPeriod, setSelectedPeriod] = useState(null);
+  const [currentPeriod, setCurrentPeriod] = useState(null);
+  const [isPeriodOpen, setIsPeriodOpen] = useState(false);
+  const [currentHodPeriod, setCurrentHodPeriod] = useState(null);
+  const [isHodPeriodOpen, setIsHodPeriodOpen] = useState(false);
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem("book-rec-theme") || "dark";
   });
+
+  const resolveLibrarianDisplayPeriod = (periods) => {
+    if (!Array.isArray(periods) || periods.length === 0) {
+      return null;
+    }
+
+    return (
+      periods.find((period) => period.status === "open" || period.status === "hod_priority") ||
+      periods.find((period) => period.status === "closed") ||
+      null
+    );
+  };
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -46,6 +76,25 @@ function App() {
     }
   }, []);
 
+  const refreshPeriodStatus = () => {
+    if (!session) return;
+    if (session.user.role === "lecturer") {
+      fetchCurrentPeriod(session.token)
+        .then((res) => {
+          setIsPeriodOpen(res.isOpen);
+          setCurrentPeriod(res.period);
+        })
+        .catch((err) => console.error(err));
+    } else if (session.user.role === "hod") {
+      fetchCurrentHodPeriod(session.token)
+        .then((res) => {
+          setIsHodPeriodOpen(res.isOpen);
+          setCurrentHodPeriod(res.period);
+        })
+        .catch((err) => console.error(err));
+    }
+  };
+
   useEffect(() => {
     if (!session) {
       return;
@@ -53,14 +102,105 @@ function App() {
 
     fetchRecommendations(session.token, session.user.role).then((records) => {
       setItems(records);
-      fetchStats(session.token, records).then(setStats);
+      // derive client-side stats (ensure HOD pending reflects unassigned items)
+      const derived = deriveStats(records, session.user.role);
+      // fetch server stats but merge with derived pending/lecturersCount
+      fetchStats(session.token, records)
+        .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
+        .catch(() => setStats(derived));
     });
+
+    // Fetch periods for filtering
+    if (session.user.role === "lecturer") {
+      fetchCurrentPeriod(session.token)
+        .then((res) => {
+          const activePeriod = res.period ? [res.period] : [];
+          setPeriods(activePeriod);
+          setSelectedPeriod(res.period?._id || null);
+        })
+        .catch((err) => console.error("Failed to fetch periods:", err));
+    } else if (session.user.role === "librarian") {
+      fetchOrderPeriods(session.token)
+        .then((res) => {
+          setPeriods(res);
+          setSelectedPeriod(resolveLibrarianDisplayPeriod(res)?._id || null);
+        })
+        .catch((err) => console.error("Failed to fetch librarian periods:", err));
+    }
+
+    refreshPeriodStatus();
   }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
+    if (session.user.role === "librarian" && view === "all") {
+      Promise.all([fetchRecommendations(session.token, session.user.role), fetchOrderPeriods(session.token)])
+        .then(([records, periodList]) => {
+          setItems(records);
+          setPeriods(periodList);
+          setSelectedPeriod(resolveLibrarianDisplayPeriod(periodList)?._id || null);
+          const derived = deriveStats(records, session.user.role);
+          fetchStats(session.token, records)
+            .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
+            .catch(() => setStats(derived));
+        })
+        .catch((err) => console.error("Failed to refresh librarian recommendations:", err));
+    }
+  }, [session, view]);
+
+  useEffect(() => {
+    if (!session || session.user.role !== "librarian" || view !== "all") {
+      return undefined;
+    }
+
+    const interval = setInterval(() => {
+      Promise.all([fetchRecommendations(session.token, session.user.role), fetchOrderPeriods(session.token)])
+        .then(([records, periodList]) => {
+          setItems(records);
+          setPeriods(periodList);
+          setSelectedPeriod(resolveLibrarianDisplayPeriod(periodList)?._id || null);
+          const derived = deriveStats(records, session.user.role);
+          fetchStats(session.token, records)
+            .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
+            .catch(() => setStats(derived));
+        })
+        .catch((err) => console.error("Failed to polling refresh librarian recommendations:", err));
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [session, view]);
 
   const allowedViews = useMemo(() => {
     if (!session || !session.user || !session.user.role) return [];
     return roleViews[session.user.role] || [];
   }, [session]);
+
+  const deriveStats = (records, role = session?.user?.role) => {
+    const total = records.length;
+    // For HOD dashboard, pending should reflect number of items with an assigned priority number
+    const pending =
+      role === "hod"
+        ? records.filter((item) => Number.isFinite(item.priorityRank)).length
+        : records.filter((item) => item.status === "submitted" || item.status === "under_review").length;
+    const rejected = records.filter((item) => item.status === "rejected").length;
+    const highPriority = records.filter((item) => item.priorityRank === 1).length;
+    // Count distinct lecturers who submitted books (exclude null submitters and rejected items)
+    const lecturerIds = new Set(records.filter(r => r.submittedBy && r.status !== 'rejected').map(r => r.submittedBy._id || r.submittedBy));
+    const lecturersCount = lecturerIds.size;
+    return { total, pending, rejected, highPriority, lecturersCount };
+  };
+
+
+  useEffect(() => {
+    setStats(deriveStats(items, session?.user?.role));
+  }, [items, session?.user?.role]);
+
+  const handleViewChange = (nextView) => {
+    if (nextView === "all") {
+      setAllFilter("all");
+    }
+    setView(nextView);
+  };
 
   async function handleLogin(email, password) {
     const nextSession = await login(email, password);
@@ -86,22 +226,65 @@ function App() {
     const created = await createRecommendation(session.token, payload);
     const next = [created, ...items];
     setItems(next);
-    setStats({
-      total: next.length,
-      pending: next.filter((item) => item.status !== "approved").length,
-      approved: next.filter((item) => item.status === "approved").length,
-      highPriority: next.filter((item) => item.priority === "high").length
-    });
+    setStats(deriveStats(next, session.user.role));
     setView("my");
   }
 
-  async function handlePriority(id, priority) {
+
+  async function handleRecommendationOrder(orderedIds) {
     if (!session) {
       return;
     }
 
-    await updatePriority(session.token, id, priority);
-    setItems((current) => current.map((item) => (item._id === id ? { ...item, priority, status: "under_review" } : item)));
+    const updatedRecords = await updateRecommendationOrder(session.token, orderedIds);
+    setItems(updatedRecords);
+    setStats(deriveStats(updatedRecords, session.user.role));
+    return updatedRecords;
+  }
+
+  async function handleResetRecommendationOrder() {
+    if (!session) return;
+
+    const updatedRecords = await resetRecommendationOrder(session.token);
+    setItems(updatedRecords);
+    setStats(deriveStats(updatedRecords, session.user.role));
+  }
+
+  async function handleSubmitToLibrarian() {
+    if (!session) return;
+
+    // Submit to librarian and refresh recommendations to ensure submitted items appear in Submissions
+    const updatedRecords = await submitToLibrarian(session.token);
+    // Try to fetch fresh recommendations from server to avoid any stale state
+    try {
+      const fresh = await fetchRecommendations(session.token, session.user.role);
+      setItems(fresh);
+      setStats(deriveStats(fresh, session.user.role));
+      // If server did not mark any items as submitted for this HOD, apply a client-side fallback:
+      const hasSubmitted = fresh.some((r) => r.status === 'submitted' && String(r.reviewedBy?._id || r.reviewedBy) === String(session.user.id));
+      if (!hasSubmitted) {
+        const fallback = fresh.map((r) => {
+          if (Number.isFinite(r.priorityRank) && r.status !== 'rejected') {
+            return { ...r, status: 'submitted', reviewedBy: { _id: session.user.id, name: session.user.name }, submittedToLibrarianAt: new Date().toISOString() };
+          }
+          return r;
+        });
+        setItems(fallback);
+        setStats(deriveStats(fallback, session.user.role));
+      }
+    } catch (err) {
+      // Fallback to whatever submit returned
+      const fallback = (updatedRecords || []).map((r) => {
+        if (Number.isFinite(r.priorityRank) && r.status !== 'rejected') {
+          return { ...r, status: 'submitted', reviewedBy: { _id: session.user.id, name: session.user.name }, submittedToLibrarianAt: new Date().toISOString() };
+        }
+        return r;
+      });
+      setItems(fallback);
+      setStats(deriveStats(fallback, session.user.role));
+    }
+    setView("submissions");
+    return updatedRecords;
   }
 
   async function handleUserCreation(userData) {
@@ -118,31 +301,118 @@ function App() {
       user={session.user}
       view={view}
       allowedViews={allowedViews}
-      onViewChange={setView}
+      onViewChange={handleViewChange}
       onLogout={logout}
       viewActions={null}
       theme={theme}
       onToggleTheme={toggleTheme}
     >
-      {session.user.role === "lecturer" && view === "dashboard" && <LecturerDashboardPage user={session.user} stats={stats} items={items} />}
-      {session.user.role === "lecturer" && view === "submit" && <SubmitRequestPage onSubmit={handleCreate} />}
-      {session.user.role === "lecturer" && view === "my" && <MyRecommendationsPage items={items} />}
+      {session.user.role === "lecturer" && view === "dashboard" && (
+        <LecturerDashboardPage
+          user={session.user}
+          stats={stats}
+          items={items}
+          isPeriodOpen={isPeriodOpen}
+          currentPeriod={currentPeriod}
+          onTotalClick={() => setView("my")}
+          onPendingClick={() => setView("my")}
+          onRejectedClick={() => setView("my")}
+        />
+      )}
+      {session.user.role === "lecturer" && view === "submit" && (
+        <SubmitRequestPage
+          onSubmit={handleCreate}
+          isPeriodOpen={isPeriodOpen}
+          currentPeriod={currentPeriod}
+        />
+      )}
+      {session.user.role === "lecturer" && view === "my" && (
+        <MyRecommendationsPage
+          items={items}
+          isPeriodOpen={isPeriodOpen}
+          currentPeriod={currentPeriod}
+          token={session.token}
+          periods={periods}
+          selectedPeriod={selectedPeriod}
+          onSelectedPeriodChange={setSelectedPeriod}
+          onItemsUpdate={(newItems) => {
+            setItems(newItems);
+            setStats(deriveStats(newItems, session.user.role));
+          }}
+        />
+      )}
 
-      {session.user.role === "hod" && view === "dashboard" && <HodDashboardPage user={session.user} stats={stats} items={items} />}
-      {session.user.role === "hod" && view === "priority" && <HodPriorityPage items={items} onPriority={handlePriority} />}
-      {session.user.role === "hod" && view === "all" && <HodAllRecommendationsPage items={items} />}
+      {session.user.role === "hod" && view === "dashboard" && (
+        <HodDashboardPage
+          user={session.user}
+          stats={stats}
+          items={items}
+          isPeriodOpen={isHodPeriodOpen}
+          currentPeriod={currentHodPeriod}
+          onTotalClick={() => setView("submissions")}
+          onPendingClick={() => setView("priority")}
+          onHighPriorityClick={() => {
+            setAllFilter("prioritized");
+            setView("all");
+          }}
+        />
+      )}
+      {session.user.role === "hod" && view === "priority" && (
+        <HodPriorityPage
+          items={items}
+          onOrderChange={handleRecommendationOrder}
+          isPeriodOpen={isHodPeriodOpen}
+          currentPeriod={currentHodPeriod}
+          onSubmit={handleSubmitToLibrarian}
+        />
+      )}
+      {session.user.role === "hod" && view === "all" && (
+        <HodAllRecommendationsPage
+          items={items}
+          filterPriority={allFilter}
+          onOrderChange={handleRecommendationOrder}
+          onSubmit={handleSubmitToLibrarian}
+          isPeriodOpen={isHodPeriodOpen}
+          onReset={handleResetRecommendationOrder}
+          currentPeriod={currentHodPeriod}
+        />
+      )}
+      {session.user.role === "hod" && view === "submissions" && (
+        <HodSubmissionsPage items={items} currentUserId={session.user.id} />
+      )}
 
-      {session.user.role === "librarian" && view === "dashboard" && <LibrarianDashboardPage user={session.user} stats={stats} items={items} />}
-      {session.user.role === "librarian" && view === "all" && <AllRecommendationsPage items={items} />}
-      {session.user.role === "librarian" && view === "periods" && <OrderTimePeriodsPage onViewChange={setView} onSelectPeriod={setSelectedPeriod} />}
-      {session.user.role === "librarian" && view === "announcements" && <EmailAnnouncementsPage selectedPeriod={selectedPeriod} />}
+      {session.user.role === "librarian" && view === "dashboard" && (
+        <LibrarianDashboardPage
+          user={session.user}
+          stats={stats}
+          items={items}
+          onTotalClick={() => setView("all")}
+          onPendingClick={() => setView("all")}
+          onHighPriorityClick={() => {
+            setAllFilter("high");
+            setView("all");
+          }}
+        />
+      )}
+      {session.user.role === "librarian" && view === "all" && (
+        <AllRecommendationsPage items={items} filterPriority={allFilter} currentPeriod={resolveLibrarianDisplayPeriod(periods)} />
+      )}
+      {session.user.role === "librarian" && view === "periods" && (
+        <OrderTimePeriodsPage
+          token={session.token}
+          onViewChange={setView}
+          onSelectPeriod={setSelectedPeriod}
+        />
+      )}
       {session.user.role === "librarian" && view === "export" && <ExportDataPage items={items} />}
 
       {session.user.role === "admin" && view === "dashboard" && (
-        <AdminDashboard user={session.user} token={session.token} items={items} onViewChange={setView} />
+        <AdminDashboard user={session.user} token={session.token} items={items} />
       )}
       {session.user.role === "admin" && view === "users" && <UsersListPage token={session.token} />}
-      {session.user.role === "admin" && view === "createUser" && <CreateUserPage onCreateUser={handleUserCreation} />}
+      {session.user.role === "admin" && view === "createUser" && (
+        <CreateUserPage onCreateUser={handleUserCreation} />
+      )}
     </AppLayout>
   );
 }

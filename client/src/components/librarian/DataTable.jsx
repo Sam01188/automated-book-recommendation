@@ -1,9 +1,9 @@
 import { Badge } from "./Badge";
 
-export function DataTable({ columns, data, renderRow }) {
+export function DataTable({ columns, data, renderRow, className = "" }) {
   return (
     <div className="data-table-wrapper">
-      <table className="data-table">
+      <table className={`data-table ${className}`}>
         <thead>
           <tr>
             {columns.map((col) => (
@@ -22,7 +22,7 @@ export function DataTable({ columns, data, renderRow }) {
             </tr>
           ) : (
             data.map((row, idx) => (
-              <tr key={row._id || idx}>{renderRow(row)}</tr>
+              <tr key={row._id || idx}>{renderRow(row, idx)}</tr>
             ))
           )}
         </tbody>
