@@ -71,6 +71,25 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
       <div className="form-panel">
         <h2 className="panel-title">Submit Book Recommendation</h2>
 
+        <div
+          style={{
+            background: "rgba(255,255,255,0.02)",
+            border: "1px solid rgba(148, 163, 184, 0.22)",
+            borderRadius: "var(--radius)",
+            padding: "0.75rem 1rem",
+            marginBottom: "1.5rem",
+            color: "var(--text-muted, #64748b)",
+            fontSize: "0.86rem",
+            display: "flex",
+            justifyContent: "space-between",
+            gap: "0.5rem",
+            flexWrap: "wrap"
+          }}
+        >
+          <span>Fields marked with <strong style={{ color: "var(--danger-text, #dc2626)" }}>*</strong> are required.</span>
+          <span>Complete all required details to submit faster.</span>
+        </div>
+
         {!isPeriodOpen && (
           <div
             style={{
@@ -312,7 +331,18 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
       </div>
 
       <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.875rem", marginTop: "-0.5rem" }}>
-        <button type="button" className="secondary-button" onClick={() => setForm(EMPTY_FORM)} disabled={isFormDisabled}>
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={() => {
+            const hasData = Object.values(form).some((value) => String(value ?? "").trim() !== "");
+            if (hasData && !window.confirm("Clear all entered information in this form?")) {
+              return;
+            }
+            setForm(EMPTY_FORM);
+          }}
+          disabled={isFormDisabled}
+        >
           Clear Form
         </button>
         <button type="submit" className="primary-button" disabled={isFormDisabled} style={{ opacity: isFormDisabled ? 0.7 : 1 }}>
@@ -335,7 +365,7 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
 
 const gridStyle = {
   display: "grid",
-  gridTemplateColumns: "1fr 1fr",
+  gridTemplateColumns: "1fr",
   gap: "1.5rem",
   marginBottom: "1.5rem"
 };
