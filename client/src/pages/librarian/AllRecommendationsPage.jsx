@@ -1,50 +1,71 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { Card } from "../../components/librarian/Card";
 import { DataTable } from "../../components/librarian/DataTable";
 import { Badge } from "../../components/librarian/Badge";
 import { updateRecommendationStatus, fetchRecommendations } from "../../api";
 
-export function AllRecommendationsPage({ items, filterPriority = "all", currentPeriod = null }) {
+function getSessionToken() {
+  try {
+    const raw = localStorage.getItem("book-rec-session");
+    if (!raw) return "demo-token";
+    const parsed = JSON.parse(raw);
+    return parsed.token || "demo-token";
+  } catch {
+    return "demo-token";
+  }
+}
+
+export function AllRecommendationsPage({ items = [], filterPriority = "all", currentPeriod = null }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
-  const period = currentPeriod || items[0]?.orderPeriod;
+  const [localItems, setLocalItems] = useState(items);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [applyStatus, setApplyStatus] = useState("");
+
+  useEffect(() => {
+    setLocalItems(items || []);
+    setSelectedIds((prev) => prev.filter((id) => (items || []).some((it) => String(it._id) === String(id))));
+  }, [items]);
+
+  const period = currentPeriod || localItems[0]?.orderPeriod;
   const periodStatus = period?.status;
   const isCurrentPeriod = periodStatus === "open" || periodStatus === "hod_priority";
   const periodLabel = period ? (isCurrentPeriod ? "Current Period" : "Previous Period") : "No Period Selected";
 
-  // Get distinct list of departments present in items with a fallback to default departments
   const defaultDepartments = ["DCEE", "DEIE", "DMENA", "DMME"];
-  const departments = Array.from(
-    new Set([
-      ...defaultDepartments,
-      ...items.map((item) => item.department).filter(Boolean)
-    ])
-  ).sort();
+  const departments = useMemo(
+    () =>
+      Array.from(
+        new Set([
+          ...defaultDepartments,
+          ...(localItems || []).map((item) => item.department).filter(Boolean)
+        ])
+      ).sort(),
+    [localItems]
+  );
 
-  const filteredItems = localItems.filter((item) => {
+  const filteredItems = useMemo(() => {
     const search = searchTerm.toLowerCase();
-    const matchesSearch =
-      item.title?.toLowerCase().includes(search) ||
-      item.author?.toLowerCase().includes(search) ||
-      item.isbn?.toLowerCase().includes(search);
-    const matchesTab = activeTab === "all" || item.department === activeTab;
-    const matchesPriority = filterPriority === "high" ? item.priorityRank === 1 : true;
 
-    return matchesSearch && matchesTab && matchesPriority;
-  }).sort((a, b) => {
-    const departmentCompare = (a.department || "").localeCompare(b.department || "");
-    if (departmentCompare !== 0) return departmentCompare;
-    return (a.priorityRank || 9999) - (b.priorityRank || 9999);
-  });
+    return [...(localItems || [])]
+      .filter((item) => {
+        const matchesSearch =
+          item.title?.toLowerCase().includes(search) ||
+          item.author?.toLowerCase().includes(search) ||
+          item.isbn?.toLowerCase().includes(search);
 
-  useEffect(() => {
-    // Sync local copy when prop changes but preserve manual selections where possible.
-    const next = items || [];
-    setLocalItems(next);
-    // Remove any selected ids that no longer exist in the new items list, but keep others.
-    setSelectedIds((prev) => prev.filter(id => next.some(it => String(it._id) === String(id))));
-  }, [items]);
+        const matchesTab = activeTab === "all" || item.department === activeTab;
+        const matchesPriority = filterPriority === "high" ? item.priorityRank === 1 : true;
+
+        return matchesSearch && matchesTab && matchesPriority;
+      })
+      .sort((a, b) => {
+        const departmentCompare = (a.department || "").localeCompare(b.department || "");
+        if (departmentCompare !== 0) return departmentCompare;
+        return (a.priorityRank || 9999) - (b.priorityRank || 9999);
+      });
+  }, [localItems, searchTerm, activeTab, filterPriority]);
 
   const getStatusBadgeType = (status) => {
     const statusMap = {
@@ -74,15 +95,67 @@ export function AllRecommendationsPage({ items, filterPriority = "all", currentP
     { key: "submitted", label: "Submitted By" }
   ];
 
-  // If viewing a specific department, we don't need the department column
-  const tableColumns = activeTab === "all" ? columns : columns.filter(col => col.key !== "department");
+  const tableColumns = activeTab === "all" ? columns : columns.filter((col) => col.key !== "department");
+
+  const handleSelectCheapestPerDepartment = async () => {
+    const byDept = {};
+
+    filteredItems.forEach((item) => {
+      const price = Number(item.price);
+      if (!Number.isFinite(price)) return;
+      const key = item.department || "___";
+      if (!byDept[key] || price < Number(byDept[key].price)) byDept[key] = item;
+    });
+
+    const ids = Array.from(new Set(Object.values(byDept).map((item) => item._id)));
+    setSelectedIds((prev) => Array.from(new Set([...prev.filter((id) => !ids.includes(id)), ...ids])));
+
+    try {
+      const token = getSessionToken();
+      await Promise.all(ids.map((id) => updateRecommendationStatus(token, id, "selected")));
+      const fresh = await fetchRecommendations(token, "librarian");
+      setLocalItems(fresh);
+    } catch (error) {
+      console.error("Failed to select items", error);
+    }
+  };
+
+  const handleApplyStatus = async () => {
+    if (!applyStatus || selectedIds.length === 0) return;
+
+    try {
+      const token = getSessionToken();
+      await Promise.all(selectedIds.map((id) => updateRecommendationStatus(token, id, applyStatus)));
+      const fresh = await fetchRecommendations(token, "librarian");
+      setLocalItems(fresh);
+    } catch (error) {
+      console.error("Failed to apply status", error);
+    }
+  };
 
   return (
     <div className="dashboard-container">
       <section className="large-panel" style={{ marginBottom: "1rem" }}>
-        <Card className="full-width" style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
+        <Card
+          className="full-width"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: "1rem",
+            alignItems: "center",
+            flexWrap: "wrap"
+          }}
+        >
           <div>
-            <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
+            <div
+              style={{
+                fontSize: "0.75rem",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                color: "var(--text-muted)",
+                marginBottom: "0.25rem"
+              }}
+            >
               All Recommendations
             </div>
             <h3 style={{ margin: 0 }}>{period ? period.faculty || "Engineering Faculty" : "Engineering Faculty"}</h3>
@@ -93,27 +166,38 @@ export function AllRecommendationsPage({ items, filterPriority = "all", currentP
         </Card>
       </section>
 
-            <div className="search-wrapper" style={{ flex: 1, minWidth: "250px", position: "relative" }}>
-              <Search size={18} className="search-icon" style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
-              <input
-                type="text"
-                placeholder="Search by title, author or ISBN..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="search-input"
-                style={{ width: "100%", paddingLeft: "2.5rem" }}
-              />
-          </div>
+      <div className="search-wrapper" style={{ flex: 1, minWidth: "250px", position: "relative" }}>
+        <Search
+          size={18}
+          className="search-icon"
+          style={{
+            position: "absolute",
+            left: "10px",
+            top: "50%",
+            transform: "translateY(-50%)",
+            color: "var(--text-muted)"
+          }}
+        />
+        <input
+          type="text"
+          placeholder="Search by title, author or ISBN..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="search-input"
+          style={{ width: "100%", paddingLeft: "2.5rem" }}
+        />
+      </div>
 
-      {/* Tabs Navigation */}
-      <div style={{
-        display: "flex",
-        borderBottom: "1px solid var(--border-color)",
-        marginBottom: "0.5rem",
-        gap: "0.5rem",
-        overflowX: "auto",
-        paddingBottom: "2px"
-      }}>
+      <div
+        style={{
+          display: "flex",
+          borderBottom: "1px solid var(--border-color)",
+          marginBottom: "0.5rem",
+          gap: "0.5rem",
+          overflowX: "auto",
+          paddingBottom: "2px"
+        }}
+      >
         <button
           onClick={() => setActiveTab("all")}
           style={{
@@ -159,34 +243,12 @@ export function AllRecommendationsPage({ items, filterPriority = "all", currentP
             </div>
           ) : (
             <div>
-              <div style={{ marginBottom: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <button
-                  className="secondary-button"
-                  onClick={async () => {
-                    // select cheapest item per department (numeric price compare)
-                    const byDept = {};
-                    filteredItems.forEach(it => {
-                      const price = Number(it.price);
-                      if (!Number.isFinite(price)) return;
-                      const key = it.department || '___';
-                      if (!byDept[key] || price < Number(byDept[key].price)) byDept[key] = it;
-                    });
-                    const ids = Array.from(new Set(Object.values(byDept).map(i => i._id)));
-                    // Set selection only for items found; preserve any manual selections
-                    setSelectedIds((prev) => Array.from(new Set([...prev.filter(id => ids.indexOf(id) === -1), ...ids])));
-                    // mark selected on server and refresh localItems
-                    try {
-                      const token = localStorage.getItem('book-rec-session') ? JSON.parse(localStorage.getItem('book-rec-session')).token : 'demo-token';
-                      await Promise.all(ids.map(id => updateRecommendationStatus(token, id, 'selected')));
-                      const fresh = await fetchRecommendations(token, 'librarian');
-                      setLocalItems(fresh);
-                    } catch (err) {
-                      console.error('Failed to select items', err);
-                    }
-                  }}
-                >Select cheapest per department</button>
+              <div style={{ marginBottom: "0.5rem", display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+                <button className="secondary-button" onClick={handleSelectCheapestPerDepartment}>
+                  Select cheapest per department
+                </button>
 
-                <select value={applyStatus} onChange={(e) => setApplyStatus(e.target.value)} style={{ padding: '0.35rem' }}>
+                <select value={applyStatus} onChange={(e) => setApplyStatus(e.target.value)} style={{ padding: "0.35rem" }}>
                   <option value="">Set status for selected</option>
                   <option value="ordered">Placed Order</option>
                   <option value="bought">Bought</option>
@@ -194,49 +256,52 @@ export function AllRecommendationsPage({ items, filterPriority = "all", currentP
                   <option value="ready">Ready in Library</option>
                 </select>
 
-                <button className="primary-button" onClick={async () => {
-                  if (!applyStatus || selectedIds.length === 0) return;
-                  try {
-                    const token = localStorage.getItem('book-rec-session') ? JSON.parse(localStorage.getItem('book-rec-session')).token : 'demo-token';
-                    await Promise.all(selectedIds.map(id => updateRecommendationStatus(token, id, applyStatus)));
-                    const fresh = await fetchRecommendations(token, 'librarian');
-                    // update local items immediately and preserve manual selections
-                    setLocalItems(fresh);
-                  } catch (err) {
-                    console.error('Failed to apply status', err);
-                  }
-                }}>Apply</button>
+                <button className="primary-button" onClick={handleApplyStatus}>
+                  Apply
+                </button>
               </div>
 
-                <DataTable
-                columns={[{ key: 'select', label: '' }, ...tableColumns]}
+              <DataTable
+                columns={[{ key: "select", label: "" }, ...tableColumns]}
                 data={filteredItems}
                 renderRow={(item) => (
                   <>
                     <td>
-                      <input type="checkbox" checked={selectedIds.includes(item._id)} onChange={(e) => {
-                        setSelectedIds(prev => {
-                          const next = new Set(prev);
-                          if (e.target.checked) next.add(item._id);
-                          else next.delete(item._id);
-                          return Array.from(next);
-                        });
-                      }} />
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(item._id)}
+                        onChange={(e) => {
+                          setSelectedIds((prev) => {
+                            const next = new Set(prev);
+                            if (e.target.checked) next.add(item._id);
+                            else next.delete(item._id);
+                            return Array.from(next);
+                          });
+                        }}
+                      />
                     </td>
-                    {activeTab === "all" && <td><span className="badge badge-info">{item.department || "Unassigned"}</span></td>}
-                    <td><strong>{item.priorityRank || "N/A"}</strong></td>
-                    <td><strong>{item.title}</strong></td>
+                    {activeTab === "all" && (
+                      <td>
+                        <span className="badge badge-info">{item.department || "Unassigned"}</span>
+                      </td>
+                    )}
+                    <td>
+                      <strong>{item.priorityRank || "N/A"}</strong>
+                    </td>
+                    <td>
+                      <strong>{item.title}</strong>
+                    </td>
                     <td>{item.author}</td>
                     <td>{item.isbn || "N/A"}</td>
                     <td>{item.edition || "N/A"}</td>
                     <td>{item.copies ?? 0}</td>
                     <td>
-                      {item.price
-                        ? `${item.currency || "LKR"} ${Number(item.price).toLocaleString()}`
-                        : "N/A"}
+                      {item.price ? `${item.currency || "LKR"} ${Number(item.price).toLocaleString()}` : "N/A"}
                     </td>
                     <td>{item.publisher}</td>
-                    <td><Badge label={item.status} type={getStatusBadgeType(item.status)} /></td>
+                    <td>
+                      <Badge label={item.status} type={getStatusBadgeType(item.status)} />
+                    </td>
                     <td className="text-muted">{item.submittedBy?.name || "N/A"}</td>
                   </>
                 )}
@@ -246,7 +311,7 @@ export function AllRecommendationsPage({ items, filterPriority = "all", currentP
         </Card>
 
         <div className="results-info" style={{ marginTop: "1rem", fontSize: "0.9rem", color: "var(--text-muted)" }}>
-          Showing {filteredItems.length} of {items.length} recommendations
+          Showing {filteredItems.length} of {localItems.length} recommendations
         </div>
       </section>
     </div>
