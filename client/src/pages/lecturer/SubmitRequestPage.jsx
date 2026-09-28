@@ -12,10 +12,8 @@ const EMPTY_FORM = {
   publicationYear: "",
   binding: "",
   agreeLatest: "",
-  publishPlace: "",
   currency: "LKR",
   price: "",
-  currency: "LKR",
   copies: "",
   numberOfPages: "",
   additionalNotes: ""
@@ -24,6 +22,7 @@ const EMPTY_FORM = {
 export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeriod }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [success, setSuccess] = useState(false);
+  const [modal, setModal] = useState(null);
 
   function set(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -31,23 +30,29 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
 
   async function handleSubmit(e) {
     e.preventDefault();
+
     if (!isPeriodOpen) {
-      setModal({ title: "Submissions Closed", message: "Submissions are currently closed.", confirmText: "OK", onConfirm: () => setModal(null) });
+      setModal({
+        title: "Submissions Closed",
+        message: "Submissions are currently closed.",
+        confirmText: "OK",
+        onConfirm: () => setModal(null)
+      });
       return;
     }
 
-    // Mandatory checks (all except isbn10, numberOfPages, additionalNotes)
     if (!form.title.trim()) return alert("Please enter the book title.");
     if (!form.author.trim()) return alert("Please enter the author's last name.");
     if (!form.isbn13.trim()) return alert("Please provide the ISBN-13.");
     if (!form.publisher.trim()) return alert("Please enter the publisher.");
-    if (!form.publishPlace.trim() && !form.publishingPlace) return alert("Please enter the publishing place.");
+    if (!form.publishingPlace.trim()) return alert("Please enter the publishing place.");
     if (!form.edition.trim()) return alert("Please enter the edition.");
     if (!form.publicationYear) return alert("Please enter the publication year.");
     if (!form.binding) return alert("Please select the binding type.");
     if (!form.agreeLatest) return alert("Please select Agree/NA option.");
     if (!form.currency || !form.price) return alert("Please enter price and choose currency.");
     if (!form.copies) return alert("Please enter number of copies.");
+
     try {
       const payload = { ...form };
       await onSubmit(payload);
@@ -59,8 +64,6 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
     }
   }
 
-  const [modal, setModal] = useState(null);
-
   const isFormDisabled = loading || !isPeriodOpen;
 
   return (
@@ -69,92 +72,133 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
         <h2 className="panel-title">Submit Book Recommendation</h2>
 
         {!isPeriodOpen && (
-          <div style={{
-            background: "linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%)",
-            color: "var(--danger)",
-            borderRadius: "var(--radius)",
-            padding: "1rem 1.25rem",
-            fontWeight: 600,
-            fontSize: "0.95rem",
-            marginBottom: "1.5rem",
-            border: "1px solid rgba(239, 68, 68, 0.35)"
-          }}>
+          <div
+            style={{
+              background: "linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%)",
+              color: "var(--danger)",
+              borderRadius: "var(--radius)",
+              padding: "1rem 1.25rem",
+              fontWeight: 600,
+              fontSize: "0.95rem",
+              marginBottom: "1.5rem",
+              border: "1px solid rgba(239, 68, 68, 0.35)"
+            }}
+          >
             ⚠️ Book recommendation submissions are currently closed. You cannot submit new recommendations at this time.
           </div>
         )}
 
         {success && (
-          <div style={{
-            background: "var(--success-bg)",
-            color: "var(--success-text)",
-            borderRadius: "var(--radius)",
-            padding: "0.875rem 1.25rem",
-            fontWeight: 600,
-            fontSize: "0.9rem",
-            marginBottom: "1.5rem",
-            border: "1px solid var(--success-border)"
-          }}>
+          <div
+            style={{
+              background: "var(--success-bg)",
+              color: "var(--success-text)",
+              borderRadius: "var(--radius)",
+              padding: "0.875rem 1.25rem",
+              fontWeight: 600,
+              fontSize: "0.9rem",
+              marginBottom: "1.5rem",
+              border: "1px solid var(--success-border)"
+            }}
+          >
             ✓ Recommendation submitted successfully! View it in My Requests.
           </div>
         )}
 
         <div style={gridStyle}>
           <Field label="Book Title" required>
-            <input value={form.title} required placeholder="Enter book title"
-              onChange={(e) => set("title", e.target.value)} disabled={isFormDisabled} />
+            <input
+              value={form.title}
+              required
+              placeholder="Enter book title"
+              onChange={(e) => set("title", e.target.value)}
+              disabled={isFormDisabled}
+            />
           </Field>
           <Field label="Author" required>
-            <input value={form.author} required placeholder="Last Name, First Name (e.g., Smith, John)"
-              onChange={(e) => set("author", e.target.value)} disabled={isFormDisabled} />
-          </Field>
+            <input
+              value={form.author}
+              required
+              placeholder="Last Name, First Name (e.g., Smith, John)"
+              onChange={(e) => set("author", e.target.value)}
+              disabled={isFormDisabled}
+            />
           </Field>
         </div>
 
         <div style={gridStyle}>
-          <Field label="ISBN">
-            <input value={form.isbn} placeholder="978-XXXXXXXXXX"
-              onChange={(e) => set("isbn", e.target.value)} disabled={isFormDisabled} />
-          </Field>
           <Field label="ISBN-10 (optional)">
-            <input value={form.isbn10} placeholder="e.g., 0123456789"
-              onChange={(e) => set("isbn10", e.target.value)} />
-          </Field>
+            <input
+              value={form.isbn10}
+              placeholder="e.g., 0123456789"
+              onChange={(e) => set("isbn10", e.target.value)}
+              disabled={isFormDisabled}
+            />
           </Field>
           <Field label="ISBN-13" required>
-            <input value={form.isbn13} required placeholder="e.g., 9780123456786"
-              onChange={(e) => set("isbn13", e.target.value)} />
+            <input
+              value={form.isbn13}
+              required
+              placeholder="e.g., 9780123456786"
+              onChange={(e) => set("isbn13", e.target.value)}
+              disabled={isFormDisabled}
+            />
           </Field>
         </div>
 
         <div style={gridStyle}>
           <Field label="Publisher" required>
-            <input value={form.publisher} required placeholder="Enter publisher name"
-              onChange={(e) => set("publisher", e.target.value)} disabled={isFormDisabled} />
+            <input
+              value={form.publisher}
+              required
+              placeholder="Enter publisher name"
+              onChange={(e) => set("publisher", e.target.value)}
+              disabled={isFormDisabled}
+            />
           </Field>
           <Field label="Publishing Place" required>
-            <input value={form.publishingPlace} required placeholder="City / Place of publication"
-              onChange={(e) => set("publishingPlace", e.target.value)} />
+            <input
+              value={form.publishingPlace}
+              required
+              placeholder="City / Place of publication"
+              onChange={(e) => set("publishingPlace", e.target.value)}
+              disabled={isFormDisabled}
+            />
           </Field>
         </div>
 
         <div style={gridStyle}>
-          <Field label="Publisher Place" required>
-            <input value={form.publisherPlace} required placeholder="Enter publisher place"
-              onChange={(e) => set("publisherPlace", e.target.value)} disabled={isFormDisabled} />
-          </Field>
           <Field label="Edition" required>
-            <input value={form.edition} required placeholder="e.g., 3rd edition"
-              onChange={(e) => set("edition", e.target.value)} disabled={isFormDisabled} />
+            <input
+              value={form.edition}
+              required
+              placeholder="e.g., 3rd edition"
+              onChange={(e) => set("edition", e.target.value)}
+              disabled={isFormDisabled}
+            />
           </Field>
           <Field label="Publication Year" required>
-            <input type="number" value={form.publicationYear} required placeholder="e.g., 2024"
-              min="1900" max="2099" onChange={(e) => set("publicationYear", e.target.value)} disabled={isFormDisabled} />
+            <input
+              type="number"
+              value={form.publicationYear}
+              required
+              placeholder="e.g., 2024"
+              min="1900"
+              max="2099"
+              onChange={(e) => set("publicationYear", e.target.value)}
+              disabled={isFormDisabled}
+            />
           </Field>
         </div>
 
         <div style={gridStyle}>
           <Field label="Binding Type (Hb / Pb)" required>
-            <select value={form.binding} required onChange={(e) => set("binding", e.target.value)} disabled={isFormDisabled}>
+            <select
+              value={form.binding}
+              required
+              onChange={(e) => set("binding", e.target.value)}
+              disabled={isFormDisabled}
+            >
               <option value="">Select binding type</option>
               <option value="Hb">Hardback (Hb)</option>
               <option value="Pb">Paperback (Pb)</option>
@@ -162,7 +206,12 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
             </select>
           </Field>
           <Field label="Agree on Latest / Cheapest Edition" required>
-            <select value={form.agreeLatest} required onChange={(e) => set("agreeLatest", e.target.value)} disabled={isFormDisabled}>
+            <select
+              value={form.agreeLatest}
+              required
+              onChange={(e) => set("agreeLatest", e.target.value)}
+              disabled={isFormDisabled}
+            >
               <option value="">Select option</option>
               <option value="A">Agree</option>
               <option value="NA">Disagree</option>
@@ -171,20 +220,38 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
         </div>
 
         <div style={gridStyle}>
-          <Field label="Publication Year" required>
-            <input type="number" value={form.publicationYear} required placeholder="e.g., 2024"
-              min="1900" max="2099" onChange={(e) => set("publicationYear", e.target.value)} disabled={isFormDisabled} />
+          <Field label="Number of Pages (Optional)">
+            <input
+              type="number"
+              value={form.numberOfPages}
+              placeholder="e.g., 256"
+              min="1"
+              onChange={(e) => set("numberOfPages", e.target.value)}
+              disabled={isFormDisabled}
+            />
           </Field>
-          <Field label="Number of Pages">
-            <input type="number" value={form.numberOfPages} placeholder="e.g., 256"
-              min="1" onChange={(e) => set("numberOfPages", e.target.value)} disabled={isFormDisabled} />
+          <Field label="No. of Copies" required>
+            <input
+              type="number"
+              value={form.copies}
+              required
+              placeholder="e.g., 2"
+              min="1"
+              onChange={(e) => set("copies", e.target.value)}
+              disabled={isFormDisabled}
+            />
           </Field>
         </div>
 
         <div style={gridStyle}>
           <Field label="Price" required>
             <div style={{ display: "flex", gap: "0.5rem" }} className="price-input-group">
-              <select value={form.currency} required onChange={(e) => set("currency", e.target.value)} disabled={isFormDisabled}>
+              <select
+                value={form.currency}
+                required
+                onChange={(e) => set("currency", e.target.value)}
+                disabled={isFormDisabled}
+              >
                 <option value="LKR">LKR - Sri Lankan Rupee</option>
                 <option value="USD">USD - US Dollar</option>
                 <option value="EUR">EUR - Euro</option>
@@ -217,46 +284,42 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
                 <option value="HUF">HUF - Hungarian Forint</option>
                 <option value="RON">RON - Romanian Leu</option>
               </select>
-              <input type="number" value={form.price} required placeholder="e.g., 15000"
-                min="0" onChange={(e) => set("price", e.target.value)} disabled={isFormDisabled} />
+              <input
+                type="number"
+                value={form.price}
+                required
+                placeholder="e.g., 15000"
+                min="0"
+                onChange={(e) => set("price", e.target.value)}
+                disabled={isFormDisabled}
+              />
             </div>
-          </Field>
-          <Field label="No. of Copies" required>
-            <input type="number" value={form.copies} required placeholder="e.g., 2"
-              min="1" onChange={(e) => set("copies", e.target.value)} disabled={isFormDisabled} />
-          </Field>
-          </Field>
-        </div>
-
-        <div style={gridStyle}>
-          <Field label="No. of Pages (Optional)">
-            <input type="number" value={form.pages} placeholder="e.g., 320"
-              min="1" onChange={(e) => set("pages", e.target.value)} />
           </Field>
         </div>
 
         <div style={{ marginTop: "0.25rem" }}>
           <Field label="Additional Notes (Optional)">
-            <textarea value={form.additionalNotes} rows={4}
+            <textarea
+              value={form.additionalNotes}
+              rows={4}
               placeholder="Any additional information about this book recommendation"
               onChange={(e) => set("additionalNotes", e.target.value)}
               disabled={isFormDisabled}
-              style={{ resize: "vertical" }} />
+              style={{ resize: "vertical" }}
+            />
           </Field>
         </div>
-
       </div>
 
       <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.875rem", marginTop: "-0.5rem" }}>
-        <button type="button" className="secondary-button"
-          onClick={() => setForm(EMPTY_FORM)} disabled={isFormDisabled}>
+        <button type="button" className="secondary-button" onClick={() => setForm(EMPTY_FORM)} disabled={isFormDisabled}>
           Clear Form
         </button>
-        <button type="submit" className="primary-button"
-          disabled={isFormDisabled} style={{ opacity: isFormDisabled ? 0.7 : 1 }}>
+        <button type="submit" className="primary-button" disabled={isFormDisabled} style={{ opacity: isFormDisabled ? 0.7 : 1 }}>
           {loading ? "Submitting…" : "Submit Recommendation"}
         </button>
       </div>
+
       {modal && (
         <AppModal
           title={modal.title}
