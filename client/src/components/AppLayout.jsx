@@ -9,6 +9,7 @@ export const roleViews = {
 };
 
 export const viewLabels = {
+  profile: "My Profile",
   dashboard: "Dashboard",
   submit: "Submit Request",
   my: "My Requests",
@@ -22,6 +23,7 @@ export const viewLabels = {
 };
 
 export const viewIcons = {
+  profile: UserCircle,
   dashboard: Home,
   submit: Send,
   my: ClipboardList,
@@ -34,12 +36,12 @@ export const viewIcons = {
   createUser: UserPlus
 };
 
-export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, viewActions, theme, onToggleTheme, children }) {
+export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, onProfileClick, navigationLocked = false, viewActions, theme, onToggleTheme, children }) {
   const [sidebarMinimized, setSidebarMinimized] = useState(false);
   const ActiveIcon = viewIcons[view] || Home;
 
   return (
-    <div className="app-frame">
+    <div className="app-frame" style={{ "--app-sidebar-width": sidebarMinimized ? "80px" : "280px" }}>
       <header className="topbar">
         <div className="brand">
           <img src="/ruhuna.gif" alt="University of Ruhuna" className="logo" />
@@ -49,11 +51,13 @@ export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, vi
           </div>
         </div>
         <div className="userbar">
-          <div className="user-info">
-            <span className="user-name">{user.name}</span>
-            <span className="user-role">{user.role}</span>
-          </div>
-          <UserCircle size={32} color="var(--primary)" />
+          <button className="profile-trigger" type="button" onClick={onProfileClick} title="Open profile">
+            <UserCircle size={30} color="var(--primary)" />
+            <span className="user-info">
+              <span className="user-name">{user.name}</span>
+              <span className="user-role">{user.role}</span>
+            </span>
+          </button>
           
           <button 
             className="secondary-button theme-toggle-btn" 
@@ -80,30 +84,32 @@ export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, vi
       </header>
 
       <div className="workspace">
-        <aside className={`sidebar ${sidebarMinimized ? 'minimized' : ''}`}>
-          {allowedViews.map((item) => {
-            const Icon = viewIcons[item];
-            return (
-              <button
-                key={item}
-                className={view === item ? "nav-item active" : "nav-item"}
-                onClick={() => onViewChange(item)}
-                title={sidebarMinimized ? viewLabels[item] : ""}
-              >
-                <Icon size={20} />
-                {!sidebarMinimized && <span>{viewLabels[item]}</span>}
-              </button>
-            );
-          })}
+        {!navigationLocked && (
+          <aside className={`sidebar ${sidebarMinimized ? 'minimized' : ''}`}>
+            {allowedViews.map((item) => {
+              const Icon = viewIcons[item];
+              return (
+                <button
+                  key={item}
+                  className={view === item ? "nav-item active" : "nav-item"}
+                  onClick={() => onViewChange(item)}
+                  title={sidebarMinimized ? viewLabels[item] : ""}
+                >
+                  <Icon size={20} />
+                  {!sidebarMinimized && <span>{viewLabels[item]}</span>}
+                </button>
+              );
+            })}
 
-          <button
-            className="nav-item sidebar-toggle-btn"
-            onClick={() => setSidebarMinimized(!sidebarMinimized)}
-            title={sidebarMinimized ? "Expand sidebar" : ""}
-          >
-            {sidebarMinimized ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
-          </button>
-        </aside>
+            <button
+              className="nav-item sidebar-toggle-btn"
+              onClick={() => setSidebarMinimized(!sidebarMinimized)}
+              title={sidebarMinimized ? "Expand sidebar" : ""}
+            >
+              {sidebarMinimized ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+            </button>
+          </aside>
+        )}
 
         <main className="content">
           <div className="view-title-row">

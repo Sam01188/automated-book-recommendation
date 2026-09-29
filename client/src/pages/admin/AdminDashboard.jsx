@@ -46,22 +46,9 @@ function getRecentActivities(users, recommendations, adminUser) {
     }
     
     return {
-      id: `${a.type}-${a.userId}`,
+      id: `${a.type}-${a.userId}-${a.timestamp}`,
       text: actionText,
       time: a.timestamp,
-      label: `by ${adminName}`
-    };
-  });
-
-  const userActivities = users.map((item) => {
-    const createdAt = item.createdAt;
-    const updatedAt = item.updatedAt;
-    const wasUpdated = createdAt && updatedAt && new Date(updatedAt).getTime() - new Date(createdAt).getTime() > 1000;
-
-    return {
-      id: `user-${item._id}`,
-      text: wasUpdated ? `${item.name} account updated` : `${item.name} account created`,
-      time: updatedAt || createdAt,
       label: `by ${adminName}`
     };
   });
@@ -80,7 +67,7 @@ function getRecentActivities(users, recommendations, adminUser) {
     };
   });
 
-  return [...userLogActivities, ...userActivities, ...recommendationActivities]
+  return [...userLogActivities, ...recommendationActivities]
     .filter((item) => item.time)
     .sort((a, b) => new Date(b.time) - new Date(a.time))
     .slice(0, 5);

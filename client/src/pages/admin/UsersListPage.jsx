@@ -101,6 +101,10 @@ export function UsersListPage({ token }) {
       }
       
       setUsers((current) => current.filter((u) => u._id !== id));
+      setModal({
+        title: "User deleted",
+        message: `${deletedUser?.name || "User"} was deleted successfully.`
+      });
     } catch {
       setModal({
         title: "Failed to delete user",

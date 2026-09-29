@@ -1,12 +1,16 @@
 import { useState } from "react";
-import { LogIn, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { AppModal } from "../../components/AppModal";
 
-export function LoginPage({ onLogin }) {
-  const [email, setEmail] = useState("admin@ruh.ac.lk");
-  const [password, setPassword] = useState("admin123");
+export function LoginPage({ onLogin, onRequestPasswordReset, onResetPassword, resetToken }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [mode, setMode] = useState(resetToken ? "reset" : "login");
   const [busy, setBusy] = useState(false);
   const [modal, setModal] = useState(null);
+  const [notice, setNotice] = useState("");
 
   async function submit(event) {
     event.preventDefault();
@@ -22,6 +26,50 @@ export function LoginPage({ onLogin }) {
       setBusy(false);
     }
   }
+
+  async function requestReset(event) {
+    event.preventDefault();
+    setBusy(true);
+    setNotice("");
+    try {
+      const result = await onRequestPasswordReset(email);
+      setNotice(result.message);
+    } catch (error) {
+      setModal({ title: "Could not send reset email", message: error.message });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitReset(event) {
+    event.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setModal({ title: "Passwords do not match", message: "Enter the same new password in both fields." });
+      return;
+    }
+
+    setBusy(true);
+    setNotice("");
+    try {
+      const result = await onResetPassword(resetToken, newPassword);
+      window.history.replaceState({}, "", window.location.pathname);
+      setMode("login");
+      setPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setNotice(result.message);
+    } catch (error) {
+      setModal({ title: "Could not reset password", message: error.message });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const modeTitle = {
+    login: "Welcome back",
+    forgot: "Reset your password",
+    reset: "Choose a new password"
+  }[mode];
 
   return (
     <div className="login-page">
@@ -43,43 +91,95 @@ export function LoginPage({ onLogin }) {
       </div>
 
       <div className="login-form-side">
-        <form className="login-card" onSubmit={submit}>
+        <form
+          className="login-card"
+          onSubmit={mode === "login" ? submit : mode === "forgot" ? requestReset : submitReset}
+        >
           <div>
-            <h3 style={{ fontSize: '2rem', fontWeight: 800 }}>Welcome back ...</h3>
-            <p style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Please enter your credentials to continue.</p>
+            <h3 style={{ fontSize: '2rem', fontWeight: 800 }}>{modeTitle}</h3>
+            <p style={{ color: 'var(--text-muted)', fontWeight: 500 }}>
+              {mode === "login" && "Please enter your credentials to continue."}
+              {mode === "forgot" && "Enter your account email and we will send a reset link."}
+              {mode === "reset" && "Use at least 10 characters for your new password."}
+            </p>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div className="field">
-              <label>Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="name@ruh.ac.lk"
-              />
-            </div>
-            <div className="field">
-              <label>Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="••••••••"
-              />
-            </div>
+            {(mode === "login" || mode === "forgot") && (
+              <div className="field">
+                <label htmlFor="login-email">Email</label>
+                <input
+                  id="login-email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="name@ruh.ac.lk"
+                />
+              </div>
+            )}
+            {mode === "login" && (
+              <div className="field">
+                <label htmlFor="login-password">Password</label>
+                <input
+                  id="login-password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Enter your password"
+                />
+              </div>
+            )}
+            {mode === "reset" && (
+              <>
+                <div className="field">
+                  <label htmlFor="reset-password">New password</label>
+                  <input id="reset-password" type="password" autoComplete="new-password" minLength={10} required value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+                </div>
+                <div className="field">
+                  <label htmlFor="confirm-password">Confirm new password</label>
+                  <input id="confirm-password" type="password" autoComplete="new-password" minLength={10} required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
+                </div>
+              </>
+            )}
           </div>
 
-          <button className="btn" type="submit" disabled={busy}>
-            {busy ? "Signing in..." : "Sign In"}
-            {!busy && <ArrowRight size={20} />}
-          </button>
+          {notice && <p className="login-notice" role="status">{notice}</p>}
 
-          <div style={{ textAlign: 'center', fontSize: '0.85rem' }}>
-            <a href="#help" style={{ color: 'var(--primary)', fontWeight: 700, textDecoration: 'none' }}>
-              Forgot Password?
-            </a>
-          </div>
+          {mode === "login" && (
+            <>
+              <button className="btn" type="submit" disabled={busy}>
+                {busy ? "Signing in..." : "Sign In"}
+                {!busy && <ArrowRight size={20} />}
+              </button>
+              <button className="link-button" type="button" onClick={() => { setNotice(""); setMode("forgot"); }}>
+                Forgot password?
+              </button>
+            </>
+          )}
+          {mode === "forgot" && (
+            <>
+              <button className="btn" type="submit" disabled={busy}>
+                {busy ? "Sending..." : "Send reset link"}
+              </button>
+              <button className="link-button" type="button" onClick={() => { setNotice(""); setMode("login"); }}>
+                Back to sign in
+              </button>
+            </>
+          )}
+          {mode === "reset" && (
+            <>
+              <button className="btn" type="submit" disabled={busy}>
+                {busy ? "Updating..." : "Reset password"}
+              </button>
+              <button className="link-button" type="button" onClick={() => { window.history.replaceState({}, "", window.location.pathname); setMode("login"); }}>
+                Back to sign in
+              </button>
+            </>
+          )}
         </form>
       </div>
 

@@ -12,7 +12,11 @@ import {
   fetchCurrentPeriod,
   fetchCurrentHodPeriod,
   fetchOrderPeriods,
-  createUser as apiCreateUser
+  createUser as apiCreateUser,
+  changePassword,
+  updateProfile,
+  requestPasswordReset,
+  resetPassword
 } from "./api";
 import { AppLayout, roleViews } from "./components/AppLayout";
 import { LoginPage } from "./pages/auth/LoginPage";
@@ -30,6 +34,7 @@ import { SubmitRequestPage } from "./pages/lecturer/SubmitRequestPage";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { CreateUserPage } from "./pages/admin/CreateUserPage";
 import { UsersListPage } from "./pages/admin/UsersListPage";
+import { ProfilePage } from "./pages/ProfilePage";
 import "./styles/librarian.css";
 
 function App() {
@@ -77,7 +82,7 @@ function App() {
   }, []);
 
   const refreshPeriodStatus = () => {
-    if (!session) return;
+    if (!session || session.user.mustChangePassword) return;
     if (session.user.role === "lecturer") {
       fetchCurrentPeriod(session.token)
         .then((res) => {
@@ -96,7 +101,7 @@ function App() {
   };
 
   useEffect(() => {
-    if (!session) {
+    if (!session || session.user.mustChangePassword) {
       return;
     }
 
@@ -132,7 +137,7 @@ function App() {
   }, [session]);
 
   useEffect(() => {
-    if (!session) return;
+    if (!session || session.user.mustChangePassword) return;
     if (session.user.role === "librarian" && view === "all") {
       Promise.all([fetchRecommendations(session.token, session.user.role), fetchOrderPeriods(session.token)])
         .then(([records, periodList]) => {
@@ -149,7 +154,7 @@ function App() {
   }, [session, view]);
 
   useEffect(() => {
-    if (!session || session.user.role !== "librarian" || view !== "all") {
+    if (!session || session.user.mustChangePassword || session.user.role !== "librarian" || view !== "all") {
       return undefined;
     }
 
@@ -196,6 +201,7 @@ function App() {
   }, [items, session?.user?.role]);
 
   const handleViewChange = (nextView) => {
+    if (session?.user.mustChangePassword && nextView !== "profile") return;
     if (nextView === "all") {
       setAllFilter("all");
     }
@@ -207,6 +213,30 @@ function App() {
     localStorage.setItem("book-rec-session", JSON.stringify(nextSession));
     setSession(nextSession);
     setView("dashboard");
+  }
+
+  async function handlePasswordChange(currentPassword, newPassword) {
+    const result = await changePassword(session.token, currentPassword, newPassword);
+    const nextSession = {
+      ...session,
+      token: result.token,
+      user: { ...session.user, mustChangePassword: false }
+    };
+    localStorage.setItem("book-rec-session", JSON.stringify(nextSession));
+    setSession(nextSession);
+    setView("profile");
+    return result;
+  }
+
+  async function handleProfileNameUpdate(name) {
+    const result = await updateProfile(session.token, name);
+    const nextSession = {
+      ...session,
+      user: { ...session.user, name: result.name }
+    };
+    localStorage.setItem("book-rec-session", JSON.stringify(nextSession));
+    setSession(nextSession);
+    return result;
   }
 
   async function logout() {
@@ -292,22 +322,43 @@ function App() {
     await apiCreateUser(session.token, userData);
   }
 
+  const resetToken = new URLSearchParams(window.location.search).get("resetToken");
   if (!session) {
-    return <LoginPage onLogin={handleLogin} />;
+    return (
+      <LoginPage
+        onLogin={handleLogin}
+        onRequestPasswordReset={requestPasswordReset}
+        onResetPassword={resetPassword}
+        resetToken={resetToken}
+      />
+    );
   }
+
+  const passwordChangeRequired = Boolean(session.user.mustChangePassword);
+  const currentView = passwordChangeRequired ? "profile" : view;
 
   return (
     <AppLayout
       user={session.user}
-      view={view}
-      allowedViews={allowedViews}
+      view={currentView}
+      allowedViews={passwordChangeRequired ? [] : allowedViews}
       onViewChange={handleViewChange}
+      onProfileClick={() => setView("profile")}
+      navigationLocked={passwordChangeRequired}
       onLogout={logout}
       viewActions={null}
       theme={theme}
       onToggleTheme={toggleTheme}
     >
-      {session.user.role === "lecturer" && view === "dashboard" && (
+      {currentView === "profile" && (
+        <ProfilePage
+          user={session.user}
+          passwordChangeRequired={passwordChangeRequired}
+          onChangePassword={handlePasswordChange}
+          onUpdateName={handleProfileNameUpdate}
+        />
+      )}
+      {!passwordChangeRequired && session.user.role === "lecturer" && currentView === "dashboard" && (
         <LecturerDashboardPage
           user={session.user}
           stats={stats}
@@ -319,14 +370,14 @@ function App() {
           onRejectedClick={() => setView("my")}
         />
       )}
-      {session.user.role === "lecturer" && view === "submit" && (
+      {!passwordChangeRequired && session.user.role === "lecturer" && currentView === "submit" && (
         <SubmitRequestPage
           onSubmit={handleCreate}
           isPeriodOpen={isPeriodOpen}
           currentPeriod={currentPeriod}
         />
       )}
-      {session.user.role === "lecturer" && view === "my" && (
+      {!passwordChangeRequired && session.user.role === "lecturer" && currentView === "my" && (
         <MyRecommendationsPage
           items={items}
           isPeriodOpen={isPeriodOpen}
@@ -342,7 +393,7 @@ function App() {
         />
       )}
 
-      {session.user.role === "hod" && view === "dashboard" && (
+      {!passwordChangeRequired && session.user.role === "hod" && currentView === "dashboard" && (
         <HodDashboardPage
           user={session.user}
           stats={stats}
@@ -357,7 +408,7 @@ function App() {
           }}
         />
       )}
-      {session.user.role === "hod" && view === "priority" && (
+      {!passwordChangeRequired && session.user.role === "hod" && currentView === "priority" && (
         <HodPriorityPage
           items={items}
           onOrderChange={handleRecommendationOrder}
@@ -366,7 +417,7 @@ function App() {
           onSubmit={handleSubmitToLibrarian}
         />
       )}
-      {session.user.role === "hod" && view === "all" && (
+      {!passwordChangeRequired && session.user.role === "hod" && currentView === "all" && (
         <HodAllRecommendationsPage
           items={items}
           filterPriority={allFilter}
@@ -377,11 +428,11 @@ function App() {
           currentPeriod={currentHodPeriod}
         />
       )}
-      {session.user.role === "hod" && view === "submissions" && (
+      {!passwordChangeRequired && session.user.role === "hod" && currentView === "submissions" && (
         <HodSubmissionsPage items={items} currentUserId={session.user.id} />
       )}
 
-      {session.user.role === "librarian" && view === "dashboard" && (
+      {!passwordChangeRequired && session.user.role === "librarian" && currentView === "dashboard" && (
         <LibrarianDashboardPage
           user={session.user}
           stats={stats}
@@ -394,23 +445,23 @@ function App() {
           }}
         />
       )}
-      {session.user.role === "librarian" && view === "all" && (
+      {!passwordChangeRequired && session.user.role === "librarian" && currentView === "all" && (
         <AllRecommendationsPage items={items} filterPriority={allFilter} currentPeriod={resolveLibrarianDisplayPeriod(periods)} />
       )}
-      {session.user.role === "librarian" && view === "periods" && (
+      {!passwordChangeRequired && session.user.role === "librarian" && currentView === "periods" && (
         <OrderTimePeriodsPage
           token={session.token}
           onViewChange={setView}
           onSelectPeriod={setSelectedPeriod}
         />
       )}
-      {session.user.role === "librarian" && view === "export" && <ExportDataPage items={items} />}
+      {!passwordChangeRequired && session.user.role === "librarian" && currentView === "export" && <ExportDataPage items={items} />}
 
-      {session.user.role === "admin" && view === "dashboard" && (
+      {!passwordChangeRequired && session.user.role === "admin" && currentView === "dashboard" && (
         <AdminDashboard user={session.user} token={session.token} items={items} />
       )}
-      {session.user.role === "admin" && view === "users" && <UsersListPage token={session.token} />}
-      {session.user.role === "admin" && view === "createUser" && (
+      {!passwordChangeRequired && session.user.role === "admin" && currentView === "users" && <UsersListPage token={session.token} />}
+      {!passwordChangeRequired && session.user.role === "admin" && currentView === "createUser" && (
         <CreateUserPage onCreateUser={handleUserCreation} />
       )}
     </AppLayout>

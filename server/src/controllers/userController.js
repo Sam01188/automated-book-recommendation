@@ -5,7 +5,8 @@ export const createUser = async (req, res) => {
   try {
     const { name, email, role, department, password } = req.body;
 
-    const existing = await User.findOne({ email });
+    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+    const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
       return res.status(400).json({ message: "User already exists" });
     }
@@ -14,17 +15,25 @@ export const createUser = async (req, res) => {
 
     const user = new User({
       name,
-      email,
+      email: normalizedEmail,
       role,
       department,
-      passwordHash
+      passwordHash,
+      mustChangePassword: true
     });
 
     await user.save();
 
     res.status(201).json({
       message: "User created successfully",
-      user
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        department: user.department,
+        mustChangePassword: user.mustChangePassword
+      }
     });
 
   } catch (err) {
