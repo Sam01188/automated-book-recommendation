@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppModal } from "../../components/AppModal";
+import { getBookSuggestion } from "../../api";
 
 const EMPTY_FORM = {
   title: "",
@@ -23,9 +24,52 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
   const [form, setForm] = useState(EMPTY_FORM);
   const [success, setSuccess] = useState(false);
   const [modal, setModal] = useState(null);
+  const [bookSuggestions, setBookSuggestions] = useState([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [suggestionInput, setSuggestionInput] = useState({ query: "", field: "title" });
 
   function set(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  useEffect(() => {
+    const query = suggestionInput.query.trim();
+    if (query.length < 3) {
+      setBookSuggestions([]);
+      setAiLoading(false);
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setAiLoading(true);
+      try {
+        const result = await getBookSuggestion(query, suggestionInput.field, controller.signal);
+        setBookSuggestions(result.suggestions || []);
+      } catch (err) {
+        if (err.name !== "AbortError") console.error("Book search failed:", err);
+      } finally {
+        if (!controller.signal.aborted) setAiLoading(false);
+      }
+    }, 500);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [suggestionInput]);
+
+  function chooseBookSuggestion(book) {
+    setForm((prev) => ({
+      ...prev,
+      title: book.title || prev.title,
+      author: book.author || prev.author,
+      publisher: book.publisher || prev.publisher,
+      isbn13: book.isbn13 || prev.isbn13,
+      isbn10: book.isbn10 || prev.isbn10
+    }));
+    setBookSuggestions([]);
+    setSuggestionInput({ query: "", field: "title" });
   }
 
   async function handleSubmit(e) {
@@ -90,6 +134,62 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
           <span>Complete all required details to submit faster.</span>
         </div>
 
+        {aiLoading && (
+          <div
+            style={{
+              background: "rgba(59, 130, 246, 0.08)",
+              color: "var(--primary)",
+              border: "1px solid rgba(59, 130, 246, 0.2)",
+              borderRadius: "var(--radius)",
+              padding: "0.75rem 1rem",
+              marginBottom: "1.5rem",
+              fontSize: "0.86rem",
+              fontWeight: 600
+            }}
+          >
+            Searching book records…
+          </div>
+        )}
+
+        {bookSuggestions.length > 0 && !aiLoading && (
+          <div
+            style={{
+              background: "rgba(34, 197, 94, 0.08)",
+              color: "var(--success-text)",
+              border: "1px solid var(--success-border)",
+              borderRadius: "var(--radius)",
+              padding: "0.75rem 1rem",
+              marginBottom: "1.5rem",
+              fontSize: "0.86rem",
+              display: "flex",
+              justifyContent: "space-between",
+              gap: "0.75rem",
+              flexWrap: "wrap",
+              alignItems: "center"
+            }}
+          >
+            <div style={{ width: "100%" }}>
+              <strong style={{ display: "block", marginBottom: "0.5rem" }}>Book matches</strong>
+              <div style={{ display: "grid", gap: "0.5rem" }}>
+                {bookSuggestions.map((book, index) => (
+                  <button
+                    key={`${book.title}-${book.isbn13 || index}`}
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => chooseBookSuggestion(book)}
+                    style={{ textAlign: "left", whiteSpace: "normal" }}
+                  >
+                    <strong>{book.title}</strong>
+                    {book.author ? ` · ${book.author}` : ""}
+                    {book.publisher ? ` · ${book.publisher}` : ""}
+                  </button>
+                ))}
+              </div>
+              <small style={{ display: "block", marginTop: "0.5rem" }}>Catalog matches from Open Library. Check details before submitting.</small>
+            </div>
+          </div>
+        )}
+
         {!isPeriodOpen && (
           <div
             style={{
@@ -130,7 +230,10 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
               value={form.title}
               required
               placeholder="Enter book title"
-              onChange={(e) => set("title", e.target.value)}
+              onChange={(e) => {
+                set("title", e.target.value);
+                setSuggestionInput({ query: e.target.value, field: "title" });
+              }}
               disabled={isFormDisabled}
             />
           </Field>
@@ -139,7 +242,10 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
               value={form.author}
               required
               placeholder="Last Name, First Name (e.g., Smith, John)"
-              onChange={(e) => set("author", e.target.value)}
+              onChange={(e) => {
+                set("author", e.target.value);
+                setSuggestionInput({ query: e.target.value, field: "author" });
+              }}
               disabled={isFormDisabled}
             />
           </Field>
@@ -171,7 +277,10 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
               value={form.publisher}
               required
               placeholder="Enter publisher name"
-              onChange={(e) => set("publisher", e.target.value)}
+              onChange={(e) => {
+                set("publisher", e.target.value);
+                setSuggestionInput({ query: e.target.value, field: "publisher" });
+              }}
               disabled={isFormDisabled}
             />
           </Field>

@@ -110,6 +110,22 @@ export async function fetchStats(token, items) {
   return checkApiResponse(response);
 }
 
+export async function getBookSuggestion(query, field = "title", signal) {
+  const response = await fetch(`${api}/ai/book-suggestion`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query, field }),
+    signal
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch AI suggestion");
+  }
+
+  return response.json();
+}
+
 export async function createRecommendation(token, payload) {
   if (token === "demo-token") {
     return {
