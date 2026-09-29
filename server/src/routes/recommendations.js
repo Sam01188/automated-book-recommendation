@@ -282,16 +282,44 @@ router.post("/", requireAuth, allowRoles("lecturer"), async (req, res) => {
     }
 
     const {
-      title, author, isbn, publisher, edition,
-      publicationYear, binding, agreeLatest, price, currency, copies,
-      publishPlace, numberOfPages, additionalNotes
+      title,
+      author,
+      isbn,
+      isbn10,
+      isbn13,
+      publisher,
+      publishPlace,
+      publishingPlace,
+      numberOfPages,
+      pages,
+      currency,
+      edition,
+      publicationYear,
+      binding,
+      agreeLatest,
+      price,
+      copies,
+      additionalNotes
     } = req.body;
+
+    // Require ISBN-13
+    if (!isbn13 || !String(isbn13).trim()) {
+      return res.status(400).json({ message: "ISBN-13 is required" });
+    }
+
+    // Determine primary ISBN for backward compatibility (prefer 13)
+    const primaryIsbn = isbn13 || isbn10 || isbn || "";
 
     const recommendation = await Recommendation.create({
       title,
       author,
-      isbn,
+      isbn: primaryIsbn,
+      isbn10,
+      isbn13,
       publisher,
+      publishingPlace,
+      pages,
+      currency,
       edition,
       publicationYear,
       binding,
@@ -436,21 +464,27 @@ router.get("/export/:format", requireAuth, allowRoles("librarian"), async (req, 
       .sort({ department: 1, priorityRank: 1 });
 
     const data = rows.map((item) => ({
-      title:          item.title,
-      author:         item.author,
-      isbn:           item.isbn,
-      publisher:      item.publisher,
-      edition:        item.edition,
-      publicationYear: item.publicationYear,
-      binding:        item.binding,
-      agreeLatest:    item.agreeLatest,
-      price:          item.price,
-      copies:         item.copies,
-      department:     item.department,
-      submittedBy:    item.submittedBy?.name || "",
-      priorityRank:   item.priorityRank,
-      status:         item.status,
-      orderPeriod:    item.orderPeriod?.faculty || "",
+      title:            item.title,
+      author:           item.author,
+      isbn:             item.isbn,
+      isbn10:           item.isbn10 || "",
+      isbn13:           item.isbn13 || "",
+      publisher:        item.publisher,
+      publishPlace:     item.publishPlace || item.publishingPlace || "",
+      numberOfPages:    item.numberOfPages || item.pages || "",
+      currency:         item.currency || "LKR",
+      edition:          item.edition,
+      publicationYear:  item.publicationYear,
+      binding:          item.binding,
+      agreeLatest:      item.agreeLatest,
+      price:            item.price,
+      copies:           item.copies,
+      department:       item.department,
+      submittedBy:      item.submittedBy?.name || "",
+      priority:         item.priority || "",
+      priorityRank:     item.priorityRank,
+      status:           item.status,
+      orderPeriod:      item.orderPeriod?.faculty || "",
       submittedToLibrarianAt: item.submittedToLibrarianAt
     }));
 
@@ -459,16 +493,15 @@ router.get("/export/:format", requireAuth, allowRoles("librarian"), async (req, 
     }
 
     const headers = [
-      "Title","Author","ISBN","Publisher","Edition",
-      "Publication Year","Binding","Agree Latest","Price (LKR)","Copies",
-      "Department","Submitted By","Rank","Status","Order Period","Submitted To Librarian At"
+      "Title","Author","ISBN","ISBN-10","ISBN-13","Publisher","Publishing Place","Number of Pages","Currency","Price","Copies",
+      "Department","Submitted By","Priority","Rank","Status","Order Period","Submitted To Librarian At"
     ];
 
     const csv = [
       headers.join(","),
       ...data.map((row) =>
         [
-          row.title, row.author, row.isbn, row.publisher, row.edition,
+          row.title, row.author, row.isbn, row.isbn10, row.isbn13, row.publisher, row.publishingPlace, row.pages, row.currency, row.edition,
           row.publicationYear, row.binding, row.agreeLatest, row.price, row.copies,
           row.department, row.submittedBy, row.priorityRank, row.status, row.orderPeriod, row.submittedToLibrarianAt
         ]

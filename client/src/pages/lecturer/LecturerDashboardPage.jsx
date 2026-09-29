@@ -113,6 +113,7 @@ function RecentRow({ item }) {
   const statusColors = {
     submitted: { bg: "var(--success-bg)", text: "var(--success-text)", border: "var(--success-border)" },
     under_review: { bg: "rgba(236, 72, 153, 0.15)", text: "#ec4899", border: "rgba(236, 72, 153, 0.3)" },
+    approved: { bg: "#dcfce7", text: "#2da55b" },
     rejected: { bg: "var(--danger-bg)", text: "var(--danger-text)", border: "var(--danger-border)" }
   };
   const sc = statusColors[item.status] ?? statusColors.submitted;

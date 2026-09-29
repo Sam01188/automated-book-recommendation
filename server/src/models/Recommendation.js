@@ -4,11 +4,14 @@ const recommendationSchema = new mongoose.Schema(
   {
     title:           { type: String, required: true, trim: true },
     author:          { type: String, required: true, trim: true },
-    isbn:            { type: String, required: true, trim: true },
+    isbn:            { type: String, trim: true },
+    isbn10:          { type: String, trim: true },
+    isbn13:          { type: String, required: true, trim: true },
     publisher:       { type: String, required: true, trim: true },
     edition:         { type: String, required: true, trim: true },
     publishPlace:    { type: String, trim: true },
     numberOfPages:   { type: Number },
+    currency:        { type: String, trim: true, default: "LKR" },
     additionalNotes: { type: String, trim: true },
 
     publicationYear: { type: Number },
