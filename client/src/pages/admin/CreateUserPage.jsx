@@ -55,7 +55,7 @@ export function CreateUserPage({ onCreateUser }) {
       setForm({ name: "", email: "", password: "", role: "lecturer", department: "DCEE" });
       setModal({
         title: "Account created successfully.",
-        message: "The new user can now sign in with the credentials you provided."
+        message: "The new user can sign in with the temporary password."
       });
     } catch (err) {
       setModal({
@@ -87,7 +87,7 @@ export function CreateUserPage({ onCreateUser }) {
           </div>
 
           <div className="field">
-            <label>Initial Password *</label>
+            <label>Temporary Password *</label>
             <input type="password" value={form.password} required onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" />
           </div>
 

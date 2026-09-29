@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 
 export function AppModal({
   title,
@@ -22,7 +23,9 @@ export function AppModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onConfirm]);
 
-  return (
+  const portalTarget = document.querySelector(".app-frame") || document.body;
+
+  return createPortal(
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="app-modal-title">
       <div className={`app-modal app-modal-${variant}`}>
         <h3 id="app-modal-title">{title}</h3>
@@ -40,6 +43,7 @@ export function AppModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    portalTarget
   );
 }

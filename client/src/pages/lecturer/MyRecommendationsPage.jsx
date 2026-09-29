@@ -149,6 +149,7 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
               padding: "0.5rem 0.75rem",
               border: "none",
               background: activeTab === "requests" ? "var(--surface)" : "transparent",
+              color: "var(--text)",
               fontWeight: activeTab === "requests" ? 700 : 600,
               cursor: "pointer"
             }}
@@ -161,6 +162,7 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
               padding: "0.5rem 0.75rem",
               border: "none",
               background: activeTab === "status" ? "var(--surface)" : "transparent",
+              color: "var(--text)",
               fontWeight: activeTab === "status" ? 700 : 600,
               cursor: "pointer"
             }}

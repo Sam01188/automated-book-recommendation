@@ -802,6 +802,10 @@ textarea:focus {
   backdrop-filter: blur(10px) saturate(120%);
 }
 
+.app-frame .modal-backdrop {
+  inset: 80px 0 0 var(--app-sidebar-width, 280px);
+}
+
 .app-modal {
   width: min(420px, 100%);
   background: var(--surface-solid);
@@ -1049,6 +1053,157 @@ textarea:focus {
   background: #ffffff;
   color: #000000;
   box-shadow: 0 0 0 4px rgba(128, 0, 0, 0.1);
+}
+
+.profile-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.profile-trigger:hover,
+.profile-trigger:focus-visible {
+  background: var(--surface-hover);
+  border-color: var(--border);
+}
+
+.profile-trigger:focus-visible {
+  outline: 2px solid var(--primary-light);
+  outline-offset: 2px;
+}
+
+.link-button {
+  border: 0;
+  padding: 0.25rem;
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.login-notice,
+.profile-feedback,
+.profile-required-notice {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--welcome-bg);
+  color: var(--text);
+}
+
+.profile-panel {
+  max-width: 860px;
+}
+
+.profile-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1rem;
+  margin: 0 0 2rem;
+}
+
+.profile-detail dt {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.profile-detail dd {
+  margin-top: 0.25rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.profile-password-form {
+  margin-top: 1.5rem;
+}
+
+.profile-section {
+  display: grid;
+  gap: 1.25rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1.5rem;
+}
+
+.profile-section h3 {
+  font-size: 1.1rem;
+}
+
+.profile-name-value {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.profile-name-edit {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: min(100%, 420px);
+}
+
+.profile-name-edit input {
+  min-width: 0;
+  flex: 1;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-sm);
+  background: var(--surface-solid);
+  color: var(--text);
+}
+
+.profile-edit-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.profile-edit-button:hover:not(:disabled) {
+  border-color: var(--border);
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.profile-edit-button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.profile-feedback.error {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.profile-feedback.success {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.form-help-text {
+  color: var(--text-muted);
+  font-size: 0.85rem;
 }
 
 /* Dark theme focus glow for field elements */

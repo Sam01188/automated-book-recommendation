@@ -18,16 +18,29 @@ export async function requireAuth(req, res, next) {
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await User.findById(payload.id).select("-passwordHash");
+    const user = await User.findById(payload.id);
     if (!user) {
       return res.status(401).json({ message: "Invalid session" });
+    }
+    if ((payload.sessionVersion ?? 0) !== (user.sessionVersion ?? 0)) {
+      return res.status(401).json({ message: "Your session has expired. Please sign in again." });
+    }
+
+    const isPasswordFlowRoute = req.baseUrl === "/api/auth" &&
+      ["/change-password", "/profile", "/logout"].includes(req.path);
+    if (user.mustChangePassword && !isPasswordFlowRoute) {
+      return res.status(403).json({
+        mustChangePassword: true,
+        message: "Change your password before continuing."
+      });
     }
 
     req.user = {
       id: user._id,
       role: user.role,
       email: user.email,
-      department: user.department
+      department: user.department,
+      mustChangePassword: user.mustChangePassword
     };
     req.token = token;
 

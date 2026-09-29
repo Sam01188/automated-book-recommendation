@@ -29,6 +29,48 @@ export async function login(email, password) {
   return response.json();
 }
 
+export async function requestPasswordReset(email) {
+  const response = await fetch(`${api}/auth/password-reset/request`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email })
+  });
+  return checkApiResponse(response);
+}
+
+export async function resetPassword(token, newPassword) {
+  const response = await fetch(`${api}/auth/password-reset/confirm`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, newPassword })
+  });
+  return checkApiResponse(response);
+}
+
+export async function changePassword(token, currentPassword, newPassword) {
+  const response = await fetch(`${api}/auth/change-password`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ currentPassword, newPassword })
+  });
+  return checkApiResponse(response);
+}
+
+export async function updateProfile(token, name) {
+  const response = await fetch(`${api}/auth/profile`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ name })
+  });
+  return checkApiResponse(response);
+}
+
 export async function logout(token) {
   if (token === "demo-token") {
     return;
