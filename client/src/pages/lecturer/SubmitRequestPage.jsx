@@ -113,26 +113,67 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
   return (
     <form onSubmit={handleSubmit}>
       <div className="form-panel">
-        <h2 className="panel-title">Submit Book Recommendation</h2>
+        <h2 className="panel-title" style={{ marginBottom: "0.5rem" }}>Submit Book Recommendation</h2>
 
-        <div
-          style={{
-            background: "rgba(255,255,255,0.02)",
-            border: "1px solid rgba(148, 163, 184, 0.22)",
-            borderRadius: "var(--radius)",
-            padding: "0.75rem 1rem",
-            marginBottom: "1.5rem",
-            color: "var(--text-muted, #64748b)",
-            fontSize: "0.86rem",
-            display: "flex",
-            justifyContent: "space-between",
-            gap: "0.5rem",
-            flexWrap: "wrap"
-          }}
-        >
-          <span>Fields marked with <strong style={{ color: "var(--danger-text, #dc2626)" }}>*</strong> are required.</span>
-          <span>Complete all required details to submit faster.</span>
-        </div>
+        <p style={{ margin: "0 0 1.5rem", color: "var(--text-muted, #64748b)", fontSize: "0.86rem" }}>
+          Fields marked in <span style={{ color: "var(--danger-text, #dc2626)" }}>*</span> are required.
+        </p>
+
+        {aiLoading && (
+          <div
+            style={{
+              background: "rgba(59, 130, 246, 0.08)",
+              color: "var(--primary)",
+              border: "1px solid rgba(59, 130, 246, 0.2)",
+              borderRadius: "var(--radius)",
+              padding: "0.75rem 1rem",
+              marginBottom: "1.5rem",
+              fontSize: "0.86rem",
+              fontWeight: 600
+            }}
+          >
+            Searching book records…
+          </div>
+        )}
+
+        {bookSuggestions.length > 0 && !aiLoading && (
+          <div
+            style={{
+              background: "rgba(34, 197, 94, 0.08)",
+              color: "var(--success-text)",
+              border: "1px solid var(--success-border)",
+              borderRadius: "var(--radius)",
+              padding: "0.75rem 1rem",
+              marginBottom: "1.5rem",
+              fontSize: "0.86rem",
+              display: "flex",
+              justifyContent: "space-between",
+              gap: "0.75rem",
+              flexWrap: "wrap",
+              alignItems: "center"
+            }}
+          >
+            <div style={{ width: "100%" }}>
+              <strong style={{ display: "block", marginBottom: "0.5rem" }}>Book matches</strong>
+              <div style={{ display: "grid", gap: "0.5rem" }}>
+                {bookSuggestions.map((book, index) => (
+                  <button
+                    key={`${book.title}-${book.isbn13 || index}`}
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => chooseBookSuggestion(book)}
+                    style={{ textAlign: "left", whiteSpace: "normal" }}
+                  >
+                    <strong>{book.title}</strong>
+                    {book.author ? ` · ${book.author}` : ""}
+                    {book.publisher ? ` · ${book.publisher}` : ""}
+                  </button>
+                ))}
+              </div>
+              <small style={{ display: "block", marginTop: "0.5rem" }}>Catalog matches from Open Library. Check details before submitting.</small>
+            </div>
+          </div>
+        )}
 
         {aiLoading && (
           <div

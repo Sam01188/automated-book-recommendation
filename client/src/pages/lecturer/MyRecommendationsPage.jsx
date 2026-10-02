@@ -216,27 +216,9 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
         </div>
 
         {activeTab === "requests" ? (
-          filteredItems.length === 0 ? (
-          /* Empty State */
-          <div style={{
-          borderRadius: "var(--radius)",
-          padding: "3.5rem 2rem",
-          textAlign: "center",
-          color: "var(--text-muted)",
-          fontSize: "0.9375rem",
-          fontWeight: 500
-        }}>
-          {items.length === 0 ? "No Book Recommendations Found." : "No Results Found."}
-        </div>
-          ) : (
-            /* Table */
-            <div style={{
-              borderRadius: "var(--radius)",
-              border: "1px solid var(--border)",
-              overflow: "hidden"
-            }}>
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ minWidth: "1100px", width: "100%", borderCollapse: "collapse" }}>
+          <div style={{ borderRadius: "var(--radius)", border: "1px solid var(--border)", overflow: "hidden" }}>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ minWidth: "1100px", width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr>
                     {["Title", "Author", "ISBN Number", "Publisher", "Edition", "Year", "Binding", "Copies", "Price (LKR)", "Status", "Rank", "Actions"].map((col) => (
@@ -257,33 +239,35 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredItems.map((item) => (
-                    <RecommendationRow 
-                      key={item._id} 
-                      item={item}
-                      isPeriodOpen={isPeriodOpen}
-                      onDelete={() => handleDelete(item._id)}
-                      onEdit={() => handleOpenEdit(item)}
-                      onSave={() => handleSaveEdit(item._id)}
-                      onCancel={handleCancelEdit}
-                      isEditing={editingId === item._id}
-                      editForm={editForm}
-                      onFormChange={setEditForm}
-                      isLoading={isLoading}
-                    />
-                  ))}
+                  {filteredItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={12} style={{ padding: "2rem 1rem", textAlign: "center", color: "var(--text-muted)", fontWeight: 500 }}>
+                        {items.length === 0 ? "No Book Recommendations Found." : "No Results Found."}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredItems.map((item) => (
+                      <RecommendationRow 
+                        key={item._id} 
+                        item={item}
+                        isPeriodOpen={isPeriodOpen}
+                        onDelete={() => handleDelete(item._id)}
+                        onEdit={() => handleOpenEdit(item)}
+                        onSave={() => handleSaveEdit(item._id)}
+                        onCancel={handleCancelEdit}
+                        isEditing={editingId === item._id}
+                        editForm={editForm}
+                        onFormChange={setEditForm}
+                        isLoading={isLoading}
+                      />
+                    ))
+                  )}
                 </tbody>
-                </table>
-              </div>
+              </table>
             </div>
-          )
+          </div>
         ) : (
-          /* Status tab */
-          <div style={{
-            borderRadius: "var(--radius)",
-            border: "1px solid var(--border)",
-            overflow: "hidden"
-          }}>
+          <div style={{ borderRadius: "var(--radius)", border: "1px solid var(--border)", overflow: "hidden" }}>
             <div style={{ overflowX: "auto" }}>
               <table style={{ minWidth: "700px", width: "100%", borderCollapse: "collapse" }}>
                 <thead>
@@ -304,26 +288,34 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredItems.map(item => (
-                    <tr key={item._id} style={{ borderTop: '1px solid var(--border)' }}>
-                      <td style={{ padding: '0.875rem 1rem', fontWeight: 700 }}>{item.title}</td>
-                      <td style={{ padding: '0.875rem 1rem' }}>{item.edition || '—'}</td>
-                      <td style={{ padding: '0.875rem 1rem' }}>{item.isbn || '—'}</td>
-                      <td style={{ padding: '0.875rem 1rem' }}>
-                        <span style={{
-                          padding: '0.2rem 0.65rem',
-                          borderRadius: '2rem',
-                          fontSize: '0.7rem',
-                          fontWeight: 700,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
-                          background: item.status === 'selected' ? 'rgba(var(--primary-rgb), 0.15)' : 'var(--surface-hover)',
-                          color: item.status === 'selected' ? 'var(--primary)' : 'var(--text-muted)',
-                          border: `1px solid ${item.status === 'selected' ? 'rgba(var(--primary-rgb), 0.3)' : 'var(--border)'}`
-                        }}>{(item.status || 'submitted').replace(/_/g,' ')}</span>
+                  {filteredItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} style={{ padding: "2rem 1rem", textAlign: "center", color: "var(--text-muted)", fontWeight: 500 }}>
+                        {items.length === 0 ? "No status entries found." : "No results found."}
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    filteredItems.map(item => (
+                      <tr key={item._id} style={{ borderTop: '1px solid var(--border)' }}>
+                        <td style={{ padding: '0.875rem 1rem', fontWeight: 700 }}>{item.title}</td>
+                        <td style={{ padding: '0.875rem 1rem' }}>{item.edition || '—'}</td>
+                        <td style={{ padding: '0.875rem 1rem' }}>{item.isbn || '—'}</td>
+                        <td style={{ padding: '0.875rem 1rem' }}>
+                          <span style={{
+                            padding: '0.2rem 0.65rem',
+                            borderRadius: '2rem',
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                            background: item.status === 'selected' ? 'rgba(var(--primary-rgb), 0.15)' : 'var(--surface-hover)',
+                            color: item.status === 'selected' ? 'var(--primary)' : 'var(--text-muted)',
+                            border: `1px solid ${item.status === 'selected' ? 'rgba(var(--primary-rgb), 0.3)' : 'var(--border)'}`
+                          }}>{(item.status || 'submitted').replace(/_/g,' ')}</span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

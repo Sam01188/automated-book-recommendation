@@ -9,7 +9,9 @@ const hashResetToken = (token) => createHash("sha256").update(token).digest("hex
 
 function createMailTransport() {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
-  if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !process.env.SMTP_FROM) {
+  const fromAddress = process.env.SMTP_FROM || process.env.FROM_EMAIL;
+
+  if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !fromAddress) {
     return null;
   }
 
@@ -52,8 +54,8 @@ export const login = async (req, res) => {
 
 export const changePassword = async (req, res) => {
   const { currentPassword, newPassword } = req.body;
-  if (typeof currentPassword !== "string" || typeof newPassword !== "string" || newPassword.length < 10) {
-    return res.status(400).json({ message: "Your new password must be at least 10 characters long." });
+  if (typeof currentPassword !== "string" || typeof newPassword !== "string" || newPassword.length < 6) {
+    return res.status(400).json({ message: "Your new password must be at least 6 characters long." });
   }
 
   try {
@@ -126,7 +128,7 @@ export const requestPasswordReset = async (req, res) => {
       const resetUrl = new URL("/", process.env.CLIENT_URL || "http://localhost:5173");
       resetUrl.searchParams.set("resetToken", token);
       await mailTransport.sendMail({
-        from: process.env.SMTP_FROM,
+        from: process.env.SMTP_FROM || process.env.FROM_EMAIL,
         to: user.email,
         subject: "Reset your Book Recommendation Portal password",
         text: `A password reset was requested for your account. This link expires in 30 minutes:\n\n${resetUrl.toString()}\n\nIf you did not request this, you can ignore this email.`
@@ -142,8 +144,8 @@ export const requestPasswordReset = async (req, res) => {
 
 export const resetPassword = async (req, res) => {
   const { token, newPassword } = req.body;
-  if (typeof token !== "string" || typeof newPassword !== "string" || newPassword.length < 10) {
-    return res.status(400).json({ message: "Use a valid reset link and a password of at least 10 characters." });
+  if (typeof token !== "string" || typeof newPassword !== "string" || newPassword.length < 6) {
+    return res.status(400).json({ message: "Use a valid reset link and a password of at least 6 characters." });
   }
 
   try {

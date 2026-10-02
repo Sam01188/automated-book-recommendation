@@ -11,7 +11,6 @@ export function CreateUserPage({ onCreateUser }) {
   const [form, setForm] = useState({
     name: "",
     email: "",
-    password: "",
     role: "lecturer",
     department: "DCEE"
   });
@@ -52,10 +51,10 @@ export function CreateUserPage({ onCreateUser }) {
       });
       localStorage.setItem('userActivities', JSON.stringify(activities.slice(-20)));
       
-      setForm({ name: "", email: "", password: "", role: "lecturer", department: "DCEE" });
+      setForm({ name: "", email: "", role: "lecturer", department: "DCEE" });
       setModal({
         title: "Account created successfully.",
-        message: "The new user can sign in with the temporary password."
+        message: "A temporary password has been sent to the user by email."
       });
     } catch (err) {
       setModal({
@@ -87,8 +86,21 @@ export function CreateUserPage({ onCreateUser }) {
           </div>
 
           <div className="field">
-            <label>Temporary Password *</label>
-            <input type="password" value={form.password} required onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" />
+            <label>Temporary password</label>
+            <div
+              style={{
+                minHeight: "52px",
+                display: "flex",
+                alignItems: "center",
+                borderRadius: "0.75rem",
+                padding: "0.9rem 1rem",
+                background: "transparent",
+                color: "var(--text-muted)",
+                fontSize: "1.05rem"
+              }}
+            >
+              Sent automatically by email
+            </div>
           </div>
 
           <div className="field">
