@@ -216,27 +216,9 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
         </div>
 
         {activeTab === "requests" ? (
-          filteredItems.length === 0 ? (
-          /* Empty State */
-          <div style={{
-          borderRadius: "var(--radius)",
-          padding: "3.5rem 2rem",
-          textAlign: "center",
-          color: "var(--text-muted)",
-          fontSize: "0.9375rem",
-          fontWeight: 500
-        }}>
-          {items.length === 0 ? "No Book Recommendations Found." : "No Results Found."}
-        </div>
-          ) : (
-            /* Table */
-            <div style={{
-              borderRadius: "var(--radius)",
-              border: "1px solid var(--border)",
-              overflow: "hidden"
-            }}>
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ minWidth: "1100px", width: "100%", borderCollapse: "collapse" }}>
+          <div style={{ borderRadius: "var(--radius)", border: "1px solid var(--border)", overflow: "hidden" }}>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ minWidth: "1100px", width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr>
                     {["Title", "Author", "ISBN Number", "Publisher", "Edition", "Year", "Binding", "Copies", "Price (LKR)", "Status", "Rank", "Actions"].map((col) => (
@@ -257,26 +239,33 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredItems.map((item) => (
-                    <RecommendationRow 
-                      key={item._id} 
-                      item={item}
-                      isPeriodOpen={isPeriodOpen}
-                      onDelete={() => handleDelete(item._id)}
-                      onEdit={() => handleOpenEdit(item)}
-                      onSave={() => handleSaveEdit(item._id)}
-                      onCancel={handleCancelEdit}
-                      isEditing={editingId === item._id}
-                      editForm={editForm}
-                      onFormChange={setEditForm}
-                      isLoading={isLoading}
-                    />
-                  ))}
+                  {filteredItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={12} style={{ padding: "2rem 1rem", textAlign: "center", color: "var(--text-muted)", fontWeight: 500 }}>
+                        {items.length === 0 ? "No Book Recommendations Found." : "No Results Found."}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredItems.map((item) => (
+                      <RecommendationRow 
+                        key={item._id} 
+                        item={item}
+                        isPeriodOpen={isPeriodOpen}
+                        onDelete={() => handleDelete(item._id)}
+                        onEdit={() => handleOpenEdit(item)}
+                        onSave={() => handleSaveEdit(item._id)}
+                        onCancel={handleCancelEdit}
+                        isEditing={editingId === item._id}
+                        editForm={editForm}
+                        onFormChange={setEditForm}
+                        isLoading={isLoading}
+                      />
+                    ))
+                  )}
                 </tbody>
-                </table>
-              </div>
+              </table>
             </div>
-          )
+          </div>
         ) : (
           /* Status tab */
           <div>

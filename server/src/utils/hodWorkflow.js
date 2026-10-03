@@ -1,5 +1,6 @@
 import Recommendation from "../models/Recommendation.js";
 import OrderPeriod from "../models/OrderPeriod.js";
+import { recordAuditLog } from "../controllers/auditController.js";
 import User from "../models/User.js";
 
 export function normalizeDepartment(department) {
@@ -93,16 +94,35 @@ export async function finalizeExpiredHodPeriods(now = new Date()) {
     });
 
     await Promise.all(
-      departments.map((department) =>
-        submitDepartmentListToLibrarian({
+      departments.map(async (department) => {
+        const result = await submitDepartmentListToLibrarian({
           orderPeriodId: period._id,
           department,
           requireCompleteRanking: false
-        })
-      )
+        });
+        await recordAuditLog(
+          { user: { name: "System", role: "system" } },
+          "recommendations_submitted",
+          { name: `${department} priority list` },
+          [],
+          { targetType: "system", details: "Automatically submitted when the HoD deadline expired." }
+        );
+        return result;
+      })
     );
 
     period.status = "closed";
     await period.save();
+    await recordAuditLog(
+      { user: { name: "System", role: "system" } },
+      "order_period_closed",
+      period,
+      ["status"],
+      {
+        targetType: "order_period",
+        targetName: `${new Date(period.startDate).toLocaleDateString()} - ${new Date(period.endDate).toLocaleDateString()}`,
+        details: "Automatically closed after the HoD deadline."
+      }
+    );
   }
 }

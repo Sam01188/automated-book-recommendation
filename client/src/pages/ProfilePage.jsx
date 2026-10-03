@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { Check, Pencil, X } from "lucide-react";
 
+function formatRole(role) {
+  if (!role) return "";
+  if (role === "hod") return "HoD";
+  return role.charAt(0).toUpperCase() + role.slice(1);
+}
+
 export function ProfilePage({ user, passwordChangeRequired, onChangePassword, onUpdateName }) {
   const [name, setName] = useState(user.name);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -121,7 +127,7 @@ export function ProfilePage({ user, passwordChangeRequired, onChangePassword, on
         </div>
         <div className="profile-detail">
           <dt>Role</dt>
-          <dd>{user.role}</dd>
+          <dd>{formatRole(user.role)}</dd>
         </div>
         {user.department && (
           <div className="profile-detail">
@@ -151,7 +157,7 @@ export function ProfilePage({ user, passwordChangeRequired, onChangePassword, on
               id="new-password"
               type="password"
               autoComplete="new-password"
-              minLength={10}
+              minLength={6}
               required
               value={newPassword}
               onChange={(event) => setNewPassword(event.target.value)}
@@ -163,7 +169,7 @@ export function ProfilePage({ user, passwordChangeRequired, onChangePassword, on
               id="confirm-new-password"
               type="password"
               autoComplete="new-password"
-              minLength={10}
+              minLength={6}
               required
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}

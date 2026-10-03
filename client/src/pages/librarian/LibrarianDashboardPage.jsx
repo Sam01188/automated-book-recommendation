@@ -74,7 +74,6 @@ export function LibrarianDashboardPage({ user, stats, items }) {
             fontSize: "0.9375rem",
             fontWeight: 500,
             letterSpacing: "0.04em",
-            textTransform: "uppercase"
           }}>
             No Submissions Yet
           </div>

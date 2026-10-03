@@ -148,7 +148,7 @@ export function AllRecommendationsPage({
             >
               All Recommendations
             </div>
-            <h3 style={{ margin: 0 }}>{period ? period.faculty || "Engineering Faculty" : "Engineering Faculty"}</h3>
+            <h3 style={{ margin: 0 }}>All Recommendations</h3>
           </div>
           <span className={`badge ${isCurrentPeriod ? "badge-success" : "badge-secondary"}`}>
             {periodLabel}

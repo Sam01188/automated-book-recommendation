@@ -2,6 +2,7 @@ import express from "express";
 import Recommendation from "../models/Recommendation.js";
 import OrderPeriod from "../models/OrderPeriod.js";
 import { allowRoles, requireAuth } from "../middleware/auth.js";
+import { recordAuditLog } from "../controllers/auditController.js";
 import {
   buildDepartmentFilter,
   finalizeExpiredHodPeriods,
@@ -79,9 +80,17 @@ async function findLibrarianDisplayPeriod() {
 router.get("/", requireAuth, async (req, res) => {
   try {
     await finalizeExpiredHodPeriods();
-    const activeLibrarianPeriod = req.user.role === "librarian" ? await findLibrarianDisplayPeriod() : null;
+    const activeLibrarianPeriod = req.user.role === "librarian"
+      ? req.query.periodId
+        ? await OrderPeriod.findById(req.query.periodId)
+        : await findLibrarianDisplayPeriod()
+      : null;
     const activeLecturerPeriod = req.user.role === "lecturer" ? await findCurrentLecturerPeriod() : null;
     const activeHodPeriod = req.user.role === "hod" ? await findCurrentHodPeriod() : null;
+
+    if (req.user.role === "librarian" && req.query.periodId && !activeLibrarianPeriod) {
+      return res.status(404).json({ message: "Order period not found" });
+    }
 
     if (req.user.role === "librarian" && !activeLibrarianPeriod) {
       return res.json([]);
@@ -114,7 +123,7 @@ router.get("/", requireAuth, async (req, res) => {
     const recommendations = await Recommendation.find(filter)
       .populate("submittedBy", "name department")
       .populate("reviewedBy", "name")
-      .populate("orderPeriod", "faculty startDate endDate hodRecommendationDays status")
+      .populate("orderPeriod", "startDate endDate hodRecommendationDays status")
       .sort(req.user.role === "librarian" ? { department: 1, priorityRank: 1 } : { createdAt: -1 });
     res.json(recommendations);
   } catch (err) {
@@ -145,11 +154,18 @@ router.patch("/submit", requireAuth, allowRoles("hod"), async (req, res) => {
       department: req.user.department,
       hodId: req.user.id
     });
+    await recordAuditLog(
+      req,
+      "recommendations_submitted",
+      { name: `${req.user.department} priority list` },
+      [],
+      { targetType: "system", details: "HoD submitted the department list to the librarian." }
+    );
 
     const recommendations = await Recommendation.find(buildRecommendationFilter(req.user))
       .populate("submittedBy", "name department")
       .populate("reviewedBy", "name")
-      .populate("orderPeriod", "faculty startDate endDate hodRecommendationDays status")
+      .populate("orderPeriod", "startDate endDate hodRecommendationDays status")
       .sort({ createdAt: -1 });
 
     res.json(recommendations);
@@ -214,10 +230,21 @@ router.patch("/rank-order", requireAuth, allowRoles("hod"), async (req, res) => 
       );
     }
 
+    await recordAuditLog(
+      req,
+      "recommendations_ranked",
+      { name: `${req.user.department} priority list` },
+      [],
+      {
+        targetType: "system",
+        details: `${orderedIds.length} ranked and ${clearedIds.length} cleared recommendation(s).`
+      }
+    );
+
     const updated = await Recommendation.find(buildRecommendationFilter(req.user))
       .populate("submittedBy", "name department")
       .populate("reviewedBy", "name")
-      .populate("orderPeriod", "faculty startDate endDate hodRecommendationDays status")
+      .populate("orderPeriod", "startDate endDate hodRecommendationDays status")
       .sort({ priorityRank: 1, createdAt: -1 });
 
     res.json(updated);
@@ -254,11 +281,18 @@ router.patch("/reset-order", requireAuth, allowRoles("hod"), async (req, res) =>
         $unset: { reviewedBy: "" }
       }
     );
+    await recordAuditLog(
+      req,
+      "recommendation_order_reset",
+      { name: `${req.user.department} priority list` },
+      [],
+      { targetType: "system", details: "Cleared priority ranks for the active HoD period." }
+    );
 
     const updated = await Recommendation.find(buildRecommendationFilter(req.user))
       .populate("submittedBy", "name department")
       .populate("reviewedBy", "name")
-      .populate("orderPeriod", "faculty startDate endDate hodRecommendationDays status")
+      .populate("orderPeriod", "startDate endDate hodRecommendationDays status")
       .sort({ createdAt: -1 });
 
     res.json(updated);
@@ -337,7 +371,8 @@ router.post("/", requireAuth, allowRoles("lecturer"), async (req, res) => {
     // Re-fetch with populated submittedBy so frontend gets full object
     const populated = await Recommendation.findById(recommendation._id)
       .populate("submittedBy", "name department")
-      .populate("orderPeriod", "faculty startDate endDate hodRecommendationDays status");
+      .populate("orderPeriod", "startDate endDate hodRecommendationDays status");
+    await recordAuditLog(req, "recommendation_created", populated, [], { targetType: "recommendation" });
 
     res.status(201).json(populated);
   } catch (err) {
@@ -393,11 +428,18 @@ router.patch("/:id/priority", requireAuth, allowRoles("hod"), async (req, res) =
     )
       .populate("submittedBy", "name department")
       .populate("reviewedBy", "name")
-      .populate("orderPeriod", "faculty startDate endDate hodRecommendationDays status");
+      .populate("orderPeriod", "startDate endDate hodRecommendationDays status");
 
     if (!recommendation) {
       return res.status(404).json({ message: "Recommendation not found" });
     }
+    await recordAuditLog(
+      req,
+      isRejected ? "recommendation_rejected" : "recommendation_priority_assigned",
+      recommendation,
+      ["priority", "status"],
+      { targetType: "recommendation", details: req.body.priorityReason || `Priority set to ${req.body.priority}.` }
+    );
     res.json(recommendation);
   } catch (err) {
     res.status(500).json({ message: "Failed to update priority" });
@@ -429,11 +471,18 @@ router.patch("/:id/status", requireAuth, allowRoles("librarian"), async (req, re
     )
       .populate("submittedBy", "name department")
       .populate("reviewedBy", "name")
-      .populate("orderPeriod", "faculty startDate endDate hodRecommendationDays status");
+      .populate("orderPeriod", "startDate endDate hodRecommendationDays status");
 
     if (!recommendation) {
       return res.status(404).json({ message: "Recommendation not found" });
     }
+    await recordAuditLog(
+      req,
+      "recommendation_status_updated",
+      recommendation,
+      ["status"],
+      { targetType: "recommendation", details: `Status changed to ${req.body.status}.` }
+    );
     res.json(recommendation);
   } catch (err) {
     res.status(500).json({ message: "Failed to update status" });
@@ -465,7 +514,7 @@ router.get("/export/:format", requireAuth, allowRoles("librarian"), async (req, 
     const rows = await Recommendation.find(buildLibrarianFilter(activeLibrarianPeriod._id))
       .populate("submittedBy", "name department")
       .populate("reviewedBy", "name")
-      .populate("orderPeriod", "faculty startDate endDate hodRecommendationDays status")
+      .populate("orderPeriod", "startDate endDate hodRecommendationDays status")
       .sort({ department: 1, priorityRank: 1 });
 
     const data = rows.map((item) => ({
@@ -489,7 +538,9 @@ router.get("/export/:format", requireAuth, allowRoles("librarian"), async (req, 
       priority:         item.priority || "",
       priorityRank:     item.priorityRank,
       status:           item.status,
-      orderPeriod:      item.orderPeriod?.faculty || "",
+      orderPeriod:      item.orderPeriod?.startDate && item.orderPeriod?.endDate
+        ? `${new Date(item.orderPeriod.startDate).toLocaleDateString()} - ${new Date(item.orderPeriod.endDate).toLocaleDateString()}`
+        : "",
       submittedToLibrarianAt: item.submittedToLibrarianAt
     }));
 
@@ -576,7 +627,15 @@ router.patch("/:id", requireAuth, allowRoles("lecturer"), async (req, res) => {
       { new: true, runValidators: true }
     )
       .populate("submittedBy", "name department")
-      .populate("orderPeriod", "faculty startDate endDate hodRecommendationDays status");
+      .populate("orderPeriod", "startDate endDate hodRecommendationDays status");
+
+    const changedFields = [
+      "title", "author", "isbn", "publisher", "edition", "publicationYear", "binding",
+      "agreeLatest", "price", "copies", "additionalNotes"
+    ].filter((field) => req.body[field] !== undefined && String(req.body[field]) !== String(existing[field] ?? ""));
+    if (changedFields.length > 0) {
+      await recordAuditLog(req, "recommendation_updated", updated, changedFields, { targetType: "recommendation" });
+    }
 
     res.json(updated);
   } catch (err) {
@@ -614,6 +673,7 @@ router.delete("/:id", requireAuth, allowRoles("lecturer"), async (req, res) => {
     }
 
     await Recommendation.findByIdAndDelete(req.params.id);
+  await recordAuditLog(req, "recommendation_deleted", recommendation, [], { targetType: "recommendation" });
     res.json({ message: "Recommendation deleted successfully" });
   } catch (err) {
     res.status(500).json({ message: "Failed to delete recommendation", error: err.message });
