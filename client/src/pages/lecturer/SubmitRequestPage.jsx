@@ -175,62 +175,6 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
           </div>
         )}
 
-        {aiLoading && (
-          <div
-            style={{
-              background: "rgba(59, 130, 246, 0.08)",
-              color: "var(--primary)",
-              border: "1px solid rgba(59, 130, 246, 0.2)",
-              borderRadius: "var(--radius)",
-              padding: "0.75rem 1rem",
-              marginBottom: "1.5rem",
-              fontSize: "0.86rem",
-              fontWeight: 600
-            }}
-          >
-            Searching book records…
-          </div>
-        )}
-
-        {bookSuggestions.length > 0 && !aiLoading && (
-          <div
-            style={{
-              background: "rgba(34, 197, 94, 0.08)",
-              color: "var(--success-text)",
-              border: "1px solid var(--success-border)",
-              borderRadius: "var(--radius)",
-              padding: "0.75rem 1rem",
-              marginBottom: "1.5rem",
-              fontSize: "0.86rem",
-              display: "flex",
-              justifyContent: "space-between",
-              gap: "0.75rem",
-              flexWrap: "wrap",
-              alignItems: "center"
-            }}
-          >
-            <div style={{ width: "100%" }}>
-              <strong style={{ display: "block", marginBottom: "0.5rem" }}>Book matches</strong>
-              <div style={{ display: "grid", gap: "0.5rem" }}>
-                {bookSuggestions.map((book, index) => (
-                  <button
-                    key={`${book.title}-${book.isbn13 || index}`}
-                    type="button"
-                    className="secondary-button"
-                    onClick={() => chooseBookSuggestion(book)}
-                    style={{ textAlign: "left", whiteSpace: "normal" }}
-                  >
-                    <strong>{book.title}</strong>
-                    {book.author ? ` · ${book.author}` : ""}
-                    {book.publisher ? ` · ${book.publisher}` : ""}
-                  </button>
-                ))}
-              </div>
-              <small style={{ display: "block", marginTop: "0.5rem" }}>Catalog matches from Open Library. Check details before submitting.</small>
-            </div>
-          </div>
-        )}
-
         {!isPeriodOpen && (
           <div
             style={{
