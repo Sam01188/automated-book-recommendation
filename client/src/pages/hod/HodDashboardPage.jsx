@@ -43,9 +43,13 @@ export function HodDashboardPage({ user, stats, items, isPeriodOpen, currentPeri
           borderRadius: "var(--radius)",
           padding: "1rem 1.5rem"
         }}>
-          <h4 style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "var(--danger)" }}>🔒 HOD Priority Assignment Closed</h4>
+          <h4 style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "var(--danger)" }}>
+            {currentPeriod ? "Recommendations Available (Read Only)" : "HOD Priority Assignment Closed"}
+          </h4>
           <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.875rem", color: "var(--text-muted)" }}>
-            The priority assignment period is currently closed. Please wait until the librarian transitions the order period to the HOD Priority Assignment phase.
+            {currentPeriod
+              ? `Lecturer submissions for ${currentPeriod.faculty} are visible but cannot be edited until the librarian opens the HOD priority phase.`
+              : "The priority assignment period is currently closed. Please wait until the librarian opens an order period."}
           </p>
         </div>
       )}
