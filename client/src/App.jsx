@@ -14,6 +14,7 @@ import {
   fetchCurrentHodPeriod,
   fetchOrderPeriods,
   createUser as apiCreateUser,
+  importUsers as apiImportUsers,
   changePassword,
   updateProfile,
   requestPasswordReset,
@@ -35,6 +36,7 @@ import { LecturerDashboardPage } from "./pages/lecturer/LecturerDashboardPage";
 import { MyRecommendationsPage } from "./pages/lecturer/MyRecommendationsPage";
 import { SubmitRequestPage } from "./pages/lecturer/SubmitRequestPage";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
+import { AuditLogPage } from "./pages/admin/AuditLogPage";
 import { CreateUserPage } from "./pages/admin/CreateUserPage";
 import { UsersListPage } from "./pages/admin/UsersListPage";
 import { ProfilePage } from "./pages/ProfilePage";
@@ -69,6 +71,26 @@ function App() {
       periods.find((period) => period.status === "closed") ||
       null
     );
+  };
+
+  const syncSelectedPeriod = (periodList) => {
+    const closedPeriods = [...periodList].sort((a, b) => new Date(b.endDate) - new Date(a.endDate));
+    const fallbackPeriod = closedPeriods.find((period) => period.status === "closed") || resolveLibrarianDisplayPeriod(periodList);
+
+    setSelectedPeriod((current) => {
+      if (current === "all") {
+        return "all";
+      }
+
+      if (current) {
+        const hasCurrentSelection = periodList.some((period) => String(period._id) === String(current));
+        if (hasCurrentSelection) {
+          return current;
+        }
+      }
+
+      return fallbackPeriod?._id || null;
+    });
   };
 
   useEffect(() => {
@@ -185,7 +207,8 @@ function App() {
   }, [orderToast]);
 
   const librarianDisplayPeriod = useMemo(() => resolveLibrarianDisplayPeriod(periods), [periods]);
-  const canExportData = !librarianDisplayPeriod || librarianDisplayPeriod.status === "closed";
+  const canExportData = true;
+  const isActiveLibrarianPeriodOpen = periods.some((period) => period.status === "open" || period.status === "hod_priority");
 
   useEffect(() => {
     if (!session || session.user.mustChangePassword) {
@@ -208,7 +231,12 @@ function App() {
         .then((res) => {
           const activePeriod = res.period ? [res.period] : [];
           setPeriods(activePeriod);
-          setSelectedPeriod(res.period?._id || null);
+          setSelectedPeriod((current) => {
+            if (current && current !== "all") {
+              return current;
+            }
+            return res.period?._id || null;
+          });
         })
         .catch((err) => console.error("Failed to fetch periods:", err));
     } else if (session.user.role === "hod") {
@@ -219,7 +247,7 @@ function App() {
       fetchOrderPeriods(session.token)
         .then((res) => {
           setPeriods(res);
-          setSelectedPeriod(resolveLibrarianDisplayPeriod(res)?._id || null);
+          syncSelectedPeriod(res);
           const hodPeriod = res.find((period) => period.status === "hod_priority") || null;
           setCurrentHodPeriod(hodPeriod);
           setIsHodPeriodOpen(Boolean(hodPeriod));
@@ -238,7 +266,7 @@ function App() {
         .then(([records, periodList]) => {
           setItems(records);
           setPeriods(periodList);
-          setSelectedPeriod(resolveLibrarianDisplayPeriod(periodList)?._id || null);
+          syncSelectedPeriod(periodList);
           const hodPeriod = periodList.find((period) => period.status === "hod_priority") || null;
           setCurrentHodPeriod(hodPeriod);
           setIsHodPeriodOpen(Boolean(hodPeriod));
@@ -266,7 +294,7 @@ function App() {
         .then(([records, periodList]) => {
           setItems(records);
           setPeriods(periodList);
-          setSelectedPeriod(resolveLibrarianDisplayPeriod(periodList)?._id || null);
+          syncSelectedPeriod(periodList);
           const hodPeriod = periodList.find((period) => period.status === "hod_priority") || null;
           setCurrentHodPeriod(hodPeriod);
           setIsHodPeriodOpen(Boolean(hodPeriod));
@@ -426,6 +454,11 @@ function App() {
   async function handleUserCreation(userData) {
     if (!session) return;
     await apiCreateUser(session.token, userData);
+  }
+
+  async function handleUserImport(users) {
+    if (!session) return;
+    return apiImportUsers(session.token, users);
   }
 
   const resetToken = new URLSearchParams(window.location.search).get("resetToken");
@@ -614,7 +647,14 @@ function App() {
         />
       )}
       {!passwordChangeRequired && session.user.role === "librarian" && currentView === "all" && (
-        <AllRecommendationsPage items={items} filterPriority={allFilter} currentPeriod={resolveLibrarianDisplayPeriod(periods)} />
+        <AllRecommendationsPage
+          items={items}
+          filterPriority={allFilter}
+          currentPeriod={resolveLibrarianDisplayPeriod(periods)}
+          periods={periods}
+          selectedPeriod={selectedPeriod}
+          onSelectedPeriodChange={setSelectedPeriod}
+        />
       )}
       {!passwordChangeRequired && session.user.role === "librarian" && currentView === "periods" && (
         <OrderTimePeriodsPage
@@ -624,18 +664,30 @@ function App() {
         />
       )}
       {!passwordChangeRequired && session.user.role === "librarian" && currentView === "export" && (
-        <ExportDataPage items={items} isExportLocked={!canExportData} />
+        <ExportDataPage
+          items={items}
+          isExportLocked={!canExportData}
+          periods={periods}
+          selectedPeriod={selectedPeriod}
+          onSelectedPeriodChange={setSelectedPeriod}
+        />
       )}
       {!passwordChangeRequired && session.user.role === "librarian" && currentView === "inform" && (
-        <InformLecturerPage items={items} token={session.token} isPeriodLocked={!canExportData} />
+        <InformLecturerPage
+          items={items}
+          periods={periods}
+          token={session.token}
+          isPeriodLocked={isActiveLibrarianPeriodOpen}
+        />
       )}
 
       {!passwordChangeRequired && session.user.role === "admin" && currentView === "dashboard" && (
-        <AdminDashboard user={session.user} token={session.token} items={items} />
+        <AdminDashboard user={session.user} token={session.token} />
       )}
       {!passwordChangeRequired && session.user.role === "admin" && currentView === "users" && <UsersListPage token={session.token} />}
+      {!passwordChangeRequired && session.user.role === "admin" && currentView === "audit" && <AuditLogPage token={session.token} />}
       {!passwordChangeRequired && session.user.role === "admin" && currentView === "createUser" && (
-        <CreateUserPage onCreateUser={handleUserCreation} />
+        <CreateUserPage token={session.token} onCreateUser={handleUserCreation} onImportUsers={handleUserImport} />
       )}
     </AppLayout>
   );

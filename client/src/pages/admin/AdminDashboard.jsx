@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { GraduationCap, UserCheck, UserCog, Users } from "lucide-react";
-import { fetchRecommendations, getUsers } from "../../api";
+import { getAuditLogs, getUsers } from "../../api";
 
 function StatCard({ title, value, icon: Icon }) {
   return (
@@ -30,50 +30,46 @@ function formatActivityDateTime(dateValue) {
   });
 }
 
-function getRecentActivities(users, recommendations, adminUser) {
-  const adminName = adminUser?.name || "Admin";
+function getRecentActivities(auditLogs) {
+  return auditLogs
+    .filter((log) => log.actorRole === "admin" || !log.actorRole)
+    .map((log) => {
+    const actionLabels = {
+      user_created: "account created",
+      user_updated: "account updated",
+      user_activated: "account activated",
+      user_deactivated: "account deactivated",
+      user_deleted: "account deleted",
+      user_login: "signed in",
+      user_logout: "signed out",
+      password_changed: "changed password",
+      password_reset_requested: "requested a password reset",
+      password_reset: "reset password",
+      profile_updated: "updated profile",
+      recommendation_created: "recommendation submitted",
+      recommendation_updated: "recommendation updated",
+      recommendation_deleted: "recommendation deleted",
+      recommendation_priority_assigned: "recommendation prioritized",
+      recommendation_rejected: "recommendation rejected",
+      recommendation_status_updated: "recommendation status changed",
+      order_period_created: "order period created",
+      order_period_updated: "order period updated",
+      order_period_closed: "order period closed",
+      order_period_hod_opened: "HoD review opened",
+      order_period_deleted: "order period deleted"
+    };
+    const changes = log.changes?.length ? ` (${log.changes.join(", ")})` : "";
 
-  // Get stored activities from localStorage (updates, deletes, creates)
-  const storedActivities = JSON.parse(localStorage.getItem('userActivities') || '[]');
-  const userLogActivities = storedActivities.map(a => {
-    let actionText = '';
-    if (a.type === 'delete') {
-      actionText = `${a.userName} account deleted`;
-    } else if (a.type === 'create') {
-      actionText = `${a.userName} account created`;
-    } else if (a.type === 'update') {
-      actionText = `${a.userName} account updated`;
-    }
-    
     return {
-      id: `${a.type}-${a.userId}-${a.timestamp}`,
-      text: actionText,
-      time: a.timestamp,
-      label: `by ${adminName}`
+      id: log._id,
+      text: `${log.targetName || "Activity"} ${actionLabels[log.action] || log.action}${log.action === "user_updated" ? changes : ""}`,
+      time: log.createdAt,
+      label: `by ${log.actorName || "Admin"}`
     };
   });
-
-  const recommendationActivities = recommendations.map((item) => {
-    const priorityUpdated = item.priority && item.priority !== "unassigned";
-    const submittedBy = item.submittedBy?.name || "Lecturer";
-    const reviewedBy = item.reviewedBy?.name || "HoD";
-    const department = item.department || "N/A";
-
-    return {
-      id: `recommendation-${item._id}`,
-      text: priorityUpdated ? `Priority updated for ${item.title}` : `Recommendation submitted: ${item.title}`,
-      time: item.updatedAt || item.createdAt,
-      label: priorityUpdated ? `by ${reviewedBy} ${department}` : `by ${submittedBy} ${department}`
-    };
-  });
-
-  return [...userLogActivities, ...recommendationActivities]
-    .filter((item) => item.time)
-    .sort((a, b) => new Date(b.time) - new Date(a.time))
-    .slice(0, 5);
 }
 
-export function AdminDashboard({ user, token, items = [] }) {
+export function AdminDashboard({ user, token }) {
   const [userCounts, setUserCounts] = useState({
     total: 0,
     lecturer: 0,
@@ -89,9 +85,9 @@ export function AdminDashboard({ user, token, items = [] }) {
 
     async function refreshOverview() {
       try {
-        const [users, recommendations] = await Promise.all([
+        const [users, auditResponse] = await Promise.all([
           getUsers(token),
-          fetchRecommendations(token, "admin")
+          getAuditLogs(token, { page: 1, limit: 5, role: "admin" })
         ]);
 
         setUserCounts({
@@ -101,17 +97,17 @@ export function AdminDashboard({ user, token, items = [] }) {
           librarian: users.filter((item) => item.role === "librarian").length
         });
 
-        setRecentActivities(getRecentActivities(users, recommendations, user));
+        setRecentActivities(getRecentActivities(auditResponse.logs || []));
       } catch (err) {
         setUserCounts({ total: 0, lecturer: 0, hod: 0, librarian: 0 });
-        setRecentActivities(getRecentActivities([], items, user));
+        setRecentActivities([]);
       }
     }
 
     refreshOverview();
     const intervalId = window.setInterval(refreshOverview, 10000);
     return () => window.clearInterval(intervalId);
-  }, [token, items, user]);
+  }, [token, user]);
 
   if (!user || user.role !== "admin") {
     return null;

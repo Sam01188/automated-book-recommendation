@@ -292,10 +292,9 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
                     />
                   ))}
                 </tbody>
-                </table>
-              </div>
+              </table>
             </div>
-          )
+          </div>
         ) : (
           /* Status tab */
           <div>

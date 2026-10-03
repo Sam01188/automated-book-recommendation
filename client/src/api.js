@@ -86,12 +86,13 @@ export async function logout(token) {
   }
 }
 
-export async function fetchRecommendations(token, role) {
+export async function fetchRecommendations(token, role, periodId) {
   if (token === "demo-token") {
     return role === "lecturer" ? demoRecommendations.slice(0, 3) : demoRecommendations;
   }
 
-  const response = await fetch(`${api}/recommendations`, {
+  const query = periodId ? `?periodId=${encodeURIComponent(periodId)}` : "";
+  const response = await fetch(`${api}/recommendations${query}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 
@@ -338,6 +339,22 @@ export async function getUsers(token) {
   return response.json();
 }
 
+export async function getAuditLogs(token, filters = {}) {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") params.set(key, String(value));
+  });
+
+  const response = await fetch(`${api}/admin/users/audit-logs?${params}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch audit logs");
+  }
+  return response.json();
+}
+
 export async function createUser(token, userData) {
   const response = await fetch(`${api}/admin/users`, {
     method: "POST",
@@ -354,12 +371,60 @@ export async function createUser(token, userData) {
   return response.json();
 }
 
+export async function importUsers(token, users) {
+  const response = await fetch(`${api}/admin/users/import`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ users })
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to import users");
+  }
+  return response.json();
+}
+
 export async function deleteUser(token, userId) {
   const response = await fetch(`${api}/admin/users/${userId}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` }
   });
   if (!response.ok) throw new Error("Failed to delete user");
+  return response.json();
+}
+
+export async function bulkUpdateUsers(token, payload) {
+  const response = await fetch(`${api}/admin/users/bulk`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to update selected users");
+  }
+  return response.json();
+}
+
+export async function bulkDeleteUsers(token, userIds) {
+  const response = await fetch(`${api}/admin/users/bulk`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ userIds })
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to delete selected users");
+  }
   return response.json();
 }
 
@@ -374,7 +439,8 @@ export const updateUser = async (token, id, data) => {
   });
 
   if (!response.ok) {
-    throw new Error("Failed to update user");
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to update user");
   }
 
   return response.json();

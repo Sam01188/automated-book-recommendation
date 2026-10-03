@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { AppModal } from "../../components/AppModal";
+import { UserCsvImportPanel } from "./UserCsvImportPanel";
 
 const departments = ["DCEE","DEIE","DMME","DMENA"];
 
@@ -7,11 +8,11 @@ function roleHasDepartment(role) {
   return role === "lecturer" || role === "hod";
 }
 
-export function CreateUserPage({ onCreateUser }) {
+export function CreateUserPage({ onCreateUser, onImportUsers, token }) {
+  const [mode, setMode] = useState("single");
   const [form, setForm] = useState({
     name: "",
     email: "",
-    password: "",
     role: "lecturer",
     department: "DCEE"
   });
@@ -41,21 +42,11 @@ export function CreateUserPage({ onCreateUser }) {
       };
 
       await onCreateUser(payload);
-      
-      // Log the creation activity
-      const activities = JSON.parse(localStorage.getItem('userActivities') || '[]');
-      activities.push({
-        type: 'create',
-        userId: `new-${Date.now()}`,
-        userName: form.name,
-        timestamp: new Date().toISOString()
-      });
-      localStorage.setItem('userActivities', JSON.stringify(activities.slice(-20)));
-      
-      setForm({ name: "", email: "", password: "", role: "lecturer", department: "DCEE" });
+
+      setForm({ name: "", email: "", role: "lecturer", department: "DCEE" });
       setModal({
         title: "Account created successfully.",
-        message: "The new user can sign in with the temporary password."
+        message: "A temporary password has been sent to the user by email."
       });
     } catch (err) {
       setModal({
@@ -69,6 +60,28 @@ export function CreateUserPage({ onCreateUser }) {
 
   return (
     <>
+      <div className="user-create-mode" role="tablist" aria-label="User creation method">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "single"}
+          className={mode === "single" ? "user-create-mode-button active" : "user-create-mode-button"}
+          onClick={() => setMode("single")}
+        >
+          Single account
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "csv"}
+          className={mode === "csv" ? "user-create-mode-button active" : "user-create-mode-button"}
+          onClick={() => setMode("csv")}
+        >
+          CSV import
+        </button>
+      </div>
+
+      {mode === "single" ? (
       <form className="form-panel" onSubmit={submit}>
         <h2 className="panel-title">New User</h2>
         <div className="form-grid">
@@ -87,8 +100,21 @@ export function CreateUserPage({ onCreateUser }) {
           </div>
 
           <div className="field">
-            <label>Temporary Password *</label>
-            <input type="password" value={form.password} required onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" />
+            <label>Temporary password</label>
+            <div
+              style={{
+                minHeight: "52px",
+                display: "flex",
+                alignItems: "center",
+                borderRadius: "0.75rem",
+                padding: "0.9rem 1rem",
+                background: "transparent",
+                color: "var(--text-muted)",
+                fontSize: "1.05rem"
+              }}
+            >
+              Sent automatically by email
+            </div>
           </div>
 
           <div className="field">
@@ -131,6 +157,9 @@ export function CreateUserPage({ onCreateUser }) {
           </button>
         </div>
       </form>
+      ) : (
+        <UserCsvImportPanel token={token} onImportUsers={onImportUsers} />
+      )}
 
       {modal && (
         <AppModal

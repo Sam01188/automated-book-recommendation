@@ -21,7 +21,7 @@ function getFinalDepartmentItems(items) {
   );
 }
 
-export function InformLecturerPage({ items = [], token, isPeriodLocked = false }) {
+export function InformLecturerPage({ items = [], token, isPeriodLocked = false, periods = [] }) {
   const [localItems, setLocalItems] = useState(items);
   const [activeDepartment, setActiveDepartment] = useState("All Departments");
   const [selectedIds, setSelectedIds] = useState([]);
@@ -34,7 +34,21 @@ export function InformLecturerPage({ items = [], token, isPeriodLocked = false }
     setSelectedIds((prev) => prev.filter((id) => (items || []).some((it) => String(it._id) === String(id))));
   }, [items]);
 
-  const finalDepartmentItems = useMemo(() => getFinalDepartmentItems(localItems), [localItems]);
+  const latestPeriod = useMemo(() => {
+    if (!Array.isArray(periods) || periods.length === 0) return null;
+    return [...periods].sort((a, b) => new Date(b.endDate) - new Date(a.endDate))[0];
+  }, [periods]);
+
+  const periodFilteredItems = useMemo(() => {
+    if (!latestPeriod) return localItems;
+
+    return localItems.filter((item) => {
+      const itemPeriodId = item.orderPeriod?._id || item.orderPeriod;
+      return itemPeriodId && String(itemPeriodId) === String(latestPeriod._id);
+    });
+  }, [latestPeriod, localItems]);
+
+  const finalDepartmentItems = useMemo(() => getFinalDepartmentItems(periodFilteredItems), [periodFilteredItems]);
 
   const departments = useMemo(() => {
     const grouped = {};
@@ -72,9 +86,13 @@ export function InformLecturerPage({ items = [], token, isPeriodLocked = false }
     });
   }, [activeDepartment, departments, finalDepartmentItems, searchTerm]);
 
-  const allSelectedInView = previewItems.length > 0 && previewItems.every((item) => selectedIds.includes(item._id));
+  const selectableVisibleItems = previewItems.filter((item) => item.status !== "ordered");
+  const allSelectedInView = selectableVisibleItems.length > 0 && selectableVisibleItems.every((item) => selectedIds.includes(item._id));
 
   function toggleSelection(id) {
+    const item = localItems.find((entry) => String(entry._id) === String(id));
+    if (item?.status === "ordered") return;
+
     setSelectedIds((prev) =>
       prev.includes(id)
         ? prev.filter((currentId) => currentId !== id)
@@ -85,7 +103,12 @@ export function InformLecturerPage({ items = [], token, isPeriodLocked = false }
   function toggleSelectVisible() {
     if (!previewItems.length) return;
 
-    const visibleIds = previewItems.map((item) => item._id);
+    const visibleIds = previewItems
+      .filter((item) => item.status !== "ordered")
+      .map((item) => item._id);
+
+    if (!visibleIds.length) return;
+
     const hasAllVisible = visibleIds.every((id) => selectedIds.includes(id));
 
     if (hasAllVisible) {
@@ -182,6 +205,7 @@ export function InformLecturerPage({ items = [], token, isPeriodLocked = false }
                       type="checkbox"
                       checked={allSelectedInView}
                       onChange={toggleSelectVisible}
+                      disabled={selectableVisibleItems.length === 0}
                       aria-label="Select visible items"
                     />
                   </th>
@@ -197,12 +221,16 @@ export function InformLecturerPage({ items = [], token, isPeriodLocked = false }
                 {previewItems.map((item) => (
                   <tr key={item._id || `${item.title}-${item.department}`}>
                     <td>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(item._id)}
-                        onChange={() => toggleSelection(item._id)}
-                        aria-label={`Select ${item.title}`}
-                      />
+                      {item.status === "ordered" ? (
+                        <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>—</span>
+                      ) : (
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(item._id)}
+                          onChange={() => toggleSelection(item._id)}
+                          aria-label={`Select ${item.title}`}
+                        />
+                      )}
                     </td>
                     <td><strong>{item.priorityRank || "-"}</strong></td>
                     <td>{getDepartmentKey(item)}</td>

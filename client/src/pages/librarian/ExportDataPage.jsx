@@ -53,11 +53,42 @@ function sanitizeSheetName(name) {
   return (cleaned || "Unassigned").slice(0, 31);
 }
 
-export function ExportDataPage({ items, isExportLocked = true }) {
-  const finalDepartmentItems = useMemo(() => getFinalDepartmentItems(items), [items]);
+export function ExportDataPage({ items = [], isExportLocked = true, periods = [], selectedPeriod = null, onSelectedPeriodChange = () => {} }) {
+  const sortedPeriods = useMemo(
+    () =>
+      [...periods].sort((a, b) => {
+        const aDate = a?.endDate ? new Date(a.endDate).getTime() : 0;
+        const bDate = b?.endDate ? new Date(b.endDate).getTime() : 0;
+        return bDate - aDate;
+      }),
+    [periods]
+  );
+
+  const closedPeriods = useMemo(
+    () => [...sortedPeriods].filter((period) => period.status === "closed"),
+    [sortedPeriods]
+  );
+
+  const fallbackSelectedPeriod = closedPeriods[0]?._id || sortedPeriods[0]?._id || "all";
+  const effectiveSelectedPeriod = selectedPeriod || fallbackSelectedPeriod;
+  const selectedPeriodData = sortedPeriods.find((period) => String(period._id) === String(effectiveSelectedPeriod)) || null;
+  const isSelectedPeriodLocked =
+    !selectedPeriodData || selectedPeriodData.status === "open" || selectedPeriodData.status === "hod_priority";
+  const exportLocked = isExportLocked || isSelectedPeriodLocked;
+
+  const finalDepartmentItems = useMemo(() => {
+    const filteredItems = effectiveSelectedPeriod && effectiveSelectedPeriod !== "all"
+      ? (items || []).filter((item) => {
+          const itemPeriodId = item.orderPeriod?._id || item.orderPeriod;
+          return itemPeriodId && String(itemPeriodId) === String(effectiveSelectedPeriod);
+        })
+      : items || [];
+
+    return getFinalDepartmentItems(filteredItems);
+  }, [items, effectiveSelectedPeriod]);
 
   function showBlockedMessage() {
-    window.alert("The order period is still active. Please wait until the period is closed before exporting data.");
+    window.alert("The selected period is still active. Please wait until the period is closed before exporting data.");
   }
 
   function downloadBlob(blob, filename) {
@@ -174,7 +205,7 @@ export function ExportDataPage({ items, isExportLocked = true }) {
 
   function handleDownloadClick(event, download) {
     event.stopPropagation();
-    if (isExportLocked) {
+    if (exportLocked) {
       showBlockedMessage();
       return;
     }
@@ -183,17 +214,43 @@ export function ExportDataPage({ items, isExportLocked = true }) {
 
   return (
     <div className="dashboard-container">
-      {isExportLocked && (
+      {exportLocked && (
         <section className="large-panel" style={{ borderColor: "rgba(239, 68, 68, 0.45)", background: "rgba(239, 68, 68, 0.04)" }}>
           <h3 className="panel-title" style={{ color: "var(--danger)" }}>Export Restricted</h3>
           <div style={{ color: "var(--text-muted)", lineHeight: 1.6 }}>
-            The order period is still active. Please wait until the period is closed before exporting data.
+            {selectedPeriodData && (selectedPeriodData.status === "open" || selectedPeriodData.status === "hod_priority")
+              ? "The selected order period is still active. Please wait until it is closed before exporting data."
+              : "Please choose a closed period before exporting data."}
           </div>
         </section>
       )}
 
       <section className="large-panel">
         <h3 className="panel-title">Export Data</h3>
+
+        {sortedPeriods.length > 0 && (
+          <div style={{ marginBottom: "1rem", display: "flex", justifyContent: "flex-end" }}>
+            <select
+              value={effectiveSelectedPeriod}
+              onChange={(event) => onSelectedPeriodChange(event.target.value)}
+              className="table-input"
+              style={{ minWidth: "260px" }}
+            >
+              <option value="all">All Periods</option>
+              {sortedPeriods.map((periodItem) => {
+                const startDate = new Date(periodItem.startDate).toLocaleDateString("en-GB");
+                const endDate = new Date(periodItem.endDate).toLocaleDateString("en-GB");
+                const isCurrent = periodItem.status === "open" || periodItem.status === "hod_priority";
+                return (
+                  <option key={periodItem._id} value={periodItem._id}>
+                    {`${startDate} - ${endDate}${isCurrent ? " (Current)" : ""}`}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        )}
+
         <div className="export-grid">
           <Card className="export-card">
             <div className="export-icon excel">
@@ -201,7 +258,7 @@ export function ExportDataPage({ items, isExportLocked = true }) {
             </div>
             <h3>Export HoD Final List (Excel)</h3>
             <p>Download the department-wise final ranked list as an XLSX workbook with one sheet per department.</p>
-            <button className="btn btn-primary btn-sm" disabled={isExportLocked} onClick={(event) => handleDownloadClick(event, downloadExcel)}>
+            <button className="btn btn-primary btn-sm" disabled={exportLocked} onClick={(event) => handleDownloadClick(event, downloadExcel)}>
               <Download size={16} /> Download Excel
             </button>
           </Card>
@@ -212,7 +269,7 @@ export function ExportDataPage({ items, isExportLocked = true }) {
             </div>
             <h3>Export HoD Final List (PDF)</h3>
             <p>Download the final department-wise recommendation summary as a grouped PDF report.</p>
-            <button className="btn btn-primary btn-sm" disabled={isExportLocked} onClick={(event) => handleDownloadClick(event, downloadPdf)}>
+            <button className="btn btn-primary btn-sm" disabled={exportLocked} onClick={(event) => handleDownloadClick(event, downloadPdf)}>
               <Download size={16} /> Download PDF
             </button>
           </Card>
@@ -223,6 +280,7 @@ export function ExportDataPage({ items, isExportLocked = true }) {
         <h3 className="panel-title">Export Summary</h3>
         <Card className="info-card">
           <div className="info-content">
+            <p><strong>Period:</strong> {selectedPeriodData ? `${new Date(selectedPeriodData.startDate).toLocaleDateString("en-GB")} - ${new Date(selectedPeriodData.endDate).toLocaleDateString("en-GB")}` : "All periods"}</p>
             <p><strong>Final HoD Records:</strong> {finalDepartmentItems.length} ranked recommendations</p>
             <p><strong>Departments Included:</strong> {new Set(finalDepartmentItems.map((item) => getDepartmentKey(item))).size}</p>
             <p><strong>Last Updated:</strong> {new Date().toLocaleDateString('en-GB')}</p>

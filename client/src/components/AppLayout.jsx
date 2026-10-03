@@ -5,7 +5,7 @@ export const roleViews = {
   lecturer: ["dashboard", "submit", "my"],
   hod: ["dashboard", "priority", "all", "submissions", "status"],
   librarian: ["dashboard", "all", "periods", "export", "inform"],
-  admin: ["dashboard", "users", "createUser"]
+  admin: ["dashboard", "users", "createUser", "audit"]
 };
 
 export const viewLabels = {
@@ -21,7 +21,8 @@ export const viewLabels = {
   export: "Export Data",
   inform: "Inform Lecturer",
   users: "User Management",
-  createUser: "Create New User"
+  createUser: "Create New User",
+  audit: "Audit History"
 };
 
 export const viewIcons = {
@@ -37,7 +38,8 @@ export const viewIcons = {
   export: Download,
   inform: BellRing,
   users: Users,
-  createUser: UserPlus
+  createUser: UserPlus,
+  audit: ClipboardList
 };
 
 export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, onProfileClick, navigationLocked = false, viewActions, theme, onToggleTheme, notifications = [], notificationsOpen = false, onToggleNotifications, children }) {

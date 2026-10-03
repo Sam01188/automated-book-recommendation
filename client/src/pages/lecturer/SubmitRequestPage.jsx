@@ -113,26 +113,11 @@ export function SubmitRequestPage({ onSubmit, loading, isPeriodOpen, currentPeri
   return (
     <form onSubmit={handleSubmit}>
       <div className="form-panel">
-        <h2 className="panel-title">Submit Book Recommendation</h2>
+        <h2 className="panel-title" style={{ marginBottom: "0.5rem" }}>Submit Book Recommendation</h2>
 
-        <div
-          style={{
-            background: "rgba(255,255,255,0.02)",
-            border: "1px solid rgba(148, 163, 184, 0.22)",
-            borderRadius: "var(--radius)",
-            padding: "0.75rem 1rem",
-            marginBottom: "1.5rem",
-            color: "var(--text-muted, #64748b)",
-            fontSize: "0.86rem",
-            display: "flex",
-            justifyContent: "space-between",
-            gap: "0.5rem",
-            flexWrap: "wrap"
-          }}
-        >
-          <span>Fields marked with <strong style={{ color: "var(--danger-text, #dc2626)" }}>*</strong> are required.</span>
-          <span>Complete all required details to submit faster.</span>
-        </div>
+        <p style={{ margin: "0 0 1.5rem", color: "var(--text-muted, #64748b)", fontSize: "0.86rem" }}>
+          Fields marked in <span style={{ color: "var(--danger-text, #dc2626)" }}>*</span> are required.
+        </p>
 
         {aiLoading && (
           <div

@@ -2,17 +2,22 @@ import express from "express";
 import OrderPeriod from "../models/OrderPeriod.js";
 import { allowRoles, requireAuth } from "../middleware/auth.js";
 import { calculateHodDeadline, finalizeExpiredHodPeriods } from "../utils/hodWorkflow.js";
+import { recordAuditLog } from "../controllers/auditController.js";
 
 const router = express.Router();
-const DEFAULT_FACULTY = "Engineering Faculty";
 
 function normalizePeriodPayload(body) {
   return {
-    faculty: body.faculty || DEFAULT_FACULTY,
     startDate: body.startDate,
     endDate: body.endDate,
     hodRecommendationDays: body.hodRecommendationDays
   };
+}
+
+function periodLabel(period) {
+  const start = period.startDate ? new Date(period.startDate).toLocaleDateString() : "?";
+  const end = period.endDate ? new Date(period.endDate).toLocaleDateString() : "?";
+  return `${start} - ${end}`;
 }
 
 router.get("/", requireAuth, allowRoles("librarian", "hod", "admin", "lecturer"), async (req, res) => {
@@ -60,6 +65,10 @@ router.post("/", requireAuth, allowRoles("librarian"), async (req, res) => {
       status: "open",
       createdBy: req.user.id
     });
+    await recordAuditLog(req, "order_period_created", period, [], {
+      targetType: "order_period",
+      targetName: periodLabel(period)
+    });
 
     res.status(201).json(period);
   } catch (err) {
@@ -79,13 +88,21 @@ router.patch("/:id", requireAuth, allowRoles("librarian"), async (req, res) => {
     }
 
     const updates = normalizePeriodPayload(req.body);
+    const changedFields = [];
     Object.entries(updates).forEach(([key, value]) => {
       if (value !== undefined) {
+        if (String(period[key]) !== String(value)) changedFields.push(key);
         period[key] = value;
       }
     });
 
     await period.save();
+    if (changedFields.length > 0) {
+      await recordAuditLog(req, "order_period_updated", period, changedFields, {
+        targetType: "order_period",
+        targetName: periodLabel(period)
+      });
+    }
     res.json(period);
   } catch (err) {
     res.status(400).json({ message: err.message || "Failed to update order period" });
@@ -109,6 +126,10 @@ router.patch("/:id/close", requireAuth, allowRoles("librarian"), async (req, res
     if (!period) {
       return res.status(404).json({ message: "Order period not found" });
     }
+    await recordAuditLog(req, "order_period_closed", period, ["status"], {
+      targetType: "order_period",
+      targetName: periodLabel(period)
+    });
 
     res.json(period);
   } catch (err) {
@@ -127,6 +148,10 @@ router.patch("/:id/open-hod", requireAuth, allowRoles("librarian"), async (req, 
     if (!period) {
       return res.status(404).json({ message: "Order period not found" });
     }
+    await recordAuditLog(req, "order_period_hod_opened", period, ["status"], {
+      targetType: "order_period",
+      targetName: periodLabel(period)
+    });
 
     res.json(period);
   } catch (err) {
@@ -146,6 +171,10 @@ router.delete("/:id", requireAuth, allowRoles("librarian"), async (req, res) => 
     }
 
     await period.deleteOne();
+    await recordAuditLog(req, "order_period_deleted", period, [], {
+      targetType: "order_period",
+      targetName: periodLabel(period)
+    });
     res.json({ message: "Order period deleted" });
   } catch (err) {
     res.status(500).json({ message: "Failed to delete order period" });

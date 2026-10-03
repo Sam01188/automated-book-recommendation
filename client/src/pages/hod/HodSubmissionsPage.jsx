@@ -53,7 +53,7 @@ export function HodSubmissionsPage({ token, currentUserId, periods = [], current
             <option value="all">All</option>
             {periods.map((p) => (
               <option key={p._id || p} value={p._id || p}>
-                {p.faculty || `${new Date(p.startDate).toLocaleDateString()} - ${new Date(p.endDate).toLocaleDateString()}`}
+                {`${new Date(p.startDate).toLocaleDateString()} - ${new Date(p.endDate).toLocaleDateString()}`}
               </option>
             ))}
           </select>

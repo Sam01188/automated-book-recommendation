@@ -15,6 +15,8 @@ const userSchema = new mongoose.Schema(
 
     passwordHash: { type: String, required: true, select: false },
 
+    isActive: { type: Boolean, default: true },
+
     mustChangePassword: { type: Boolean, default: false },
 
     sessionVersion: { type: Number, default: 0 },

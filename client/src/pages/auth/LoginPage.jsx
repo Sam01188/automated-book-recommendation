@@ -100,7 +100,7 @@ export function LoginPage({ onLogin, onRequestPasswordReset, onResetPassword, re
             <p style={{ color: 'var(--text-muted)', fontWeight: 500 }}>
               {mode === "login" && "Please enter your credentials to continue."}
               {mode === "forgot" && "Enter your account email and we will send a reset link."}
-              {mode === "reset" && "Use at least 10 characters for your new password."}
+              {mode === "reset" && "Use at least 6 characters for your new password."}
             </p>
           </div>
 
@@ -137,11 +137,11 @@ export function LoginPage({ onLogin, onRequestPasswordReset, onResetPassword, re
               <>
                 <div className="field">
                   <label htmlFor="reset-password">New password</label>
-                  <input id="reset-password" type="password" autoComplete="new-password" minLength={10} required value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+                  <input id="reset-password" type="password" autoComplete="new-password" minLength={6} required value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
                 </div>
                 <div className="field">
                   <label htmlFor="confirm-password">Confirm new password</label>
-                  <input id="confirm-password" type="password" autoComplete="new-password" minLength={10} required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
+                  <input id="confirm-password" type="password" autoComplete="new-password" minLength={6} required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
                 </div>
               </>
             )}
