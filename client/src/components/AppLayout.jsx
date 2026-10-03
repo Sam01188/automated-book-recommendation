@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { BookMarked, ClipboardList, Download, Home, ListChecks, LogOut, Send, UserCircle, Users, UserPlus, Clock, ChevronLeft, ChevronRight, Sun, Moon } from "lucide-react";
+import { BellRing, BookMarked, ClipboardList, Download, Home, ListChecks, LogOut, Send, UserCircle, Users, UserPlus, Clock, ChevronLeft, ChevronRight, Sun, Moon } from "lucide-react";
 
 export const roleViews = {
   lecturer: ["dashboard", "submit", "my"],
   hod: ["dashboard", "priority", "all", "submissions"],
-  librarian: ["dashboard", "all", "periods", "export"],
+  librarian: ["dashboard", "all", "periods", "export", "inform"],
   admin: ["dashboard", "users", "createUser", "audit"]
 };
 
@@ -18,6 +18,7 @@ export const viewLabels = {
   submissions: "Submissions",
   periods: "Order Periods",
   export: "Export Data",
+  inform: "Inform Lecturer",
   users: "User Management",
   createUser: "Create New User",
   audit: "Audit History"
@@ -33,12 +34,13 @@ export const viewIcons = {
   submissions: ClipboardList,
   periods: Clock,
   export: Download,
+  inform: BellRing,
   users: Users,
   createUser: UserPlus,
   audit: ClipboardList
 };
 
-export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, onProfileClick, navigationLocked = false, viewActions, theme, onToggleTheme, children }) {
+export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, onProfileClick, navigationLocked = false, viewActions, theme, onToggleTheme, notifications = [], notificationsOpen = false, onToggleNotifications, children }) {
   const [sidebarMinimized, setSidebarMinimized] = useState(false);
   const ActiveIcon = viewIcons[view] || Home;
 
@@ -52,7 +54,83 @@ export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, on
             <p>Faculty of Engineering • Book Recommendation Portal</p>
           </div>
         </div>
-        <div className="userbar">
+        <div className="userbar" style={{ position: "relative" }}>
+          {user.role === "lecturer" && (
+            <button
+              type="button"
+              onClick={onToggleNotifications}
+              title="Notifications"
+              style={{
+                position: "relative",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "42px",
+                height: "42px",
+                borderRadius: "50%",
+                border: "1px solid var(--border)",
+                background: "var(--surface)",
+                color: "var(--text)",
+                cursor: "pointer"
+              }}
+            >
+              <BellRing size={18} />
+              {notifications.length > 0 && (
+                <span style={{
+                  position: "absolute",
+                  top: "-4px",
+                  right: "-4px",
+                  minWidth: "18px",
+                  height: "18px",
+                  padding: "0 4px",
+                  borderRadius: "999px",
+                  background: "var(--primary)",
+                  color: "white",
+                  fontSize: "0.68rem",
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}>
+                  {notifications.length}
+                </span>
+              )}
+            </button>
+          )}
+
+          {notificationsOpen && user.role === "lecturer" && notifications.length > 0 && (
+            <div style={{
+              position: "absolute",
+              top: "calc(100% + 12px)",
+              right: 0,
+              width: "320px",
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius)",
+              boxShadow: "0 18px 45px rgba(0,0,0,0.2)",
+              zIndex: 20,
+              padding: "0.75rem",
+              maxHeight: "300px",
+              overflowY: "auto"
+            }}>
+              <div style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: "0.5rem" }}>
+                Notifications
+              </div>
+              {notifications.map((item) => (
+                <div key={item.id} style={{
+                  padding: "0.7rem 0.75rem",
+                  borderRadius: "var(--radius)",
+                  background: "var(--surface-hover)",
+                  border: "1px solid var(--border)",
+                  marginBottom: "0.5rem"
+                }}>
+                  <div style={{ fontWeight: 700, color: "var(--text)", marginBottom: "0.2rem" }}>{item.title}</div>
+                  <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{item.message}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
           <button className="profile-trigger" type="button" onClick={onProfileClick} title="Open profile">
             <UserCircle size={30} color="var(--primary)" />
             <span className="user-info">

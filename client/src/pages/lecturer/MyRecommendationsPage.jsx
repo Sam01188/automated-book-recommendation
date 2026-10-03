@@ -267,35 +267,47 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
             </div>
           </div>
         ) : (
-          <div style={{ borderRadius: "var(--radius)", border: "1px solid var(--border)", overflow: "hidden" }}>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ minWidth: "700px", width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr>
-                    {['Title','Edition','ISBN','Status'].map(col => (
-                      <th key={col} style={{
-                        background: "var(--surface-hover)",
-                        padding: "0.875rem 1rem",
-                        textAlign: "left",
-                        fontSize: "0.7rem",
-                        fontWeight: 700,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.07em",
-                        color: "var(--text-muted)",
-                        whiteSpace: "nowrap"
-                      }}>{col}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredItems.length === 0 ? (
+          /* Status tab */
+          <div>
+            {filteredItems.some((item) => item.status === "ordered") && (
+              <div style={{
+                marginBottom: "1rem",
+                padding: "0.875rem 1rem",
+                borderRadius: "var(--radius)",
+                border: "1px solid rgba(59, 130, 246, 0.35)",
+                background: "linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(59, 130, 246, 0.04) 100%)",
+                color: "var(--primary)",
+                fontWeight: 600
+              }}>
+                One or more of your book requests have been ordered by the library.
+              </div>
+            )}
+            <div style={{
+              borderRadius: "var(--radius)",
+              border: "1px solid var(--border)",
+              overflow: "hidden"
+            }}>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ minWidth: "700px", width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
                     <tr>
-                      <td colSpan={4} style={{ padding: "2rem 1rem", textAlign: "center", color: "var(--text-muted)", fontWeight: 500 }}>
-                        {items.length === 0 ? "No status entries found." : "No results found."}
-                      </td>
+                      {['Title','Edition','ISBN','Status'].map(col => (
+                        <th key={col} style={{
+                          background: "var(--surface-hover)",
+                          padding: "0.875rem 1rem",
+                          textAlign: "left",
+                          fontSize: "0.7rem",
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.07em",
+                          color: "var(--text-muted)",
+                          whiteSpace: "nowrap"
+                        }}>{col}</th>
+                      ))}
                     </tr>
-                  ) : (
-                    filteredItems.map(item => (
+                  </thead>
+                  <tbody>
+                    {filteredItems.map(item => (
                       <tr key={item._id} style={{ borderTop: '1px solid var(--border)' }}>
                         <td style={{ padding: '0.875rem 1rem', fontWeight: 700 }}>{item.title}</td>
                         <td style={{ padding: '0.875rem 1rem' }}>{item.edition || '—'}</td>
@@ -308,16 +320,16 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
                             fontWeight: 700,
                             textTransform: 'uppercase',
                             letterSpacing: '0.05em',
-                            background: item.status === 'selected' ? 'rgba(var(--primary-rgb), 0.15)' : 'var(--surface-hover)',
-                            color: item.status === 'selected' ? 'var(--primary)' : 'var(--text-muted)',
-                            border: `1px solid ${item.status === 'selected' ? 'rgba(var(--primary-rgb), 0.3)' : 'var(--border)'}`
+                            background: item.status === 'ordered' ? 'rgba(59, 130, 246, 0.15)' : item.status === 'selected' ? 'rgba(var(--primary-rgb), 0.15)' : 'var(--surface-hover)',
+                            color: item.status === 'ordered' ? '#3b82f6' : item.status === 'selected' ? 'var(--primary)' : 'var(--text-muted)',
+                            border: `1px solid ${item.status === 'ordered' ? 'rgba(59, 130, 246, 0.35)' : item.status === 'selected' ? 'rgba(var(--primary-rgb), 0.3)' : 'var(--border)'}`
                           }}>{(item.status || 'submitted').replace(/_/g,' ')}</span>
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -342,6 +354,8 @@ function RecommendationRow({ item, isPeriodOpen, onDelete, onEdit, onSave, onCan
   const statusMap = {
     submitted:    { bg: "var(--success-bg)", text: "var(--success-text)", border: "var(--success-border)", label: "Submitted" },
     under_review: { bg: "rgba(236, 72, 153, 0.15)", text: "#ec4899", border: "rgba(236, 72, 153, 0.3)", label: "Under Review" },
+    selected:     { bg: "rgba(var(--primary-rgb), 0.15)", text: "var(--primary)", border: "rgba(var(--primary-rgb), 0.3)", label: "Selected" },
+    ordered:      { bg: "rgba(59, 130, 246, 0.15)", text: "#3b82f6", border: "rgba(59, 130, 246, 0.35)", label: "Ordered" },
     rejected:     { bg: "var(--danger-bg)", text: "var(--danger-text)", border: "var(--danger-border)", label: "Rejected" }
   };
   const priorityMap = {

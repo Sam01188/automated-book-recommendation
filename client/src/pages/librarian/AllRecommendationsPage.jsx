@@ -3,32 +3,47 @@ import { Search } from "lucide-react";
 import { Card } from "../../components/librarian/Card";
 import { DataTable } from "../../components/librarian/DataTable";
 import { Badge } from "../../components/librarian/Badge";
-import { updateRecommendationStatus, fetchRecommendations } from "../../api";
 
-function getSessionToken() {
-  try {
-    const raw = localStorage.getItem("book-rec-session");
-    if (!raw) return "demo-token";
-    const parsed = JSON.parse(raw);
-    return parsed.token || "demo-token";
-  } catch {
-    return "demo-token";
-  }
-}
-
-export function AllRecommendationsPage({ items = [], filterPriority = "all", currentPeriod = null }) {
+export function AllRecommendationsPage({
+  items = [],
+  filterPriority = "all",
+  currentPeriod = null,
+  periods = [],
+  selectedPeriod = null,
+  onSelectedPeriodChange = () => {}
+}) {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [localItems, setLocalItems] = useState(items);
-  const [selectedIds, setSelectedIds] = useState([]);
-  const [applyStatus, setApplyStatus] = useState("");
 
   useEffect(() => {
     setLocalItems(items || []);
-    setSelectedIds((prev) => prev.filter((id) => (items || []).some((it) => String(it._id) === String(id))));
   }, [items]);
 
-  const period = currentPeriod || localItems[0]?.orderPeriod;
+  const sortedPeriods = useMemo(
+    () =>
+      [...periods].sort((a, b) => {
+        const aDate = a?.endDate ? new Date(a.endDate).getTime() : 0;
+        const bDate = b?.endDate ? new Date(b.endDate).getTime() : 0;
+        return bDate - aDate;
+      }),
+    [periods]
+  );
+
+  const latestPeriod = sortedPeriods[0] || currentPeriod || null;
+
+  useEffect(() => {
+    if (!selectedPeriod && latestPeriod && latestPeriod._id) {
+      onSelectedPeriodChange(latestPeriod._id);
+    }
+  }, [selectedPeriod, latestPeriod, onSelectedPeriodChange]);
+
+  const effectiveSelectedPeriod = selectedPeriod || latestPeriod?._id || "all";
+  const period =
+    sortedPeriods.find((periodItem) => String(periodItem._id) === String(effectiveSelectedPeriod)) ||
+    currentPeriod ||
+    latestPeriod ||
+    null;
   const periodStatus = period?.status;
   const isCurrentPeriod = periodStatus === "open" || periodStatus === "hod_priority";
   const periodLabel = period ? (isCurrentPeriod ? "Current Period" : "Previous Period") : "No Period Selected";
@@ -45,10 +60,21 @@ export function AllRecommendationsPage({ items = [], filterPriority = "all", cur
     [localItems]
   );
 
+  const filteredByPeriod = useMemo(() => {
+    if (!effectiveSelectedPeriod || effectiveSelectedPeriod === "all") {
+      return localItems || [];
+    }
+
+    return (localItems || []).filter((item) => {
+      const itemPeriodId = item.orderPeriod?._id || item.orderPeriod;
+      return itemPeriodId && String(itemPeriodId) === String(effectiveSelectedPeriod);
+    });
+  }, [localItems, effectiveSelectedPeriod]);
+
   const filteredItems = useMemo(() => {
     const search = searchTerm.toLowerCase();
 
-    return [...(localItems || [])]
+    return [...filteredByPeriod]
       .filter((item) => {
         const matchesSearch =
           item.title?.toLowerCase().includes(search) ||
@@ -65,7 +91,7 @@ export function AllRecommendationsPage({ items = [], filterPriority = "all", cur
         if (departmentCompare !== 0) return departmentCompare;
         return (a.priorityRank || 9999) - (b.priorityRank || 9999);
       });
-  }, [localItems, searchTerm, activeTab, filterPriority]);
+  }, [filteredByPeriod, searchTerm, activeTab, filterPriority]);
 
   const getStatusBadgeType = (status) => {
     const statusMap = {
@@ -96,42 +122,6 @@ export function AllRecommendationsPage({ items = [], filterPriority = "all", cur
   ];
 
   const tableColumns = activeTab === "all" ? columns : columns.filter((col) => col.key !== "department");
-
-  const handleSelectCheapestPerDepartment = async () => {
-    const byDept = {};
-
-    filteredItems.forEach((item) => {
-      const price = Number(item.price);
-      if (!Number.isFinite(price)) return;
-      const key = item.department || "___";
-      if (!byDept[key] || price < Number(byDept[key].price)) byDept[key] = item;
-    });
-
-    const ids = Array.from(new Set(Object.values(byDept).map((item) => item._id)));
-    setSelectedIds((prev) => Array.from(new Set([...prev.filter((id) => !ids.includes(id)), ...ids])));
-
-    try {
-      const token = getSessionToken();
-      await Promise.all(ids.map((id) => updateRecommendationStatus(token, id, "selected")));
-      const fresh = await fetchRecommendations(token, "librarian");
-      setLocalItems(fresh);
-    } catch (error) {
-      console.error("Failed to select items", error);
-    }
-  };
-
-  const handleApplyStatus = async () => {
-    if (!applyStatus || selectedIds.length === 0) return;
-
-    try {
-      const token = getSessionToken();
-      await Promise.all(selectedIds.map((id) => updateRecommendationStatus(token, id, applyStatus)));
-      const fresh = await fetchRecommendations(token, "librarian");
-      setLocalItems(fresh);
-    } catch (error) {
-      console.error("Failed to apply status", error);
-    }
-  };
 
   return (
     <div className="dashboard-container">
@@ -166,27 +156,116 @@ export function AllRecommendationsPage({ items = [], filterPriority = "all", cur
         </Card>
       </section>
 
-      <div className="search-wrapper" style={{ flex: 1, minWidth: "250px", position: "relative" }}>
-        <Search
-          size={18}
-          className="search-icon"
-          style={{
-            position: "absolute",
-            left: "10px",
-            top: "50%",
-            transform: "translateY(-50%)",
-            color: "var(--text-muted)"
-          }}
-        />
-        <input
-          type="text"
-          placeholder="Search by title, author or ISBN..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="search-input"
-          style={{ width: "100%", paddingLeft: "2.5rem" }}
-        />
+      <div
+        style={{
+          display: "flex",
+          gap: "1rem",
+          alignItems: "center",
+          marginBottom: "1rem",
+          flexWrap: "wrap"
+        }}
+      >
+        <div className="search-wrapper" style={{ flex: 1, minWidth: "250px", position: "relative" }}>
+          <Search
+            size={18}
+            className="search-icon"
+            style={{
+              position: "absolute",
+              left: "10px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "var(--text-muted)"
+            }}
+          />
+          <input
+            type="text"
+            placeholder="Search by title, author or ISBN..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="search-input"
+            style={{ width: "100%", paddingLeft: "2.5rem" }}
+          />
+        </div>
+
+        {sortedPeriods.length > 0 && (
+          <select
+            value={effectiveSelectedPeriod}
+            onChange={(e) => onSelectedPeriodChange(e.target.value)}
+            className="table-input"
+            style={{ minWidth: "240px" }}
+          >
+            <option value="all">All Periods</option>
+            {sortedPeriods.map((periodItem) => {
+              const startDate = new Date(periodItem.startDate).toLocaleDateString("en-GB");
+              const endDate = new Date(periodItem.endDate).toLocaleDateString("en-GB");
+              const isLatest = latestPeriod && String(periodItem._id) === String(latestPeriod._id);
+              const suffix = isLatest ? " (Latest)" : periodItem.status === "open" || periodItem.status === "hod_priority" ? " (Current)" : "";
+              return (
+                <option key={periodItem._id} value={periodItem._id}>
+                  {`${startDate} - ${endDate}${suffix}`}
+                </option>
+              );
+            })}
+          </select>
+        )}
       </div>
+
+      {sortedPeriods.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            gap: "0.5rem",
+            flexWrap: "wrap",
+            marginBottom: "1rem"
+          }}
+        >
+          <button
+            onClick={() => onSelectedPeriodChange("all")}
+            style={{
+              padding: "0.55rem 0.9rem",
+              borderRadius: "999px",
+              border: effectiveSelectedPeriod === "all" ? "1px solid var(--primary)" : "1px solid var(--border-color)",
+              background: effectiveSelectedPeriod === "all" ? "rgba(88, 166, 255, 0.12)" : "var(--surface)",
+              color: effectiveSelectedPeriod === "all" ? "var(--primary)" : "var(--text)",
+              cursor: "pointer",
+              fontWeight: 600
+            }}
+          >
+            All periods
+          </button>
+          {sortedPeriods.map((periodItem) => {
+            const isSelected = String(effectiveSelectedPeriod) === String(periodItem._id);
+            const isLatest = latestPeriod && String(periodItem._id) === String(latestPeriod._id);
+            const periodDate = `${new Date(periodItem.startDate).toLocaleDateString("en-GB")} - ${new Date(periodItem.endDate).toLocaleDateString("en-GB")}`;
+
+            return (
+              <button
+                key={periodItem._id}
+                onClick={() => onSelectedPeriodChange(periodItem._id)}
+                style={{
+                  padding: "0.55rem 0.9rem",
+                  borderRadius: "999px",
+                  border: isSelected ? "1px solid var(--primary)" : "1px solid var(--border-color)",
+                  background: isSelected
+                    ? isLatest
+                      ? "linear-gradient(135deg, rgba(255,179,71,0.18), rgba(88,166,255,0.18))"
+                      : "rgba(88, 166, 255, 0.12)"
+                    : isLatest
+                      ? "rgba(255, 179, 71, 0.12)"
+                      : "var(--surface)",
+                  color: isSelected ? "var(--primary)" : "var(--text)",
+                  cursor: "pointer",
+                  fontWeight: isSelected ? 700 : 600,
+                  boxShadow: isLatest ? "0 0 0 1px rgba(255,179,71,0.4)" : "none"
+                }}
+              >
+                {periodDate}
+                {isLatest && " • Latest"}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div
         style={{
@@ -242,71 +321,37 @@ export function AllRecommendationsPage({ items = [], filterPriority = "all", cur
               No recommendations found matching the criteria.
             </div>
           ) : (
-            <div>
-              <div style={{ marginBottom: "0.5rem", display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
-                <button className="secondary-button" onClick={handleSelectCheapestPerDepartment}>
-                  Select cheapest per department
-                </button>
-
-                <select value={applyStatus} onChange={(e) => setApplyStatus(e.target.value)} style={{ padding: "0.35rem" }}>
-                  <option value="">Set status for selected</option>
-                  <option value="ordered">Placed Order</option>
-                  <option value="bought">Bought</option>
-                  <option value="delivered">Delivered</option>
-                  <option value="ready">Ready in Library</option>
-                </select>
-
-                <button className="primary-button" onClick={handleApplyStatus}>
-                  Apply
-                </button>
-              </div>
-
-              <DataTable
-                columns={[{ key: "select", label: "" }, ...tableColumns]}
-                data={filteredItems}
-                renderRow={(item) => (
-                  <>
+            <DataTable
+              columns={tableColumns}
+              data={filteredItems}
+              renderRow={(item) => (
+                <>
+                  {activeTab === "all" && (
                     <td>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(item._id)}
-                        onChange={(e) => {
-                          setSelectedIds((prev) => {
-                            const next = new Set(prev);
-                            if (e.target.checked) next.add(item._id);
-                            else next.delete(item._id);
-                            return Array.from(next);
-                          });
-                        }}
-                      />
+                      <span className="badge badge-info">{item.department || "Unassigned"}</span>
                     </td>
-                    {activeTab === "all" && (
-                      <td>
-                        <span className="badge badge-info">{item.department || "Unassigned"}</span>
-                      </td>
-                    )}
-                    <td>
-                      <strong>{item.priorityRank || "N/A"}</strong>
-                    </td>
-                    <td>
-                      <strong>{item.title}</strong>
-                    </td>
-                    <td>{item.author}</td>
-                    <td>{item.isbn || "N/A"}</td>
-                    <td>{item.edition || "N/A"}</td>
-                    <td>{item.copies ?? 0}</td>
-                    <td>
-                      {item.price ? `${item.currency || "LKR"} ${Number(item.price).toLocaleString()}` : "N/A"}
-                    </td>
-                    <td>{item.publisher}</td>
-                    <td>
-                      <Badge label={item.status} type={getStatusBadgeType(item.status)} />
-                    </td>
-                    <td className="text-muted">{item.submittedBy?.name || "N/A"}</td>
-                  </>
-                )}
-              />
-            </div>
+                  )}
+                  <td>
+                    <strong>{item.priorityRank || "N/A"}</strong>
+                  </td>
+                  <td>
+                    <strong>{item.title}</strong>
+                  </td>
+                  <td>{item.author}</td>
+                  <td>{item.isbn || "N/A"}</td>
+                  <td>{item.edition || "N/A"}</td>
+                  <td>{item.copies ?? 0}</td>
+                  <td>
+                    {item.price ? `${item.currency || "LKR"} ${Number(item.price).toLocaleString()}` : "N/A"}
+                  </td>
+                  <td>{item.publisher}</td>
+                  <td>
+                    <Badge label={item.status} type={getStatusBadgeType(item.status)} />
+                  </td>
+                  <td className="text-muted">{item.submittedBy?.name || "N/A"}</td>
+                </>
+              )}
+            />
           )}
         </Card>
 
