@@ -357,6 +357,22 @@ export async function bulkUpdateUsers(token, payload) {
   return response.json();
 }
 
+export async function bulkDeleteUsers(token, userIds) {
+  const response = await fetch(`${api}/admin/users/bulk`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ userIds })
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to delete selected users");
+  }
+  return response.json();
+}
+
 export const updateUser = async (token, id, data) => {
   const response = await fetch(`${api}/admin/users/${id}`, {
     method: "PUT",

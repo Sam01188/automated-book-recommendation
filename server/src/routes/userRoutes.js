@@ -5,7 +5,8 @@ import {
   getUsers,
   deleteUser,
   updateUser,
-  bulkUpdateUsers
+  bulkUpdateUsers,
+  bulkDeleteUsers
 } from "../controllers/userController.js";
 import { getAuditLogs } from "../controllers/auditController.js";
 
@@ -19,6 +20,7 @@ router.post("/import", requireAuth, allowRoles("admin"), importUsers);
 router.post("/", requireAuth, allowRoles("admin"), createUser);
 router.get("/", requireAuth, allowRoles("admin"), getUsers);
 router.patch("/bulk", requireAuth, allowRoles("admin"), bulkUpdateUsers);
+router.delete("/bulk", requireAuth, allowRoles("admin"), bulkDeleteUsers);
 router.delete("/:id", requireAuth, allowRoles("admin"), deleteUser);
 router.put("/:id", requireAuth, allowRoles("admin"), updateUser);
 

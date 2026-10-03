@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getUsers, deleteUser, updateUser, bulkUpdateUsers } from "../../api";
+import { getUsers, deleteUser, updateUser, bulkUpdateUsers, bulkDeleteUsers } from "../../api";
 import { Trash2, Pencil, Save, X, ChevronUp, ChevronDown, RotateCcw, Download, UserCheck, UserX, UserCog } from "lucide-react";
 import { AppModal } from "../../components/AppModal";
 
@@ -264,6 +264,34 @@ export function UsersListPage({ token }) {
     applyBulkAction(action);
   }
 
+  function requestBulkDelete() {
+    setModal({
+      title: "Delete selected users?",
+      message: `${selectedUserIds.length} selected account(s) will be permanently removed. This cannot be undone.`,
+      confirmText: "Delete selected",
+      cancelText: "Cancel",
+      variant: "danger",
+      onConfirm: async () => {
+        setModal(null);
+        setBulkSaving(true);
+        try {
+          const response = await bulkDeleteUsers(token, selectedUserIds);
+          const deletedIds = new Set(response.deletedIds);
+          setUsers((current) => current.filter((user) => !deletedIds.has(String(user._id))));
+          setSelectedUserIds([]);
+          setModal({
+            title: "Users deleted",
+            message: `${response.deletedCount} account${response.deletedCount === 1 ? " was" : "s were"} deleted.`
+          });
+        } catch (error) {
+          setModal({ title: "Bulk delete failed", message: error.message || "Please check the selection and try again." });
+        } finally {
+          setBulkSaving(false);
+        }
+      }
+    });
+  }
+
   if (loading) {
     return <div className="empty-state">Loading users...</div>;
   }
@@ -402,6 +430,9 @@ export function UsersListPage({ token }) {
           </button>
           <button type="button" className="secondary-button bulk-action-button" onClick={() => requestBulkAction("deactivate")} disabled={bulkSaving}>
             <UserX size={16} /> Deactivate
+          </button>
+          <button type="button" className="secondary-button bulk-action-button" onClick={requestBulkDelete} disabled={bulkSaving}>
+            <Trash2 size={16} /> Delete
           </button>
           <select className="bulk-role-select" value={bulkRole} onChange={(event) => setBulkRole(event.target.value)} aria-label="Role to assign to selected users" disabled={bulkSaving}>
             <option value="">Assign role...</option>

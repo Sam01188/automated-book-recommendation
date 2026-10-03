@@ -97,6 +97,7 @@ export const importUsers = async (req, res) => {
   const mailTransport = createMailTransport();
   const seenEmails = new Set();
   const results = [];
+  const pendingEmails = [];
 
   for (const [index, row] of rows.entries()) {
     const name = typeof row?.name === "string" ? row.name.trim() : "";
@@ -141,34 +142,59 @@ export const importUsers = async (req, res) => {
       await user.save();
       await recordAuditLog(req, "user_created", user, [], { details: `Created through CSV import, row ${rowNumber}.` });
 
-      let emailSent = false;
-      if (mailTransport) {
-        try {
-          await mailTransport.sendMail({
-            from: process.env.SMTP_FROM || process.env.FROM_EMAIL,
-            to: email,
-            subject: "Your temporary password for the Book Recommendation Portal",
-            text: `Your account has been created.\n\nEmail: ${email}\nTemporary password: ${temporaryPassword}\n\nYou will be required to change this password when you sign in.`
-          });
-          emailSent = true;
-        } catch (error) {
-          console.error(`Failed to email imported account ${email}:`, error.message);
-        }
-      }
-
-      results.push({
+      const result = {
         rowNumber,
         name,
         email,
         status: "created",
-        emailSent,
-        message: emailSent ? "Account created and temporary password emailed." : "Account created, but the temporary-password email could not be sent."
-      });
+        emailSent: false,
+        message: mailTransport
+          ? "Account created; temporary-password email is pending."
+          : "Account created, but email is not configured."
+      };
+      results.push(result);
+      if (mailTransport) pendingEmails.push({ email, temporaryPassword, result });
     } catch (error) {
       const message = error.code === 11000
         ? "An account with this email already exists."
         : error.message || "Unable to create this account.";
       results.push({ rowNumber, name, email, status: error.code === 11000 ? "skipped" : "error", emailSent: false, message });
+    }
+  }
+
+  for (const [index, pending] of pendingEmails.entries()) {
+    if (index > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+    }
+
+    const mail = {
+        from: process.env.SMTP_FROM || process.env.FROM_EMAIL,
+        to: pending.email,
+        subject: "Your temporary password for the Book Recommendation Portal",
+        text: `Your account has been created.\n\nEmail: ${pending.email}\nTemporary password: ${pending.temporaryPassword}\n\nYou will be required to change this password when you sign in.`
+    };
+
+    let emailSent = false;
+    for (let attempt = 0; attempt < 3 && !emailSent; attempt += 1) {
+      try {
+        await mailTransport.sendMail(mail);
+        emailSent = true;
+      } catch (error) {
+        const isRateLimited = error.responseCode === 550 && /too many emails per second/i.test(error.message || "");
+        if (isRateLimited && attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 3000 * (attempt + 1)));
+          continue;
+        }
+        console.error(`Failed to email imported account ${pending.email}:`, error.message);
+        pending.result.message = isRateLimited
+          ? "Account created, but the email provider is still rate-limiting delivery."
+          : "Account created, but the temporary-password email could not be sent.";
+      }
+    }
+
+    if (emailSent) {
+      pending.result.emailSent = true;
+      pending.result.message = "Account created and temporary password emailed.";
     }
   }
 
@@ -311,6 +337,36 @@ export const bulkUpdateUsers = async (req, res) => {
   } catch (error) {
     console.error("Error applying bulk user action:", error);
     res.status(400).json({ message: error.message || "Unable to update selected users." });
+  }
+};
+
+export const bulkDeleteUsers = async (req, res) => {
+  const userIds = Array.isArray(req.body.userIds)
+    ? [...new Set(req.body.userIds.map(String))]
+    : [];
+
+  if (userIds.length === 0 || userIds.length > 200 || userIds.some((id) => !/^[a-f\d]{24}$/i.test(id))) {
+    return res.status(400).json({ message: "Select between 1 and 200 valid users to delete." });
+  }
+  if (userIds.includes(String(req.user.id))) {
+    return res.status(400).json({ message: "You cannot delete your own admin account." });
+  }
+
+  try {
+    const users = await User.find({ _id: { $in: userIds } });
+    if (users.length !== userIds.length) {
+      return res.status(404).json({ message: "One or more selected users could not be found." });
+    }
+
+    const result = await User.deleteMany({ _id: { $in: userIds } });
+    await Promise.all(users.map((user) => recordAuditLog(req, "user_deleted", user, [], {
+      details: "Deleted through bulk action."
+    })));
+
+    res.json({ deletedCount: result.deletedCount, deletedIds: users.map((user) => String(user._id)) });
+  } catch (error) {
+    console.error("Error deleting users in bulk:", error);
+    res.status(500).json({ message: "Unable to delete the selected users." });
   }
 };
 
