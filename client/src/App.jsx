@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { UserPlus, Users } from "lucide-react";
+import { CheckCircle2, UserPlus, Users, X } from "lucide-react";
 import {
   createRecommendation,
   fetchRecommendations,
+  fetchLecturerNotifications,
   fetchStats,
   login,
   logout as apiLogout,
@@ -24,6 +25,7 @@ import { HodDashboardPage } from "./pages/hod/HodDashboardPage";
 import { AllRecommendationsPage as HodAllRecommendationsPage } from "./pages/hod/AllRecommendationsPage";
 import { PriorityPage as HodPriorityPage } from "./pages/hod/PriorityPage";
 import { HodSubmissionsPage } from "./pages/hod/HodSubmissionsPage";
+import { HodOrderStatusPage } from "./pages/hod/HodOrderStatusPage";
 import { AllRecommendationsPage } from "./pages/librarian/AllRecommendationsPage";
 import { ExportDataPage } from "./pages/librarian/ExportDataPage";
 import { InformLecturerPage } from "./pages/librarian/InformLecturerPage";
@@ -51,6 +53,8 @@ function App() {
   const [currentHodPeriod, setCurrentHodPeriod] = useState(null);
   const [isHodPeriodOpen, setIsHodPeriodOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [lecturerNotifications, setLecturerNotifications] = useState([]);
+  const [orderToast, setOrderToast] = useState(null);
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem("book-rec-theme") || "dark";
   });
@@ -111,17 +115,74 @@ function App() {
     }
   };
 
-  const lecturerNotifications = useMemo(() => {
-    if (!session || session.user.role !== "lecturer") return [];
+  useEffect(() => {
+    if (!session || session.user.mustChangePassword || session.user.role !== "hod" || view !== "submissions") {
+      return undefined;
+    }
 
-    return (items || [])
-      .filter((item) => item.status === "ordered")
-      .map((item) => ({
-        id: item._id,
-        title: item.title || "Book update",
-        message: `"${item.title || "This book"}" has been ordered by the library.`
-      }));
-  }, [items, session]);
+    const refreshHodPeriods = () => {
+      Promise.all([fetchOrderPeriods(session.token), fetchCurrentHodPeriod(session.token)])
+        .then(([periodList, hodPeriod]) => {
+          setPeriods(periodList);
+          setIsHodPeriodOpen(hodPeriod.isOpen);
+          setCurrentHodPeriod(hodPeriod.period);
+        })
+        .catch((err) => console.error("Failed to refresh HoD periods:", err));
+    };
+
+    refreshHodPeriods();
+    const interval = setInterval(refreshHodPeriods, 10000);
+    return () => clearInterval(interval);
+  }, [session, view]);
+
+  useEffect(() => {
+    if (!session || session.user.mustChangePassword || session.user.role !== "lecturer") {
+      setLecturerNotifications([]);
+      setOrderToast(null);
+      return undefined;
+    }
+
+    let active = true;
+    const seenStorageKey = `book-rec-order-notifications-seen:${session.user.id}`;
+    let seenNotificationIds = new Set();
+    try {
+      seenNotificationIds = new Set(JSON.parse(localStorage.getItem(seenStorageKey) || "[]"));
+    } catch {
+      localStorage.removeItem(seenStorageKey);
+    }
+
+    const refreshNotifications = async () => {
+      try {
+        const notifications = await fetchLecturerNotifications(session.token);
+        if (!active) return;
+
+        const unseenNotification = notifications.find((notification) => !seenNotificationIds.has(notification.id));
+        if (unseenNotification) {
+          setOrderToast(unseenNotification);
+          seenNotificationIds.add(unseenNotification.id);
+          localStorage.setItem(seenStorageKey, JSON.stringify([...seenNotificationIds]));
+        }
+        setLecturerNotifications(notifications);
+      } catch (err) {
+        console.error("Failed to refresh lecturer notifications:", err);
+      }
+    };
+
+    refreshNotifications();
+    const interval = setInterval(refreshNotifications, 10000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [session]);
+
+  useEffect(() => {
+    if (!orderToast) return undefined;
+
+    const timeout = setTimeout(() => setOrderToast(null), 8000);
+    return () => clearTimeout(timeout);
+  }, [orderToast]);
 
   const librarianDisplayPeriod = useMemo(() => resolveLibrarianDisplayPeriod(periods), [periods]);
   const canExportData = !librarianDisplayPeriod || librarianDisplayPeriod.status === "closed";
@@ -150,6 +211,10 @@ function App() {
           setSelectedPeriod(res.period?._id || null);
         })
         .catch((err) => console.error("Failed to fetch periods:", err));
+    } else if (session.user.role === "hod") {
+      fetchOrderPeriods(session.token)
+        .then(setPeriods)
+        .catch((err) => console.error("Failed to fetch HoD periods:", err));
     } else if (session.user.role === "librarian") {
       fetchOrderPeriods(session.token)
         .then((res) => {
@@ -394,6 +459,57 @@ function App() {
       notificationsOpen={notificationsOpen}
       onToggleNotifications={() => setNotificationsOpen((open) => !open)}
     >
+      {orderToast && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          style={{
+            position: "fixed",
+            top: "1rem",
+            right: "1rem",
+            zIndex: 2000,
+            display: "grid",
+            gridTemplateColumns: "1.75rem minmax(0, 1fr) 2rem",
+            alignItems: "start",
+            gap: "0.75rem",
+            width: "min(420px, calc(100vw - 2rem))",
+            padding: "1rem",
+            boxSizing: "border-box",
+            color: "var(--text)",
+            background: "var(--surface-solid)",
+            opacity: 1,
+            border: "1px solid var(--primary)",
+            borderRadius: "var(--radius)",
+            boxShadow: "0 12px 32px rgba(0, 0, 0, 0.24)"
+          }}
+        >
+          <CheckCircle2 size={22} color="var(--success)" aria-hidden="true" />
+          <div style={{ minWidth: 0, overflowWrap: "anywhere" }}>
+            <strong style={{ display: "block", marginBottom: "0.35rem", lineHeight: 1.25 }}>Library order update</strong>
+            <div style={{ fontWeight: 700, lineHeight: 1.35, marginBottom: "0.2rem" }}>{orderToast.title}</div>
+            <span style={{ color: "var(--text-muted)", lineHeight: 1.4 }}>The library has ordered this book.</span>
+          </div>
+          <button
+            type="button"
+            aria-label="Dismiss order notification"
+            title="Dismiss notification"
+            onClick={() => setOrderToast(null)}
+            style={{
+              display: "grid",
+              placeItems: "center",
+              width: "2rem",
+              height: "2rem",
+              flexShrink: 0,
+              color: "var(--text-muted)",
+              background: "transparent",
+              border: 0,
+              cursor: "pointer"
+            }}
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
       {currentView === "profile" && (
         <ProfilePage
           user={session.user}
@@ -473,7 +589,15 @@ function App() {
         />
       )}
       {!passwordChangeRequired && session.user.role === "hod" && currentView === "submissions" && (
-        <HodSubmissionsPage items={items} currentUserId={session.user.id} />
+        <HodSubmissionsPage
+          token={session.token}
+          currentUserId={session.user.id}
+          periods={periods}
+          currentPeriod={currentHodPeriod}
+        />
+      )}
+      {!passwordChangeRequired && session.user.role === "hod" && currentView === "status" && (
+        <HodOrderStatusPage token={session.token} />
       )}
 
       {!passwordChangeRequired && session.user.role === "librarian" && currentView === "dashboard" && (

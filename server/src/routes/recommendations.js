@@ -1,4 +1,5 @@
 import express from "express";
+import mongoose from "mongoose";
 import Recommendation from "../models/Recommendation.js";
 import OrderPeriod from "../models/OrderPeriod.js";
 import { allowRoles, requireAuth } from "../middleware/auth.js";
@@ -74,6 +75,104 @@ async function findLibrarianDisplayPeriod() {
 
   return OrderPeriod.findOne({ status: "closed" }).sort({ endDate: -1, updatedAt: -1 });
 }
+
+router.get("/hod-submissions", requireAuth, allowRoles("hod"), async (req, res) => {
+  try {
+    await finalizeExpiredHodPeriods();
+
+    const requestedPeriodId = String(req.query.periodId || "current");
+    let periodId = null;
+    if (requestedPeriodId === "current") {
+      const period = await findCurrentHodPeriod() || await findCurrentOpenPeriod();
+      if (!period) return res.json([]);
+      periodId = period._id;
+    } else if (requestedPeriodId !== "all") {
+      if (!mongoose.isValidObjectId(requestedPeriodId)) {
+        return res.status(400).json({ message: "Invalid period id" });
+      }
+      periodId = requestedPeriodId;
+    }
+
+    const filter = {
+      ...buildDepartmentFilter(req.user.department),
+      reviewedBy: req.user.id,
+      status: "submitted",
+      submittedToLibrarianAt: { $exists: true, $ne: null }
+    };
+    if (requestedPeriodId === "all") {
+      const existingPeriods = await OrderPeriod.find({}, "_id").lean();
+      filter.orderPeriod = { $in: existingPeriods.map((period) => period._id) };
+    } else if (periodId) {
+      filter.orderPeriod = periodId;
+    }
+
+    const recommendations = await Recommendation.find(filter)
+      .populate("submittedBy", "name department")
+      .populate("reviewedBy", "name")
+      .populate("orderPeriod", "faculty startDate endDate hodRecommendationDays status")
+      .sort({ orderPeriod: -1, priorityRank: 1, createdAt: 1 });
+
+    res.json(recommendations);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch HoD submissions" });
+  }
+});
+
+router.get("/lecturer-notifications", requireAuth, allowRoles("lecturer"), async (req, res) => {
+  try {
+    const notifications = await Recommendation.find({
+      submittedBy: req.user.id,
+      status: "ordered",
+      submittedToLibrarianAt: { $exists: true, $ne: null }
+    })
+      .select("_id title updatedAt")
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    res.json(notifications.map((item) => ({
+      id: String(item._id),
+      title: item.title,
+      message: `\"${item.title || "This book"}\" has been ordered by the library.`
+    })));
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch lecturer notifications" });
+  }
+});
+
+router.get("/hod-order-status", requireAuth, allowRoles("hod"), async (req, res) => {
+  try {
+    await finalizeExpiredHodPeriods();
+
+    const recommendations = await Recommendation.find({
+      ...buildDepartmentFilter(req.user.department),
+      status: "ordered",
+      priorityRank: { $exists: true, $ne: null },
+      submittedToLibrarianAt: { $exists: true, $ne: null }
+    })
+      .populate("submittedBy", "name department")
+      .populate("orderPeriod", "faculty startDate endDate")
+      .select("title edition status priorityRank submittedBy submittedToLibrarianAt orderPeriod")
+      .sort({ submittedToLibrarianAt: -1, priorityRank: 1 });
+
+    res.json(recommendations);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch HoD order statuses" });
+  }
+});
+
+router.get("/lecturer-status", requireAuth, allowRoles("lecturer"), async (req, res) => {
+  try {
+    await finalizeExpiredHodPeriods();
+
+    const recommendations = await Recommendation.find({ submittedBy: req.user.id })
+      .populate("orderPeriod", "faculty startDate endDate status")
+      .sort({ createdAt: -1 });
+
+    res.json(recommendations);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch lecturer recommendation statuses" });
+  }
+});
 
 // GET recommendations by role.
 router.get("/", requireAuth, async (req, res) => {

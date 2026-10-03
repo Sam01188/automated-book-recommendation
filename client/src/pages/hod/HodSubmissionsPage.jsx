@@ -1,11 +1,36 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RecommendationTable } from "../../components/RecommendationTable";
+import { fetchHodSubmissions } from "../../api";
 
-export function HodSubmissionsPage({ items = [], currentUserId, periods = [], currentPeriod = null }) {
+export function HodSubmissionsPage({ token, currentUserId, periods = [], currentPeriod = null }) {
   const [selectedPeriod, setSelectedPeriod] = useState("current");
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const queryPeriodId = selectedPeriod === "current" ? currentPeriod?._id || "current" : selectedPeriod;
 
-  // derive submitted items by this HOD
-  const submittedItems = useMemo(() => {
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError("");
+
+    fetchHodSubmissions(token, queryPeriodId)
+      .then((records) => {
+        if (active) setItems(records);
+      })
+      .catch((fetchError) => {
+        if (active) setError(fetchError.message || "Failed to load HoD submissions.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [token, queryPeriodId]);
+
+  const visibleItems = useMemo(() => {
     return items
       .filter((item) => {
         const reviewedById = item.reviewedBy?._id || item.reviewedBy;
@@ -17,24 +42,6 @@ export function HodSubmissionsPage({ items = [], currentUserId, periods = [], cu
         return aRank - bRank || new Date(a.createdAt) - new Date(b.createdAt);
       });
   }, [items, currentUserId]);
-
-  const visibleItems = useMemo(() => {
-    if (selectedPeriod === "all") return submittedItems;
-    if (selectedPeriod === "current") {
-      if (!currentPeriod) return [];
-      return submittedItems.filter((it) => {
-        const op = it.orderPeriod;
-        const id = op ? (op._id || op) : null;
-        return id && String(id) === String(currentPeriod._id);
-      });
-    }
-    // specific period id
-    return submittedItems.filter((it) => {
-      const op = it.orderPeriod;
-      const id = op ? (op._id || op) : null;
-      return id && String(id) === String(selectedPeriod);
-    });
-  }, [submittedItems, selectedPeriod, currentPeriod]);
 
   return (
     <div>
@@ -52,7 +59,13 @@ export function HodSubmissionsPage({ items = [], currentUserId, periods = [], cu
           </select>
         </label>
       </div>
-      <RecommendationTable items={visibleItems} title="Submitted to Librarian" />
+      {loading ? (
+        <p>Loading submissions...</p>
+      ) : error ? (
+        <p role="alert">{error}</p>
+      ) : (
+        <RecommendationTable items={visibleItems} title="Submitted to Librarian" />
+      )}
     </div>
   );
 }

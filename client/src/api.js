@@ -98,6 +98,61 @@ export async function fetchRecommendations(token, role) {
   return checkApiResponse(response);
 }
 
+export async function fetchLecturerNotifications(token) {
+  if (token === "demo-token") {
+    return demoRecommendations
+      .filter((item) => item.status === "ordered")
+      .map((item) => ({
+        id: item._id,
+        title: item.title,
+        message: `\"${item.title || "This book"}\" has been ordered by the library.`
+      }));
+  }
+
+  const response = await fetch(`${api}/recommendations/lecturer-notifications`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  return checkApiResponse(response);
+}
+
+export async function fetchLecturerStatus(token) {
+  if (token === "demo-token") {
+    return demoRecommendations;
+  }
+
+  const response = await fetch(`${api}/recommendations/lecturer-status`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  return checkApiResponse(response);
+}
+
+export async function fetchHodSubmissions(token, periodId = "current") {
+  if (token === "demo-token") {
+    return demoRecommendations;
+  }
+
+  const query = new URLSearchParams({ periodId });
+  const response = await fetch(`${api}/recommendations/hod-submissions?${query}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  return checkApiResponse(response);
+}
+
+export async function fetchHodOrderStatus(token) {
+  if (token === "demo-token") {
+    return demoRecommendations.filter((item) => Number.isFinite(item.priorityRank));
+  }
+
+  const response = await fetch(`${api}/recommendations/hod-order-status`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  return checkApiResponse(response);
+}
+
 export async function fetchStats(token, items) {
   if (token === "demo-token") {
     return buildStats(items);

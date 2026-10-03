@@ -7,11 +7,10 @@ export function DashboardContent({ user, stats, items }) {
     <section className="panel-space">
       <div className="metrics">
         {user.role === "hod" ? (
-          // HOD: show total submissions, total lecturers, pending
+          // HOD: show total submissions and total lecturers
           <>
             <Metric label="Total Submissions" value={stats.total} icon={<BookMarked size={20} />} />
             <Metric label="Lecturers" value={stats.lecturersCount} icon={<ShieldX size={20} />} />
-            <Metric label="Pending Review" value={stats.pending} icon={<ClipboardList size={20} />} />
           </>
         ) : (
           <>

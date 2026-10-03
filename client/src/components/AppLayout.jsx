@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { BellRing, BookMarked, ClipboardList, Download, Home, ListChecks, LogOut, Send, UserCircle, Users, UserPlus, Clock, ChevronLeft, ChevronRight, Sun, Moon } from "lucide-react";
+import { BadgeCheck, BellRing, BookMarked, ClipboardList, Download, Home, ListChecks, LogOut, Send, UserCircle, Users, UserPlus, Clock, ChevronLeft, ChevronRight, Sun, Moon } from "lucide-react";
 
 export const roleViews = {
   lecturer: ["dashboard", "submit", "my"],
-  hod: ["dashboard", "priority", "all", "submissions"],
+  hod: ["dashboard", "priority", "all", "submissions", "status"],
   librarian: ["dashboard", "all", "periods", "export", "inform"],
   admin: ["dashboard", "users", "createUser"]
 };
@@ -16,6 +16,7 @@ export const viewLabels = {
   priority: "Assign/Edit Priority",
   all: "All Recommendations",
   submissions: "Submissions",
+  status: "Status",
   periods: "Order Periods",
   export: "Export Data",
   inform: "Inform Lecturer",
@@ -31,6 +32,7 @@ export const viewIcons = {
   priority: ListChecks,
   all: BookMarked,
   submissions: ClipboardList,
+  status: BadgeCheck,
   periods: Clock,
   export: Download,
   inform: BellRing,
@@ -67,7 +69,7 @@ export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, on
                 height: "42px",
                 borderRadius: "50%",
                 border: "1px solid var(--border)",
-                background: "var(--surface)",
+                background: "var(--surface-solid)",
                 color: "var(--text)",
                 cursor: "pointer"
               }}
@@ -101,12 +103,13 @@ export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, on
               position: "absolute",
               top: "calc(100% + 12px)",
               right: 0,
-              width: "320px",
-              background: "var(--surface)",
+              width: "min(320px, calc(100vw - 2rem))",
+              background: "var(--surface-solid)",
+              opacity: 1,
               border: "1px solid var(--border)",
               borderRadius: "var(--radius)",
               boxShadow: "0 18px 45px rgba(0,0,0,0.2)",
-              zIndex: 20,
+              zIndex: 2000,
               padding: "0.75rem",
               maxHeight: "300px",
               overflowY: "auto"
@@ -118,7 +121,7 @@ export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, on
                 <div key={item.id} style={{
                   padding: "0.7rem 0.75rem",
                   borderRadius: "var(--radius)",
-                  background: "var(--surface-hover)",
+                  background: "var(--bg-layer)",
                   border: "1px solid var(--border)",
                   marginBottom: "0.5rem"
                 }}>
