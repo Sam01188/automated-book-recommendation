@@ -295,7 +295,7 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
               </table>
             </div>
           </div>
-        ) : (
+        )) : (
           /* Status tab */
           <div>
             {filteredStatusItems.some((item) => item.status === "ordered") && (
