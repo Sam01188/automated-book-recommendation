@@ -26,6 +26,7 @@ import { PriorityPage as HodPriorityPage } from "./pages/hod/PriorityPage";
 import { HodSubmissionsPage } from "./pages/hod/HodSubmissionsPage";
 import { AllRecommendationsPage } from "./pages/librarian/AllRecommendationsPage";
 import { ExportDataPage } from "./pages/librarian/ExportDataPage";
+import { InformLecturerPage } from "./pages/librarian/InformLecturerPage";
 import { LibrarianDashboardPage } from "./pages/librarian/LibrarianDashboardPage";
 import { OrderTimePeriodsPage } from "./pages/librarian/OrderTimePeriodsPage";
 import { LecturerDashboardPage } from "./pages/lecturer/LecturerDashboardPage";
@@ -456,6 +457,9 @@ function App() {
         />
       )}
       {!passwordChangeRequired && session.user.role === "librarian" && currentView === "export" && <ExportDataPage items={items} />}
+      {!passwordChangeRequired && session.user.role === "librarian" && currentView === "inform" && (
+        <InformLecturerPage items={items} token={session.token} />
+      )}
 
       {!passwordChangeRequired && session.user.role === "admin" && currentView === "dashboard" && (
         <AdminDashboard user={session.user} token={session.token} items={items} />

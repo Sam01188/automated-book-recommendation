@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { BookMarked, ClipboardList, Download, Home, ListChecks, LogOut, Send, UserCircle, Users, UserPlus, Clock, ChevronLeft, ChevronRight, Sun, Moon } from "lucide-react";
+import { BellRing, BookMarked, ClipboardList, Download, Home, ListChecks, LogOut, Send, UserCircle, Users, UserPlus, Clock, ChevronLeft, ChevronRight, Sun, Moon } from "lucide-react";
 
 export const roleViews = {
   lecturer: ["dashboard", "submit", "my"],
   hod: ["dashboard", "priority", "all", "submissions"],
-  librarian: ["dashboard", "all", "periods", "export"],
+  librarian: ["dashboard", "all", "periods", "export", "inform"],
   admin: ["dashboard", "users", "createUser"]
 };
 
@@ -18,6 +18,7 @@ export const viewLabels = {
   submissions: "Submissions",
   periods: "Order Periods",
   export: "Export Data",
+  inform: "Inform Lecturer",
   users: "User Management",
   createUser: "Create New User"
 };
@@ -32,6 +33,7 @@ export const viewIcons = {
   submissions: ClipboardList,
   periods: Clock,
   export: Download,
+  inform: BellRing,
   users: Users,
   createUser: UserPlus
 };

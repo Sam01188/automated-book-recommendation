@@ -34,7 +34,6 @@ function buildRecommendationFilter(user) {
 
 function buildLibrarianFilter(activePeriodId) {
   return {
-    status: "submitted",
     submittedToLibrarianAt: { $exists: true, $ne: null },
     priorityRank: { $exists: true, $ne: null },
     orderPeriod: activePeriodId

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Download, FileText, Table } from "lucide-react";
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
@@ -53,7 +54,7 @@ function sanitizeSheetName(name) {
 }
 
 export function ExportDataPage({ items }) {
-  const finalDepartmentItems = getFinalDepartmentItems(items);
+  const finalDepartmentItems = useMemo(() => getFinalDepartmentItems(items), [items]);
 
   function downloadBlob(blob, filename) {
     const url = URL.createObjectURL(blob);
@@ -202,7 +203,7 @@ export function ExportDataPage({ items }) {
       </section>
 
       <section className="large-panel">
-        <h3 className="panel-title">Export Information</h3>
+        <h3 className="panel-title">Export Summary</h3>
         <Card className="info-card">
           <div className="info-content">
             <p><strong>Final HoD Records:</strong> {finalDepartmentItems.length} ranked recommendations</p>
