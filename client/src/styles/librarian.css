@@ -688,6 +688,94 @@ button.stat-card {
   margin-bottom: 2rem;
 }
 
+.export-preview-panel {
+  overflow: hidden;
+}
+
+.export-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.export-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--gray-300);
+  background: var(--white);
+  color: var(--gray-700);
+  border-radius: 999px;
+  padding: 0.55rem 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.export-tab:hover {
+  border-color: var(--maroon-light);
+  color: var(--maroon-main);
+}
+
+.export-tab.active {
+  background: linear-gradient(135deg, rgba(127, 29, 29, 0.1), rgba(59, 130, 246, 0.1));
+  color: var(--maroon-main);
+  border-color: rgba(127, 29, 29, 0.3);
+  box-shadow: 0 0 0 3px rgba(127, 29, 29, 0.08);
+}
+
+.export-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  background: rgba(127, 29, 29, 0.08);
+  font-size: 0.75rem;
+}
+
+.export-preview-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.export-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+.export-preview-table th,
+.export-preview-table td {
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--gray-200);
+  text-align: left;
+  vertical-align: top;
+}
+
+.export-preview-table thead th {
+  background: rgba(127, 29, 29, 0.04);
+  color: var(--gray-700);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.export-preview-table tbody tr:hover {
+  background: rgba(127, 29, 29, 0.02);
+}
+
+.export-preview-empty {
+  margin: 0;
+  padding: 1.5rem;
+  color: var(--gray-600);
+}
+
 .export-card {
   cursor: pointer;
   border-radius: var(--radius-lg);

@@ -3,9 +3,44 @@ import { BookMarked, Clock, CheckCircle } from "lucide-react";
 export function LecturerDashboardPage({ user, stats, items, isPeriodOpen, currentPeriod }) {
   const firstName = user?.name?.split(" ")[0]?.toUpperCase() ?? "";
   const fullName = user?.name?.toUpperCase() ?? "";
+  const notificationItems = (items || []).filter((item) => item.status === "ordered");
+  const notificationTitles = notificationItems.map((item) => item.title).filter(Boolean);
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+      {notificationItems.length > 0 && (
+        <div style={{
+          background: "linear-gradient(135deg, rgba(59, 130, 246, 0.14) 0%, rgba(59, 130, 246, 0.06) 100%)",
+          border: "1px solid rgba(59, 130, 246, 0.4)",
+          color: "var(--primary)",
+          borderRadius: "var(--radius)",
+          padding: "1rem 1.5rem",
+          display: "flex",
+          flexDirection: "column",
+          gap: "0.35rem"
+        }}>
+          <h4 style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "var(--primary)" }}>
+            📦 Library Update
+          </h4>
+          {notificationItems.length === 1 ? (
+            <p style={{ margin: 0, fontSize: "0.875rem", color: "var(--text-muted)" }}>
+              "{notificationTitles[0]}" has been ordered by the library.
+            </p>
+          ) : (
+            <div style={{ margin: 0, fontSize: "0.875rem", color: "var(--text-muted)" }}>
+              <div style={{ marginBottom: "0.35rem" }}>
+                {notificationItems.length} of your book requests have been ordered by the library:
+              </div>
+              <ul style={{ margin: 0, paddingLeft: "1.25rem" }}>
+                {notificationTitles.map((title) => (
+                  <li key={title}>{title}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Period Status Notification Banner */}
       {isPeriodOpen && currentPeriod ? (
         <div style={{
@@ -113,6 +148,8 @@ function RecentRow({ item }) {
   const statusColors = {
     submitted: { bg: "var(--success-bg)", text: "var(--success-text)", border: "var(--success-border)" },
     under_review: { bg: "rgba(236, 72, 153, 0.15)", text: "#ec4899", border: "rgba(236, 72, 153, 0.3)" },
+    selected: { bg: "rgba(var(--primary-rgb), 0.15)", text: "var(--primary)", border: "rgba(var(--primary-rgb), 0.3)" },
+    ordered: { bg: "rgba(59, 130, 246, 0.15)", text: "#3b82f6", border: "rgba(59, 130, 246, 0.35)" },
     approved: { bg: "#dcfce7", text: "#2da55b" },
     rejected: { bg: "var(--danger-bg)", text: "var(--danger-text)", border: "var(--danger-border)" }
   };

@@ -26,6 +26,7 @@ import { PriorityPage as HodPriorityPage } from "./pages/hod/PriorityPage";
 import { HodSubmissionsPage } from "./pages/hod/HodSubmissionsPage";
 import { AllRecommendationsPage } from "./pages/librarian/AllRecommendationsPage";
 import { ExportDataPage } from "./pages/librarian/ExportDataPage";
+import { InformLecturerPage } from "./pages/librarian/InformLecturerPage";
 import { LibrarianDashboardPage } from "./pages/librarian/LibrarianDashboardPage";
 import { OrderTimePeriodsPage } from "./pages/librarian/OrderTimePeriodsPage";
 import { LecturerDashboardPage } from "./pages/lecturer/LecturerDashboardPage";
@@ -49,6 +50,7 @@ function App() {
   const [isPeriodOpen, setIsPeriodOpen] = useState(false);
   const [currentHodPeriod, setCurrentHodPeriod] = useState(null);
   const [isHodPeriodOpen, setIsHodPeriodOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem("book-rec-theme") || "dark";
   });
@@ -63,6 +65,26 @@ function App() {
       periods.find((period) => period.status === "closed") ||
       null
     );
+  };
+
+  const syncSelectedPeriod = (periodList) => {
+    const closedPeriods = [...periodList].sort((a, b) => new Date(b.endDate) - new Date(a.endDate));
+    const fallbackPeriod = closedPeriods.find((period) => period.status === "closed") || resolveLibrarianDisplayPeriod(periodList);
+
+    setSelectedPeriod((current) => {
+      if (current === "all") {
+        return "all";
+      }
+
+      if (current) {
+        const hasCurrentSelection = periodList.some((period) => String(period._id) === String(current));
+        if (hasCurrentSelection) {
+          return current;
+        }
+      }
+
+      return fallbackPeriod?._id || null;
+    });
   };
 
   useEffect(() => {
@@ -97,8 +119,33 @@ function App() {
           setCurrentHodPeriod(res.period);
         })
         .catch((err) => console.error(err));
+    } else if (session.user.role === "librarian") {
+      fetchOrderPeriods(session.token)
+        .then((res) => {
+          const hodPeriod = res.find((period) => period.status === "hod_priority") || null;
+          setPeriods(res);
+          setIsHodPeriodOpen(Boolean(hodPeriod));
+          setCurrentHodPeriod(hodPeriod);
+        })
+        .catch((err) => console.error(err));
     }
   };
+
+  const lecturerNotifications = useMemo(() => {
+    if (!session || session.user.role !== "lecturer") return [];
+
+    return (items || [])
+      .filter((item) => item.status === "ordered")
+      .map((item) => ({
+        id: item._id,
+        title: item.title || "Book update",
+        message: `"${item.title || "This book"}" has been ordered by the library.`
+      }));
+  }, [items, session]);
+
+  const librarianDisplayPeriod = useMemo(() => resolveLibrarianDisplayPeriod(periods), [periods]);
+  const canExportData = true;
+  const isActiveLibrarianPeriodOpen = periods.some((period) => period.status === "open" || period.status === "hod_priority");
 
   useEffect(() => {
     if (!session || session.user.mustChangePassword) {
@@ -121,14 +168,22 @@ function App() {
         .then((res) => {
           const activePeriod = res.period ? [res.period] : [];
           setPeriods(activePeriod);
-          setSelectedPeriod(res.period?._id || null);
+          setSelectedPeriod((current) => {
+            if (current && current !== "all") {
+              return current;
+            }
+            return res.period?._id || null;
+          });
         })
         .catch((err) => console.error("Failed to fetch periods:", err));
     } else if (session.user.role === "librarian") {
       fetchOrderPeriods(session.token)
         .then((res) => {
           setPeriods(res);
-          setSelectedPeriod(resolveLibrarianDisplayPeriod(res)?._id || null);
+          syncSelectedPeriod(res);
+          const hodPeriod = res.find((period) => period.status === "hod_priority") || null;
+          setCurrentHodPeriod(hodPeriod);
+          setIsHodPeriodOpen(Boolean(hodPeriod));
         })
         .catch((err) => console.error("Failed to fetch librarian periods:", err));
     }
@@ -137,24 +192,33 @@ function App() {
   }, [session]);
 
   useEffect(() => {
-    if (!session || session.user.mustChangePassword) return;
-    if (session.user.role === "librarian" && view === "all") {
+    if (!session || session.user.mustChangePassword || session.user.role !== "librarian") return;
+
+    const refreshLibrarianState = () => {
       Promise.all([fetchRecommendations(session.token, session.user.role), fetchOrderPeriods(session.token)])
         .then(([records, periodList]) => {
           setItems(records);
           setPeriods(periodList);
-          setSelectedPeriod(resolveLibrarianDisplayPeriod(periodList)?._id || null);
+          syncSelectedPeriod(periodList);
+          const hodPeriod = periodList.find((period) => period.status === "hod_priority") || null;
+          setCurrentHodPeriod(hodPeriod);
+          setIsHodPeriodOpen(Boolean(hodPeriod));
           const derived = deriveStats(records, session.user.role);
           fetchStats(session.token, records)
             .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
             .catch(() => setStats(derived));
         })
         .catch((err) => console.error("Failed to refresh librarian recommendations:", err));
-    }
-  }, [session, view]);
+    };
+
+    refreshLibrarianState();
+    const interval = setInterval(refreshLibrarianState, 5000);
+
+    return () => clearInterval(interval);
+  }, [session]);
 
   useEffect(() => {
-    if (!session || session.user.mustChangePassword || session.user.role !== "librarian" || view !== "all") {
+    if (!session || session.user.mustChangePassword || session.user.role !== "librarian") {
       return undefined;
     }
 
@@ -163,7 +227,10 @@ function App() {
         .then(([records, periodList]) => {
           setItems(records);
           setPeriods(periodList);
-          setSelectedPeriod(resolveLibrarianDisplayPeriod(periodList)?._id || null);
+          syncSelectedPeriod(periodList);
+          const hodPeriod = periodList.find((period) => period.status === "hod_priority") || null;
+          setCurrentHodPeriod(hodPeriod);
+          setIsHodPeriodOpen(Boolean(hodPeriod));
           const derived = deriveStats(records, session.user.role);
           fetchStats(session.token, records)
             .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
@@ -173,7 +240,7 @@ function App() {
     }, 10000);
 
     return () => clearInterval(interval);
-  }, [session, view]);
+  }, [session]);
 
   const allowedViews = useMemo(() => {
     if (!session || !session.user || !session.user.role) return [];
@@ -349,6 +416,9 @@ function App() {
       viewActions={null}
       theme={theme}
       onToggleTheme={toggleTheme}
+      notifications={lecturerNotifications}
+      notificationsOpen={notificationsOpen}
+      onToggleNotifications={() => setNotificationsOpen((open) => !open)}
     >
       {currentView === "profile" && (
         <ProfilePage
@@ -446,7 +516,14 @@ function App() {
         />
       )}
       {!passwordChangeRequired && session.user.role === "librarian" && currentView === "all" && (
-        <AllRecommendationsPage items={items} filterPriority={allFilter} currentPeriod={resolveLibrarianDisplayPeriod(periods)} />
+        <AllRecommendationsPage
+          items={items}
+          filterPriority={allFilter}
+          currentPeriod={resolveLibrarianDisplayPeriod(periods)}
+          periods={periods}
+          selectedPeriod={selectedPeriod}
+          onSelectedPeriodChange={setSelectedPeriod}
+        />
       )}
       {!passwordChangeRequired && session.user.role === "librarian" && currentView === "periods" && (
         <OrderTimePeriodsPage
@@ -455,7 +532,23 @@ function App() {
           onSelectPeriod={setSelectedPeriod}
         />
       )}
-      {!passwordChangeRequired && session.user.role === "librarian" && currentView === "export" && <ExportDataPage items={items} />}
+      {!passwordChangeRequired && session.user.role === "librarian" && currentView === "export" && (
+        <ExportDataPage
+          items={items}
+          isExportLocked={!canExportData}
+          periods={periods}
+          selectedPeriod={selectedPeriod}
+          onSelectedPeriodChange={setSelectedPeriod}
+        />
+      )}
+      {!passwordChangeRequired && session.user.role === "librarian" && currentView === "inform" && (
+        <InformLecturerPage
+          items={items}
+          periods={periods}
+          token={session.token}
+          isPeriodLocked={isActiveLibrarianPeriodOpen}
+        />
+      )}
 
       {!passwordChangeRequired && session.user.role === "admin" && currentView === "dashboard" && (
         <AdminDashboard user={session.user} token={session.token} items={items} />

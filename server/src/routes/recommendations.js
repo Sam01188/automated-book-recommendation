@@ -34,7 +34,6 @@ function buildRecommendationFilter(user) {
 
 function buildLibrarianFilter(activePeriodId) {
   return {
-    status: "submitted",
     submittedToLibrarianAt: { $exists: true, $ne: null },
     priorityRank: { $exists: true, $ne: null },
     orderPeriod: activePeriodId
@@ -455,6 +454,12 @@ router.get("/export/:format", requireAuth, allowRoles("librarian"), async (req, 
       res.setHeader("Content-Type", "text/csv");
       res.setHeader("Content-Disposition", "attachment; filename=recommendations.csv");
       return res.send("");
+    }
+
+    if (activeLibrarianPeriod.status !== "closed") {
+      return res.status(403).json({
+        message: "The order period is still active. Please wait until the period is closed before exporting data."
+      });
     }
 
     const rows = await Recommendation.find(buildLibrarianFilter(activeLibrarianPeriod._id))
