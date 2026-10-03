@@ -47,11 +47,12 @@ router.get("/current", requireAuth, async (req, res) => {
 router.get("/current-hod", requireAuth, async (req, res) => {
   try {
     await finalizeExpiredHodPeriods();
-    const period = await OrderPeriod.findOne({
+    const hodPeriod = await OrderPeriod.findOne({
       status: "hod_priority"
     }).sort({ startDate: -1 });
+    const period = hodPeriod || await OrderPeriod.findOne({ status: "open" }).sort({ createdAt: -1, startDate: -1 });
 
-    res.json({ isOpen: Boolean(period), period });
+    res.json({ isOpen: Boolean(hodPeriod), period });
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch current HOD order period" });
   }
