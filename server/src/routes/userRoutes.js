@@ -1,9 +1,11 @@
 import express from "express";
 import {
   createUser,
+  importUsers,
   getUsers,
   deleteUser,
-  updateUser
+  updateUser,
+  bulkUpdateUsers
 } from "../controllers/userController.js";
 import { getAuditLogs } from "../controllers/auditController.js";
 
@@ -13,8 +15,10 @@ const router = express.Router();
 
 // Admin only
 router.get("/audit-logs", requireAuth, allowRoles("admin"), getAuditLogs);
+router.post("/import", requireAuth, allowRoles("admin"), importUsers);
 router.post("/", requireAuth, allowRoles("admin"), createUser);
 router.get("/", requireAuth, allowRoles("admin"), getUsers);
+router.patch("/bulk", requireAuth, allowRoles("admin"), bulkUpdateUsers);
 router.delete("/:id", requireAuth, allowRoles("admin"), deleteUser);
 router.put("/:id", requireAuth, allowRoles("admin"), updateUser);
 

@@ -26,7 +26,7 @@ const orderPeriodSchema = new mongoose.Schema(
 );
 
 orderPeriodSchema.index(
-  { faculty: 1, status: 1 },
+  { status: 1 },
   {
     unique: true,
     partialFilterExpression: { status: "open" }

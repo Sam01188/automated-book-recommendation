@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { AppModal } from "../../components/AppModal";
+import { UserCsvImportPanel } from "./UserCsvImportPanel";
 
 const departments = ["DCEE","DEIE","DMME","DMENA"];
 
@@ -7,7 +8,8 @@ function roleHasDepartment(role) {
   return role === "lecturer" || role === "hod";
 }
 
-export function CreateUserPage({ onCreateUser }) {
+export function CreateUserPage({ onCreateUser, onImportUsers, token }) {
+  const [mode, setMode] = useState("single");
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -40,17 +42,7 @@ export function CreateUserPage({ onCreateUser }) {
       };
 
       await onCreateUser(payload);
-      
-      // Log the creation activity
-      const activities = JSON.parse(localStorage.getItem('userActivities') || '[]');
-      activities.push({
-        type: 'create',
-        userId: `new-${Date.now()}`,
-        userName: form.name,
-        timestamp: new Date().toISOString()
-      });
-      localStorage.setItem('userActivities', JSON.stringify(activities.slice(-20)));
-      
+
       setForm({ name: "", email: "", role: "lecturer", department: "DCEE" });
       setModal({
         title: "Account created successfully.",
@@ -68,6 +60,28 @@ export function CreateUserPage({ onCreateUser }) {
 
   return (
     <>
+      <div className="user-create-mode" role="tablist" aria-label="User creation method">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "single"}
+          className={mode === "single" ? "user-create-mode-button active" : "user-create-mode-button"}
+          onClick={() => setMode("single")}
+        >
+          Single account
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "csv"}
+          className={mode === "csv" ? "user-create-mode-button active" : "user-create-mode-button"}
+          onClick={() => setMode("csv")}
+        >
+          CSV import
+        </button>
+      </div>
+
+      {mode === "single" ? (
       <form className="form-panel" onSubmit={submit}>
         <h2 className="panel-title">New User</h2>
         <div className="form-grid">
@@ -143,6 +157,9 @@ export function CreateUserPage({ onCreateUser }) {
           </button>
         </div>
       </form>
+      ) : (
+        <UserCsvImportPanel token={token} onImportUsers={onImportUsers} />
+      )}
 
       {modal && (
         <AppModal

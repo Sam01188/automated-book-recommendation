@@ -33,7 +33,7 @@ export function DashboardContent({ user, stats, items }) {
         {items.length === 0 ? (
           <div className="empty-state">
             <BookMarked size={48} color="var(--border)" />
-            <p>No records found in this view.</p>
+            <p>{user.role === "hod" ? "No pending recommendations yet." : "No records found in this view."}</p>
           </div>
         ) : (
           <CompactList items={items.slice(0, 5)} />

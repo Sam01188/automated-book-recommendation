@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import nodemailer from "nodemailer";
 import User from "../models/user.js";
 import { tokenBlacklist } from "../index.js";
+import { recordAuditLog } from "./auditController.js";
 
 const hashResetToken = (token) => createHash("sha256").update(token).digest("hex");
 
@@ -29,7 +30,15 @@ export const login = async (req, res) => {
   const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
   const user = await User.findOne({ email: normalizedEmail }).select("+passwordHash");
 
-  if (!user || typeof password !== "string" || !(await bcrypt.compare(password, user.passwordHash))) {
+  if (!user) {
+    return res.status(401).json({ message: "Invalid credentials" });
+  }
+
+  if (!user.isActive) {
+    return res.status(403).json({ message: "This account has been deactivated. Contact the administrator." });
+  }
+
+  if (typeof password !== "string" || !(await bcrypt.compare(password, user.passwordHash))) {
     return res.status(401).json({ message: "Invalid credentials" });
   }
 
@@ -38,6 +47,7 @@ export const login = async (req, res) => {
     process.env.JWT_SECRET,
     { expiresIn: "8h" }
   );
+  await recordAuditLog(req, "user_login", user, [], { actor: user });
 
   res.json({
     token,
@@ -73,6 +83,7 @@ export const changePassword = async (req, res) => {
     user.passwordResetTokenHash = undefined;
     user.passwordResetExpires = undefined;
     await user.save();
+    await recordAuditLog(req, "password_changed", user, [], { actor: user });
 
     const token = jwt.sign(
       { id: user._id, role: user.role, department: user.department, sessionVersion: user.sessionVersion },
@@ -96,8 +107,12 @@ export const updateProfile = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User account not found." });
     }
+    const nameChanged = user.name !== name;
     user.name = name;
     await user.save();
+    if (nameChanged) {
+      await recordAuditLog(req, "profile_updated", user, ["name"]);
+    }
     res.json({ name: user.name });
   } catch (error) {
     res.status(500).json({ message: "Unable to update your profile right now." });
@@ -133,6 +148,7 @@ export const requestPasswordReset = async (req, res) => {
         subject: "Reset your Book Recommendation Portal password",
         text: `A password reset was requested for your account. This link expires in 30 minutes:\n\n${resetUrl.toString()}\n\nIf you did not request this, you can ignore this email.`
       });
+      await recordAuditLog(req, "password_reset_requested", user, [], { actor: user });
     }
 
     res.json({ message: responseMessage });
@@ -164,6 +180,7 @@ export const resetPassword = async (req, res) => {
     user.passwordResetTokenHash = undefined;
     user.passwordResetExpires = undefined;
     await user.save();
+    await recordAuditLog(req, "password_reset", user, [], { actor: user });
 
     res.json({ message: "Password reset successfully." });
   } catch (error) {
@@ -171,11 +188,12 @@ export const resetPassword = async (req, res) => {
   }
 };
 
-export const logout = (req, res) => {
+export const logout = async (req, res) => {
   const token = req.token;
   if (token) {
     tokenBlacklist.add(token);
   }
+  await recordAuditLog(req, "user_logout", req.user);
   res.json({ message: "Logged out successfully" });
 };
 
