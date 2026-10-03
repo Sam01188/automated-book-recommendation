@@ -53,8 +53,12 @@ function sanitizeSheetName(name) {
   return (cleaned || "Unassigned").slice(0, 31);
 }
 
-export function ExportDataPage({ items }) {
+export function ExportDataPage({ items, isExportLocked = true }) {
   const finalDepartmentItems = useMemo(() => getFinalDepartmentItems(items), [items]);
+
+  function showBlockedMessage() {
+    window.alert("The order period is still active. Please wait until the period is closed before exporting data.");
+  }
 
   function downloadBlob(blob, filename) {
     const url = URL.createObjectURL(blob);
@@ -170,11 +174,24 @@ export function ExportDataPage({ items }) {
 
   function handleDownloadClick(event, download) {
     event.stopPropagation();
+    if (isExportLocked) {
+      showBlockedMessage();
+      return;
+    }
     download();
   }
 
   return (
     <div className="dashboard-container">
+      {isExportLocked && (
+        <section className="large-panel" style={{ borderColor: "rgba(239, 68, 68, 0.45)", background: "rgba(239, 68, 68, 0.04)" }}>
+          <h3 className="panel-title" style={{ color: "var(--danger)" }}>Export Restricted</h3>
+          <div style={{ color: "var(--text-muted)", lineHeight: 1.6 }}>
+            The order period is still active. Please wait until the period is closed before exporting data.
+          </div>
+        </section>
+      )}
+
       <section className="large-panel">
         <h3 className="panel-title">Export Data</h3>
         <div className="export-grid">
@@ -184,7 +201,7 @@ export function ExportDataPage({ items }) {
             </div>
             <h3>Export HoD Final List (Excel)</h3>
             <p>Download the department-wise final ranked list as an XLSX workbook with one sheet per department.</p>
-            <button className="btn btn-primary btn-sm" onClick={(event) => handleDownloadClick(event, downloadExcel)}>
+            <button className="btn btn-primary btn-sm" disabled={isExportLocked} onClick={(event) => handleDownloadClick(event, downloadExcel)}>
               <Download size={16} /> Download Excel
             </button>
           </Card>
@@ -195,7 +212,7 @@ export function ExportDataPage({ items }) {
             </div>
             <h3>Export HoD Final List (PDF)</h3>
             <p>Download the final department-wise recommendation summary as a grouped PDF report.</p>
-            <button className="btn btn-primary btn-sm" onClick={(event) => handleDownloadClick(event, downloadPdf)}>
+            <button className="btn btn-primary btn-sm" disabled={isExportLocked} onClick={(event) => handleDownloadClick(event, downloadPdf)}>
               <Download size={16} /> Download PDF
             </button>
           </Card>

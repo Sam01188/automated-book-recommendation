@@ -21,7 +21,7 @@ function getFinalDepartmentItems(items) {
   );
 }
 
-export function InformLecturerPage({ items = [], token }) {
+export function InformLecturerPage({ items = [], token, isPeriodLocked = false }) {
   const [localItems, setLocalItems] = useState(items);
   const [activeDepartment, setActiveDepartment] = useState("All Departments");
   const [selectedIds, setSelectedIds] = useState([]);
@@ -97,6 +97,11 @@ export function InformLecturerPage({ items = [], token }) {
   }
 
   async function handleBulkStatusUpdate() {
+    if (isPeriodLocked) {
+      setNotice("The order period is still active. Please wait until the period is closed before informing lecturers.");
+      return;
+    }
+
     if (!selectedIds.length) {
       setNotice("Select at least one recommendation before sending the order update.");
       return;
@@ -120,6 +125,15 @@ export function InformLecturerPage({ items = [], token }) {
 
   return (
     <div className="dashboard-container">
+      {isPeriodLocked && (
+        <section className="large-panel" style={{ borderColor: "rgba(239, 68, 68, 0.45)", background: "rgba(239, 68, 68, 0.04)" }}>
+          <h3 className="panel-title" style={{ color: "var(--danger)" }}>Inform Lecturer Restricted</h3>
+          <div style={{ color: "var(--text-muted)", lineHeight: 1.6 }}>
+            The order period is still active. Please wait until the period is closed before informing lecturers.
+          </div>
+        </section>
+      )}
+
       <section className="large-panel export-preview-panel">
         <div className="panel-header-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
           <h3 className="panel-title" style={{ margin: 0 }}>
@@ -221,7 +235,7 @@ export function InformLecturerPage({ items = [], token }) {
           <button
             className="btn btn-success btn-sm"
             type="button"
-            disabled={busy || selectedIds.length === 0}
+            disabled={busy || isPeriodLocked || selectedIds.length === 0}
             onClick={handleBulkStatusUpdate}
           >
             <Send size={16} /> Inform Lecturer: Ordered

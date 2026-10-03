@@ -3,12 +3,12 @@ import { BookMarked, Clock, CheckCircle } from "lucide-react";
 export function LecturerDashboardPage({ user, stats, items, isPeriodOpen, currentPeriod }) {
   const firstName = user?.name?.split(" ")[0]?.toUpperCase() ?? "";
   const fullName = user?.name?.toUpperCase() ?? "";
-  const orderedItems = (items || []).filter((item) => item.status === "ordered");
-  const orderedTitles = orderedItems.map((item) => item.title).filter(Boolean);
+  const notificationItems = (items || []).filter((item) => item.status === "ordered");
+  const notificationTitles = notificationItems.map((item) => item.title).filter(Boolean);
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
-      {orderedItems.length > 0 && (
+      {notificationItems.length > 0 && (
         <div style={{
           background: "linear-gradient(135deg, rgba(59, 130, 246, 0.14) 0%, rgba(59, 130, 246, 0.06) 100%)",
           border: "1px solid rgba(59, 130, 246, 0.4)",
@@ -20,19 +20,19 @@ export function LecturerDashboardPage({ user, stats, items, isPeriodOpen, curren
           gap: "0.35rem"
         }}>
           <h4 style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "var(--primary)" }}>
-            📦 Book Order Update
+            📦 Library Update
           </h4>
-          {orderedItems.length === 1 ? (
+          {notificationItems.length === 1 ? (
             <p style={{ margin: 0, fontSize: "0.875rem", color: "var(--text-muted)" }}>
-              "{orderedTitles[0]}" has been ordered by the library.
+              "{notificationTitles[0]}" has been ordered by the library.
             </p>
           ) : (
             <div style={{ margin: 0, fontSize: "0.875rem", color: "var(--text-muted)" }}>
               <div style={{ marginBottom: "0.35rem" }}>
-                {orderedItems.length} of your book requests have been ordered by the library:
+                {notificationItems.length} of your book requests have been ordered by the library:
               </div>
               <ul style={{ margin: 0, paddingLeft: "1.25rem" }}>
-                {orderedTitles.map((title) => (
+                {notificationTitles.map((title) => (
                   <li key={title}>{title}</li>
                 ))}
               </ul>

@@ -456,6 +456,12 @@ router.get("/export/:format", requireAuth, allowRoles("librarian"), async (req, 
       return res.send("");
     }
 
+    if (activeLibrarianPeriod.status !== "closed") {
+      return res.status(403).json({
+        message: "The order period is still active. Please wait until the period is closed before exporting data."
+      });
+    }
+
     const rows = await Recommendation.find(buildLibrarianFilter(activeLibrarianPeriod._id))
       .populate("submittedBy", "name department")
       .populate("reviewedBy", "name")
