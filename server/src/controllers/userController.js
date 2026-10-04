@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
-import User from "../models/user.js";
+import User from "../models/User.js";
 import { recordAuditLog } from "./auditController.js";
 
 function createMailTransport() {
@@ -369,4 +369,3 @@ export const bulkDeleteUsers = async (req, res) => {
     res.status(500).json({ message: "Unable to delete the selected users." });
   }
 };
-
