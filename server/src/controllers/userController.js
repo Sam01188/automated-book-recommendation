@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
-import User from "../models/User.js";
+import User from "../models/user.js";
 import { recordAuditLog } from "./auditController.js";
 
 function createMailTransport() {
