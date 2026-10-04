@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { createHash, randomBytes } from "node:crypto";
 import nodemailer from "nodemailer";
-import User from "../models/user.js";
+import User from "../models/User.js";
 import { tokenBlacklist } from "../index.js";
 import { recordAuditLog } from "./auditController.js";
 

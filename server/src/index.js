@@ -24,8 +24,21 @@ if (!process.env.MONGO_URI) {
 export const tokenBlacklist = new Set();
 const app = express();
 const port = process.env.PORT || 5000;
+const allowedOrigins = [
+  "http://localhost:5173",
+  process.env.CLIENT_URL
+];
 
-app.use(cors({ origin: process.env.CLIENT_URL || "http://localhost:5173" }));
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true
+}));
 app.use(express.json());
 
 app.get("/api/health", (_, res) => res.json({ ok: true, service: "Book Recommendation API" }));
