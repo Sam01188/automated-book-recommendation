@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { BadgeCheck, BellRing, BookMarked, ClipboardList, Download, Home, ListChecks, LogOut, Send, UserCircle, Users, UserPlus, Clock, ChevronLeft, ChevronRight, Sun, Moon } from "lucide-react";
+import { BadgeCheck, BellRing, BookMarked, Check, ClipboardList, Download, Home, ListChecks, LogOut, Send, UserCircle, Users, UserPlus, Clock, ChevronLeft, ChevronRight, Sun, Moon } from "lucide-react";
 
 export const roleViews = {
   lecturer: ["dashboard", "submit", "my"],
@@ -42,9 +42,10 @@ export const viewIcons = {
   audit: ClipboardList
 };
 
-export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, onProfileClick, navigationLocked = false, viewActions, theme, onToggleTheme, notifications = [], notificationsOpen = false, onToggleNotifications, children }) {
+export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, onProfileClick, navigationLocked = false, viewActions, theme, onToggleTheme, notifications = [], notificationsOpen = false, onToggleNotifications, onMarkNotificationRead, children }) {
   const [sidebarMinimized, setSidebarMinimized] = useState(false);
   const ActiveIcon = viewIcons[view] || Home;
+  const unreadNotificationCount = notifications.filter((item) => !item.isRead).length;
 
   return (
     <div className="app-frame" style={{ "--app-sidebar-width": sidebarMinimized ? "80px" : "280px" }}>
@@ -77,7 +78,7 @@ export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, on
               }}
             >
               <BellRing size={18} />
-              {notifications.length > 0 && (
+              {unreadNotificationCount > 0 && (
                 <span style={{
                   position: "absolute",
                   top: "-4px",
@@ -94,7 +95,7 @@ export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, on
                   alignItems: "center",
                   justifyContent: "center"
                 }}>
-                  {notifications.length}
+                  {unreadNotificationCount}
                 </span>
               )}
             </button>
@@ -123,12 +124,40 @@ export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, on
                 <div key={item.id} style={{
                   padding: "0.7rem 0.75rem",
                   borderRadius: "var(--radius)",
-                  background: "var(--bg-layer)",
+                  background: item.isRead ? "var(--surface-solid)" : "var(--bg-layer)",
                   border: "1px solid var(--border)",
                   marginBottom: "0.5rem"
                 }}>
                   <div style={{ fontWeight: 700, color: "var(--text)", marginBottom: "0.2rem" }}>{item.title}</div>
                   <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{item.message}</div>
+                  {item.isRead ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", marginTop: "0.5rem", color: "var(--text-muted)", fontSize: "0.75rem" }}>
+                      <Check size={14} aria-hidden="true" />
+                      <span>Read</span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onMarkNotificationRead?.(item.id)}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.35rem",
+                        marginTop: "0.5rem",
+                        padding: "0.3rem 0.55rem",
+                        color: "var(--primary)",
+                        background: "transparent",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--radius)",
+                        cursor: "pointer",
+                        fontSize: "0.75rem",
+                        fontWeight: 600
+                      }}
+                    >
+                      <Check size={14} aria-hidden="true" />
+                      Mark as read
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

@@ -42,6 +42,16 @@ import { UsersListPage } from "./pages/admin/UsersListPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import "./styles/librarian.css";
 
+function getReadNotificationIds(storageKey) {
+  try {
+    const ids = JSON.parse(localStorage.getItem(storageKey) || "[]");
+    return Array.isArray(ids) ? ids.filter((id) => typeof id === "string") : [];
+  } catch {
+    localStorage.removeItem(storageKey);
+    return [];
+  }
+}
+
 function App() {
   const [session, setSession] = useState(null);
   const [view, setView] = useState("dashboard");
@@ -60,6 +70,20 @@ function App() {
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem("book-rec-theme") || "dark";
   });
+
+  const markNotificationAsRead = (notificationId) => {
+    if (!session || session.user.role !== "lecturer") return;
+
+    const storageKey = `book-rec-order-notifications-read:${session.user.id}`;
+    const readNotificationIds = new Set(getReadNotificationIds(storageKey));
+    readNotificationIds.add(notificationId);
+    localStorage.setItem(storageKey, JSON.stringify([...readNotificationIds]));
+    setLecturerNotifications((current) =>
+      current.map((notification) =>
+        notification.id === notificationId ? { ...notification, isRead: true } : notification
+      )
+    );
+  };
 
   const resolveLibrarianDisplayPeriod = (periods) => {
     if (!Array.isArray(periods) || periods.length === 0) {
@@ -166,6 +190,7 @@ function App() {
 
     let active = true;
     const seenStorageKey = `book-rec-order-notifications-seen:${session.user.id}`;
+    const readStorageKey = `book-rec-order-notifications-read:${session.user.id}`;
     let seenNotificationIds = new Set();
     try {
       seenNotificationIds = new Set(JSON.parse(localStorage.getItem(seenStorageKey) || "[]"));
@@ -184,7 +209,11 @@ function App() {
           seenNotificationIds.add(unseenNotification.id);
           localStorage.setItem(seenStorageKey, JSON.stringify([...seenNotificationIds]));
         }
-        setLecturerNotifications(notifications);
+        const readNotificationIds = new Set(getReadNotificationIds(readStorageKey));
+        setLecturerNotifications(notifications.map((notification) => ({
+          ...notification,
+          isRead: readNotificationIds.has(notification.id)
+        })));
       } catch (err) {
         console.error("Failed to refresh lecturer notifications:", err);
       }
@@ -491,6 +520,7 @@ function App() {
       notifications={lecturerNotifications}
       notificationsOpen={notificationsOpen}
       onToggleNotifications={() => setNotificationsOpen((open) => !open)}
+      onMarkNotificationRead={markNotificationAsRead}
     >
       {orderToast && (
         <div
@@ -521,6 +551,30 @@ function App() {
             <strong style={{ display: "block", marginBottom: "0.35rem", lineHeight: 1.25 }}>Library order update</strong>
             <div style={{ fontWeight: 700, lineHeight: 1.35, marginBottom: "0.2rem" }}>{orderToast.title}</div>
             <span style={{ color: "var(--text-muted)", lineHeight: 1.4 }}>The library has ordered this book.</span>
+            <button
+              type="button"
+              onClick={() => {
+                markNotificationAsRead(orderToast.id);
+                setOrderToast(null);
+              }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.35rem",
+                marginTop: "0.65rem",
+                padding: "0.35rem 0.6rem",
+                color: "var(--primary)",
+                background: "transparent",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius)",
+                cursor: "pointer",
+                fontSize: "0.8rem",
+                fontWeight: 600
+              }}
+            >
+              <CheckCircle2 size={15} aria-hidden="true" />
+              Mark as read
+            </button>
           </div>
           <button
             type="button"
