@@ -1,7 +1,7 @@
 import Recommendation from "../models/Recommendation.js";
 import OrderPeriod from "../models/OrderPeriod.js";
 import { recordAuditLog } from "../controllers/auditController.js";
-import User from "../models/User.js";
+import User from "../models/user.js";
 
 export function normalizeDepartment(department) {
   return String(department || "").trim().toUpperCase();
