@@ -26,10 +26,12 @@ const app = express();
 const port = process.env.PORT || 5000;
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:3000",
+  "https://automated-book-recommendation.vercel.app",
   process.env.CLIENT_URL
-];
+].filter(Boolean);
 
-app.use(cors({
+const corsOptions = {
   origin(origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
@@ -37,8 +39,12 @@ app.use(cors({
       callback(new Error("Not allowed by CORS"));
     }
   },
-  credentials: true
-}));
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 app.get("/api/health", (_, res) => res.json({ ok: true, service: "Book Recommendation API" }));
