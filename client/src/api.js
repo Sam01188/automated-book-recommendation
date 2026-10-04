@@ -1,6 +1,6 @@
 import { buildStats, demoRecommendations, demoUsers } from "./data";
 
-const api = import.meta.env.VITE_API_BASE_URL || "https://automated-book-recommendation-production.up.railway.app/api";
+const api = import.meta.env.API_BASE_URL || "https://automated-book-recommendation-production.up.railway.app/api";
 
 async function checkApiResponse(response) {
   if (response.ok) {
