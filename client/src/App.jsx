@@ -237,7 +237,6 @@ function App() {
 
   const librarianDisplayPeriod = useMemo(() => resolveLibrarianDisplayPeriod(periods), [periods]);
   const canExportData = true;
-  const isActiveLibrarianPeriodOpen = periods.some((period) => period.status === "open" || period.status === "hod_priority");
 
   useEffect(() => {
     if (!session || session.user.mustChangePassword) {
@@ -753,7 +752,6 @@ function App() {
           items={items}
           periods={periods}
           token={session.token}
-          isPeriodLocked={isActiveLibrarianPeriodOpen}
         />
       )}
 

@@ -561,11 +561,34 @@ router.patch("/:id/status", requireAuth, allowRoles("librarian"), async (req, re
       return res.status(400).json({ message: "Invalid recommendation status" });
     }
 
-    const recommendation = await Recommendation.findByIdAndUpdate(
-      req.params.id,
-      { status: req.body.status },
-      { new: true, runValidators: true }
-    )
+    const existing = await Recommendation.findById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ message: "Recommendation not found" });
+    }
+
+    if (req.body.status === "ordered") {
+      if (!existing.submittedToLibrarianAt || !Number.isFinite(existing.priorityRank)) {
+        return res.status(400).json({ message: "Only ranked recommendations submitted by the HoD can be ordered." });
+      }
+
+      const orderPeriod = existing.orderPeriod
+        ? await OrderPeriod.findById(existing.orderPeriod)
+        : null;
+      if (!orderPeriod || orderPeriod.status !== "closed") {
+        return res.status(400).json({ message: "The order period must be closed before ordering books and notifying lecturers." });
+      }
+
+      if (existing.status === "ordered") {
+        return res.status(400).json({ message: "This recommendation has already been ordered and its lecturer notified." });
+      }
+      if (!["submitted", "selected"].includes(existing.status)) {
+        return res.status(400).json({ message: "Only recommendations awaiting a library order can be marked as ordered." });
+      }
+    }
+
+    const recommendation = await Recommendation.findByIdAndUpdate(req.params.id, {
+      status: req.body.status
+    }, { new: true, runValidators: true })
       .populate("submittedBy", "name department")
       .populate("reviewedBy", "name")
       .populate("orderPeriod", "startDate endDate hodRecommendationDays status");
