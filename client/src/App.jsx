@@ -250,7 +250,12 @@ function App() {
       const derived = deriveStats(records, session.user.role);
       // fetch server stats but merge with derived pending/lecturersCount
       fetchStats(session.token, records)
-        .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
+        .then((s) => setStats({
+          ...s,
+          total: session.user.role === "librarian" ? derived.total : s.total,
+          pending: derived.pending,
+          lecturersCount: derived.lecturersCount
+        }))
         .catch(() => setStats(derived));
     });
 
@@ -301,7 +306,12 @@ function App() {
           setIsHodPeriodOpen(Boolean(hodPeriod));
           const derived = deriveStats(records, session.user.role);
           fetchStats(session.token, records)
-            .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
+            .then((s) => setStats({
+              ...s,
+              total: derived.total,
+              pending: derived.pending,
+              lecturersCount: derived.lecturersCount
+            }))
             .catch(() => setStats(derived));
         })
         .catch((err) => console.error("Failed to refresh librarian recommendations:", err));
@@ -329,7 +339,12 @@ function App() {
           setIsHodPeriodOpen(Boolean(hodPeriod));
           const derived = deriveStats(records, session.user.role);
           fetchStats(session.token, records)
-            .then((s) => setStats({ ...s, pending: derived.pending, lecturersCount: derived.lecturersCount }))
+            .then((s) => setStats({
+              ...s,
+              total: derived.total,
+              pending: derived.pending,
+              lecturersCount: derived.lecturersCount
+            }))
             .catch(() => setStats(derived));
         })
         .catch((err) => console.error("Failed to polling refresh librarian recommendations:", err));
@@ -358,6 +373,13 @@ function App() {
     return { total, pending, rejected, highPriority, lecturersCount };
   };
 
+  const librarianDashboardItems = librarianDisplayPeriod
+    ? items.filter((item) => {
+        const itemPeriodId = item.orderPeriod?._id || item.orderPeriod;
+        return itemPeriodId && String(itemPeriodId) === String(librarianDisplayPeriod._id);
+      })
+    : [];
+  const librarianDashboardStats = deriveStats(librarianDashboardItems, "librarian");
 
   useEffect(() => {
     setStats(deriveStats(items, session?.user?.role));
@@ -690,8 +712,8 @@ function App() {
       {!passwordChangeRequired && session.user.role === "librarian" && currentView === "dashboard" && (
         <LibrarianDashboardPage
           user={session.user}
-          stats={stats}
-          items={items}
+          stats={librarianDashboardStats}
+          items={librarianDashboardItems}
           onTotalClick={() => setView("all")}
           onPendingClick={() => setView("all")}
           onHighPriorityClick={() => {
