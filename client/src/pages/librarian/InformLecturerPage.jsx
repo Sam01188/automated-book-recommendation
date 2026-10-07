@@ -146,6 +146,27 @@ export function InformLecturerPage({ items = [], token, isPeriodLocked = false, 
     }
   }
 
+  async function handleUndoOrderedStatus(id) {
+    if (isPeriodLocked) {
+      setNotice("The order period is still active. Please wait until the period is closed before changing a sent order status.");
+      return;
+    }
+
+    setBusy(true);
+    setNotice("");
+
+    try {
+      await updateRecommendationStatus(token, id, "selected");
+      const refreshed = await fetchRecommendations(token, "librarian");
+      setLocalItems(refreshed);
+      setNotice("This recommendation was moved back to selected status.");
+    } catch (error) {
+      setNotice(error.message || "Failed to undo the ordered status.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="dashboard-container">
       {isPeriodLocked && (
@@ -165,6 +186,31 @@ export function InformLecturerPage({ items = [], token, isPeriodLocked = false, 
           </h3>
           <div className="badge badge-primary">{finalDepartmentItems.length} final recommendations</div>
         </div>
+
+        {latestPeriod && (
+          <div
+            style={{
+              marginTop: "1rem",
+              padding: "0.75rem 1rem",
+              borderRadius: "12px",
+              border: "1px solid rgba(88, 166, 255, 0.28)",
+              background: "rgba(88, 166, 255, 0.08)",
+              color: "var(--text)",
+              display: "flex",
+              gap: "0.75rem",
+              alignItems: "center",
+              flexWrap: "wrap"
+            }}
+          >
+            <strong>Order Period:</strong>
+            <span>
+              {new Date(latestPeriod.startDate).toLocaleDateString("en-GB")} - {new Date(latestPeriod.endDate).toLocaleDateString("en-GB")}
+            </span>
+            <span className="badge badge-secondary">
+              {latestPeriod.status === "open" || latestPeriod.status === "hod_priority" ? "Current" : "Closed"}
+            </span>
+          </div>
+        )}
 
         <div className="search-wrapper" style={{ marginTop: "1rem" }}>
           <Search size={18} className="search-icon" />
@@ -238,9 +284,22 @@ export function InformLecturerPage({ items = [], token, isPeriodLocked = false, 
                     <td>{item.author || "N/A"}</td>
                     <td>{item.submittedBy?.name || "N/A"}</td>
                     <td>
-                      <span className={`badge ${item.status === "ordered" ? "badge-info" : item.status === "selected" ? "badge-primary" : "badge-secondary"}`}>
-                        {item.status || "Pending"}
-                      </span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                        <span className={`badge ${item.status === "ordered" ? "badge-info" : item.status === "selected" ? "badge-primary" : "badge-secondary"}`}>
+                          {item.status || "Pending"}
+                        </span>
+                        {item.status === "ordered" && (
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            disabled={busy || isPeriodLocked}
+                            onClick={() => handleUndoOrderedStatus(item._id)}
+                            style={{ padding: "0.25rem 0.6rem", fontSize: "0.75rem" }}
+                          >
+                            Undo ordered
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

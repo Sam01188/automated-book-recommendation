@@ -69,7 +69,7 @@ export function ExportDataPage({ items = [], isExportLocked = true, periods = []
     [sortedPeriods]
   );
 
-  const fallbackSelectedPeriod = closedPeriods[0]?._id || sortedPeriods[0]?._id || "all";
+  const fallbackSelectedPeriod = closedPeriods[0]?._id || sortedPeriods[0]?._id || null;
   const effectiveSelectedPeriod = selectedPeriod || fallbackSelectedPeriod;
   const selectedPeriodData = sortedPeriods.find((period) => String(period._id) === String(effectiveSelectedPeriod)) || null;
   const isSelectedPeriodLocked =
@@ -77,7 +77,7 @@ export function ExportDataPage({ items = [], isExportLocked = true, periods = []
   const exportLocked = isExportLocked || isSelectedPeriodLocked;
 
   const finalDepartmentItems = useMemo(() => {
-    const filteredItems = effectiveSelectedPeriod && effectiveSelectedPeriod !== "all"
+    const filteredItems = effectiveSelectedPeriod
       ? (items || []).filter((item) => {
           const itemPeriodId = item.orderPeriod?._id || item.orderPeriod;
           return itemPeriodId && String(itemPeriodId) === String(effectiveSelectedPeriod);
@@ -231,12 +231,11 @@ export function ExportDataPage({ items = [], isExportLocked = true, periods = []
         {sortedPeriods.length > 0 && (
           <div style={{ marginBottom: "1rem", display: "flex", justifyContent: "flex-end" }}>
             <select
-              value={effectiveSelectedPeriod}
+              value={effectiveSelectedPeriod || ""}
               onChange={(event) => onSelectedPeriodChange(event.target.value)}
               className="table-input"
               style={{ minWidth: "260px" }}
             >
-              <option value="all">All Periods</option>
               {sortedPeriods.map((periodItem) => {
                 const startDate = new Date(periodItem.startDate).toLocaleDateString("en-GB");
                 const endDate = new Date(periodItem.endDate).toLocaleDateString("en-GB");
@@ -280,7 +279,7 @@ export function ExportDataPage({ items = [], isExportLocked = true, periods = []
         <h3 className="panel-title">Export Summary</h3>
         <Card className="info-card">
           <div className="info-content">
-            <p><strong>Period:</strong> {selectedPeriodData ? `${new Date(selectedPeriodData.startDate).toLocaleDateString("en-GB")} - ${new Date(selectedPeriodData.endDate).toLocaleDateString("en-GB")}` : "All periods"}</p>
+            <p><strong>Period:</strong> {selectedPeriodData ? `${new Date(selectedPeriodData.startDate).toLocaleDateString("en-GB")} - ${new Date(selectedPeriodData.endDate).toLocaleDateString("en-GB")}` : "No period selected"}</p>
             <p><strong>Final HoD Records:</strong> {finalDepartmentItems.length} ranked recommendations</p>
             <p><strong>Departments Included:</strong> {new Set(finalDepartmentItems.map((item) => getDepartmentKey(item))).size}</p>
             <p><strong>Last Updated:</strong> {new Date().toLocaleDateString('en-GB')}</p>

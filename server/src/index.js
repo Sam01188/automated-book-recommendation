@@ -23,7 +23,25 @@ if (!process.env.MONGO_URI) {
 
 export const tokenBlacklist = new Set();
 const app = express();
-const port = process.env.PORT || 5000;
+const preferredPort = Number(process.env.PORT) || 5000;
+
+function startServer(portToUse) {
+  const server = app.listen(portToUse, () => {
+    console.log(`✅ API running on port ${portToUse}`);
+  });
+
+  server.on("error", (error) => {
+    if (error.code === "EADDRINUSE") {
+      const nextPort = portToUse + 1;
+      console.warn(`Port ${portToUse} is already in use. Retrying on port ${nextPort}...`);
+      startServer(nextPort);
+      return;
+    }
+
+    console.error("❌ Server startup error:", error.message);
+    process.exit(1);
+  });
+}
 
 app.use(cors({ origin: process.env.CLIENT_URL || "http://localhost:5173" }));
 app.use(express.json());
@@ -119,7 +137,7 @@ mongoose.connect(process.env.MONGO_URI, {
 })
 .then(() => {
   console.log("✅ Connected to MongoDB Atlas");
-  app.listen(port, () => console.log(`✅ API running on port ${port}`));
+  startServer(preferredPort);
 })
 .catch((err) => {
   console.error("❌ MongoDB Connection Error:", err.message);
