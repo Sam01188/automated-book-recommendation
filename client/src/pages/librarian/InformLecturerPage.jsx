@@ -33,16 +33,20 @@ function isReadyToOrder(item, periods) {
   );
 }
 
+function getRelevantFinalPeriod(periods) {
+  return periods.find((period) => period?.status === "closed") || periods[0] || null;
+}
+
 function getFinalDepartmentItems(items, periods) {
-  const lastPeriod = periods[0];
-  if (!lastPeriod) return [];
+  const finalPeriod = getRelevantFinalPeriod(periods);
+  if (!finalPeriod) return [];
 
   return getOrderedItems(
     items.filter((item) =>
       item.status !== "rejected" &&
       Number.isFinite(item.priorityRank) &&
       Boolean(item.submittedToLibrarianAt) &&
-      String(item.orderPeriod?._id || item.orderPeriod) === String(lastPeriod._id) &&
+      String(item.orderPeriod?._id || item.orderPeriod) === String(finalPeriod._id) &&
       getItemPeriod(item, periods)?.status === "closed"
     )
   );
@@ -207,7 +211,7 @@ export function InformLecturerPage({ items = [], token, periods = [] }) {
 
         <div className="export-preview-table-wrap" style={{ marginTop: "1rem" }}>
           {previewItems.length === 0 ? (
-            <p className="export-preview-empty">No ranked HoD-submitted recommendations are available from closed periods.</p>
+            <p className="export-preview-empty">No ranked HoD-submitted recommendations are available from the last period.</p>
           ) : (
             <table className="export-preview-table">
               <thead>

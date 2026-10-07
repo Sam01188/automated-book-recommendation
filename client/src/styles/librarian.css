@@ -739,9 +739,9 @@ button.stat-card {
 
 .export-preview-table-wrap {
   overflow-x: auto;
-  border: 1px solid var(--gray-200);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--surface-solid);
 }
 
 .export-preview-table {
@@ -753,27 +753,28 @@ button.stat-card {
 .export-preview-table th,
 .export-preview-table td {
   padding: 0.9rem 1rem;
-  border-bottom: 1px solid var(--gray-200);
+  border-bottom: 1px solid var(--border);
   text-align: left;
   vertical-align: top;
+  color: var(--text);
 }
 
 .export-preview-table thead th {
-  background: rgba(127, 29, 29, 0.04);
-  color: var(--gray-700);
+  background: var(--table-header-bg);
+  color: var(--text-muted);
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .export-preview-table tbody tr:hover {
-  background: rgba(127, 29, 29, 0.02);
+  background: var(--table-row-hover);
 }
 
 .export-preview-empty {
   margin: 0;
   padding: 1.5rem;
-  color: var(--gray-600);
+  color: var(--text-muted);
 }
 
 .export-card {
