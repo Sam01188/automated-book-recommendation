@@ -8,45 +8,31 @@ export function AllRecommendationsPage({
   items = [],
   filterPriority = "all",
   currentPeriod = null,
-  periods = [],
-  selectedPeriod = null,
-  onSelectedPeriodChange = () => {}
+  periods = []
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [localItems, setLocalItems] = useState(items);
+  const [selectedPeriod, setSelectedPeriod] = useState("all");
 
   useEffect(() => {
     setLocalItems(items || []);
   }, [items]);
 
-  const sortedPeriods = useMemo(
-    () =>
-      [...periods].sort((a, b) => {
-        const aDate = a?.endDate ? new Date(a.endDate).getTime() : 0;
-        const bDate = b?.endDate ? new Date(b.endDate).getTime() : 0;
-        return bDate - aDate;
-      }),
-    [periods]
-  );
-
-  const latestPeriod = sortedPeriods[0] || currentPeriod || null;
-
-  useEffect(() => {
-    if (!selectedPeriod && latestPeriod && latestPeriod._id) {
-      onSelectedPeriodChange(latestPeriod._id);
-    }
-  }, [selectedPeriod, latestPeriod, onSelectedPeriodChange]);
-
-  const effectiveSelectedPeriod = selectedPeriod || latestPeriod?._id || "all";
+  const effectiveSelectedPeriod = selectedPeriod;
   const period =
-    sortedPeriods.find((periodItem) => String(periodItem._id) === String(effectiveSelectedPeriod)) ||
-    currentPeriod ||
-    latestPeriod ||
+    effectiveSelectedPeriod === "all"
+      ? null
+      : periods.find((periodItem) => String(periodItem._id) === String(effectiveSelectedPeriod)) ||
+        currentPeriod ||
     null;
   const periodStatus = period?.status;
   const isCurrentPeriod = periodStatus === "open" || periodStatus === "hod_priority";
-  const periodLabel = period ? (isCurrentPeriod ? "Current Period" : "Previous Period") : "No Period Selected";
+  const periodLabel = effectiveSelectedPeriod === "all"
+    ? "All Periods"
+    : period
+      ? (isCurrentPeriod ? "Current Period" : "Previous Period")
+      : "No Period Selected";
 
   const defaultDepartments = ["DCEE", "DEIE", "DMENA", "DMME"];
   const departments = useMemo(
@@ -187,19 +173,19 @@ export function AllRecommendationsPage({
           />
         </div>
 
-        {sortedPeriods.length > 0 && (
+        {periods.length > 0 && (
           <select
             value={effectiveSelectedPeriod}
-            onChange={(e) => onSelectedPeriodChange(e.target.value)}
+            onChange={(e) => setSelectedPeriod(e.target.value)}
             className="table-input"
             style={{ minWidth: "240px" }}
           >
             <option value="all">All Periods</option>
-            {sortedPeriods.map((periodItem) => {
+            {periods.map((periodItem) => {
               const startDate = new Date(periodItem.startDate).toLocaleDateString("en-GB");
               const endDate = new Date(periodItem.endDate).toLocaleDateString("en-GB");
-              const isLatest = latestPeriod && String(periodItem._id) === String(latestPeriod._id);
-              const suffix = isLatest ? " (Latest)" : periodItem.status === "open" || periodItem.status === "hod_priority" ? " (Current)" : "";
+              const isCurrent = periodItem.status === "open" || periodItem.status === "hod_priority";
+              const suffix = isCurrent ? " (Current)" : "";
               return (
                 <option key={periodItem._id} value={periodItem._id}>
                   {`${startDate} - ${endDate}${suffix}`}
@@ -210,7 +196,7 @@ export function AllRecommendationsPage({
         )}
       </div>
 
-      {sortedPeriods.length > 0 && (
+      {periods.length > 0 && (
         <div
           style={{
             display: "flex",
@@ -220,7 +206,7 @@ export function AllRecommendationsPage({
           }}
         >
           <button
-            onClick={() => onSelectedPeriodChange("all")}
+            onClick={() => setSelectedPeriod("all")}
             style={{
               padding: "0.55rem 0.9rem",
               borderRadius: "999px",
@@ -233,34 +219,34 @@ export function AllRecommendationsPage({
           >
             All periods
           </button>
-          {sortedPeriods.map((periodItem) => {
+          {periods.map((periodItem) => {
             const isSelected = String(effectiveSelectedPeriod) === String(periodItem._id);
-            const isLatest = latestPeriod && String(periodItem._id) === String(latestPeriod._id);
+            const isCurrent = periodItem.status === "open" || periodItem.status === "hod_priority";
             const periodDate = `${new Date(periodItem.startDate).toLocaleDateString("en-GB")} - ${new Date(periodItem.endDate).toLocaleDateString("en-GB")}`;
 
             return (
               <button
                 key={periodItem._id}
-                onClick={() => onSelectedPeriodChange(periodItem._id)}
+                onClick={() => setSelectedPeriod(periodItem._id)}
                 style={{
                   padding: "0.55rem 0.9rem",
                   borderRadius: "999px",
-                  border: isSelected ? "1px solid var(--primary)" : "1px solid var(--border-color)",
+                  border: isSelected || isCurrent ? "1px solid var(--primary)" : "1px solid var(--border-color)",
                   background: isSelected
-                    ? isLatest
+                    ? isCurrent
                       ? "linear-gradient(135deg, rgba(255,179,71,0.18), rgba(88,166,255,0.18))"
                       : "rgba(88, 166, 255, 0.12)"
-                    : isLatest
+                    : isCurrent
                       ? "rgba(255, 179, 71, 0.12)"
                       : "var(--surface)",
                   color: isSelected ? "var(--primary)" : "var(--text)",
                   cursor: "pointer",
                   fontWeight: isSelected ? 700 : 600,
-                  boxShadow: isLatest ? "0 0 0 1px rgba(255,179,71,0.4)" : "none"
+                  boxShadow: isCurrent ? "0 0 0 1px rgba(255,179,71,0.4)" : "none"
                 }}
               >
                 {periodDate}
-                {isLatest && " • Latest"}
+                {isCurrent && " • Current"}
               </button>
             );
           })}

@@ -179,22 +179,19 @@ router.get("/lecturer-status", requireAuth, allowRoles("lecturer"), async (req, 
 router.get("/", requireAuth, async (req, res) => {
   try {
     await finalizeExpiredHodPeriods();
+    const requestedPeriodId = req.query.periodId;
     const activeLibrarianPeriod = req.user.role === "librarian"
-      ? req.query.periodId
-        ? await OrderPeriod.findById(req.query.periodId)
-        : await findLibrarianDisplayPeriod()
+      && requestedPeriodId
+      && requestedPeriodId !== "all"
+      ? await OrderPeriod.findById(requestedPeriodId)
       : null;
     const activeLecturerPeriod = req.user.role === "lecturer" ? await findCurrentLecturerPeriod() : null;
     const hodVisiblePeriod = req.user.role === "hod"
       ? await findCurrentHodPeriod() || await findCurrentOpenPeriod()
       : null;
 
-    if (req.user.role === "librarian" && req.query.periodId && !activeLibrarianPeriod) {
+    if (req.user.role === "librarian" && requestedPeriodId && requestedPeriodId !== "all" && !activeLibrarianPeriod) {
       return res.status(404).json({ message: "Order period not found" });
-    }
-
-    if (req.user.role === "librarian" && !activeLibrarianPeriod) {
-      return res.json([]);
     }
 
     if (req.user.role === "lecturer" && !activeLecturerPeriod) {
@@ -206,9 +203,10 @@ router.get("/", requireAuth, async (req, res) => {
     }
 
     let filter = buildRecommendationFilter(req.user);
-
     if (req.user.role === "librarian") {
-      filter = buildLibrarianFilter(activeLibrarianPeriod._id);
+      if (activeLibrarianPeriod) {
+        filter.orderPeriod = activeLibrarianPeriod._id;
+      }
     } else if (req.user.role === "lecturer") {
       filter = {
         ...filter,
