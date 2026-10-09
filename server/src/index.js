@@ -23,27 +23,28 @@ if (!process.env.MONGO_URI) {
 
 export const tokenBlacklist = new Set();
 const app = express();
-const preferredPort = Number(process.env.PORT) || 5000;
+const port = process.env.PORT || 5000;
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://automated-book-recommendation.vercel.app",
+  process.env.CLIENT_URL
+].filter(Boolean);
 
-function startServer(portToUse) {
-  const server = app.listen(portToUse, () => {
-    console.log(`✅ API running on port ${portToUse}`);
-  });
-
-  server.on("error", (error) => {
-    if (error.code === "EADDRINUSE") {
-      const nextPort = portToUse + 1;
-      console.warn(`Port ${portToUse} is already in use. Retrying on port ${nextPort}...`);
-      startServer(nextPort);
-      return;
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
     }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+};
 
-    console.error("❌ Server startup error:", error.message);
-    process.exit(1);
-  });
-}
-
-app.use(cors({ origin: process.env.CLIENT_URL || "http://localhost:5173" }));
+app.use(cors(corsOptions));
 app.use(express.json());
 
 app.get("/api/health", (_, res) => res.json({ ok: true, service: "Book Recommendation API" }));

@@ -7,11 +7,10 @@ export function DashboardContent({ user, stats, items }) {
     <section className="panel-space">
       <div className="metrics">
         {user.role === "hod" ? (
-          // HOD: show total submissions, total lecturers, pending
+          // HOD: show total submissions and total lecturers
           <>
             <Metric label="Total Submissions" value={stats.total} icon={<BookMarked size={20} />} />
             <Metric label="Lecturers" value={stats.lecturersCount} icon={<ShieldX size={20} />} />
-            <Metric label="Pending Review" value={stats.pending} icon={<ClipboardList size={20} />} />
           </>
         ) : (
           <>
@@ -31,9 +30,15 @@ export function DashboardContent({ user, stats, items }) {
           {user.role === "lecturer" ? "Recent Submissions" : user.role === "hod" ? "Pending Recommendations" : "All Submissions"}
         </h3>
         {items.length === 0 ? (
-          <div className="empty-state">
-            <BookMarked size={48} color="var(--border)" />
-            <p>No records found in this view.</p>
+          <div style={{
+            textAlign: "center",
+            padding: "3rem 1rem",
+            color: "var(--text-muted)",
+            fontSize: "0.9375rem",
+            fontWeight: 500,
+            letterSpacing: "0.04em"
+          }}>
+            {user.role === "hod" ? "No pending recommendations yet." : "No records found in this view."}
           </div>
         ) : (
           <CompactList items={items.slice(0, 5)} />

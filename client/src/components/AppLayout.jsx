@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import { BellRing, BookMarked, ClipboardList, Download, Home, ListChecks, LogOut, Send, UserCircle, Users, UserPlus, Clock, ChevronLeft, ChevronRight, Sun, Moon } from "lucide-react";
+import { BadgeCheck, BellRing, BookMarked, Check, ClipboardList, Download, Home, ListChecks, LogOut, Send, UserCircle, Users, UserPlus, Clock, ChevronLeft, ChevronRight, Sun, Moon } from "lucide-react";
 
 export const roleViews = {
   lecturer: ["dashboard", "submit", "my"],
-  hod: ["dashboard", "priority", "all", "submissions"],
+  hod: ["dashboard", "priority", "all", "submissions", "status"],
   librarian: ["dashboard", "all", "periods", "export", "inform"],
-  admin: ["dashboard", "users", "createUser"]
+  admin: ["dashboard", "users", "createUser", "audit"]
 };
 
 export const viewLabels = {
@@ -16,11 +16,13 @@ export const viewLabels = {
   priority: "Assign/Edit Priority",
   all: "All Recommendations",
   submissions: "Submissions",
+  status: "Status",
   periods: "Order Periods",
   export: "Export Data",
   inform: "Inform Lecturer",
   users: "User Management",
-  createUser: "Create New User"
+  createUser: "Create New User",
+  audit: "Audit History"
 };
 
 export const viewIcons = {
@@ -31,16 +33,19 @@ export const viewIcons = {
   priority: ListChecks,
   all: BookMarked,
   submissions: ClipboardList,
+  status: BadgeCheck,
   periods: Clock,
   export: Download,
   inform: BellRing,
   users: Users,
-  createUser: UserPlus
+  createUser: UserPlus,
+  audit: ClipboardList
 };
 
-export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, onProfileClick, navigationLocked = false, viewActions, theme, onToggleTheme, notifications = [], notificationsOpen = false, onToggleNotifications, children }) {
+export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, onProfileClick, navigationLocked = false, viewActions, theme, onToggleTheme, notifications = [], notificationsOpen = false, onToggleNotifications, onMarkNotificationRead, children }) {
   const [sidebarMinimized, setSidebarMinimized] = useState(false);
   const ActiveIcon = viewIcons[view] || Home;
+  const unreadNotificationCount = notifications.filter((item) => !item.isRead).length;
 
   return (
     <div className="app-frame" style={{ "--app-sidebar-width": sidebarMinimized ? "80px" : "280px" }}>
@@ -67,13 +72,13 @@ export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, on
                 height: "42px",
                 borderRadius: "50%",
                 border: "1px solid var(--border)",
-                background: "var(--surface)",
+                background: "var(--surface-solid)",
                 color: "var(--text)",
                 cursor: "pointer"
               }}
             >
               <BellRing size={18} />
-              {notifications.length > 0 && (
+              {unreadNotificationCount > 0 && (
                 <span style={{
                   position: "absolute",
                   top: "-4px",
@@ -90,7 +95,7 @@ export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, on
                   alignItems: "center",
                   justifyContent: "center"
                 }}>
-                  {notifications.length}
+                  {unreadNotificationCount}
                 </span>
               )}
             </button>
@@ -101,12 +106,13 @@ export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, on
               position: "absolute",
               top: "calc(100% + 12px)",
               right: 0,
-              width: "320px",
-              background: "var(--surface)",
+              width: "min(320px, calc(100vw - 2rem))",
+              background: "var(--surface-solid)",
+              opacity: 1,
               border: "1px solid var(--border)",
               borderRadius: "var(--radius)",
               boxShadow: "0 18px 45px rgba(0,0,0,0.2)",
-              zIndex: 20,
+              zIndex: 2000,
               padding: "0.75rem",
               maxHeight: "300px",
               overflowY: "auto"
@@ -118,12 +124,40 @@ export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, on
                 <div key={item.id} style={{
                   padding: "0.7rem 0.75rem",
                   borderRadius: "var(--radius)",
-                  background: "var(--surface-hover)",
+                  background: item.isRead ? "var(--surface-solid)" : "var(--bg-layer)",
                   border: "1px solid var(--border)",
                   marginBottom: "0.5rem"
                 }}>
                   <div style={{ fontWeight: 700, color: "var(--text)", marginBottom: "0.2rem" }}>{item.title}</div>
                   <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{item.message}</div>
+                  {item.isRead ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", marginTop: "0.5rem", color: "var(--text-muted)", fontSize: "0.75rem" }}>
+                      <Check size={14} aria-hidden="true" />
+                      <span>Read</span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onMarkNotificationRead?.(item.id)}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.35rem",
+                        marginTop: "0.5rem",
+                        padding: "0.3rem 0.55rem",
+                        color: "var(--primary)",
+                        background: "transparent",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--radius)",
+                        cursor: "pointer",
+                        fontSize: "0.75rem",
+                        fontWeight: 600
+                      }}
+                    >
+                      <Check size={14} aria-hidden="true" />
+                      Mark as read
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

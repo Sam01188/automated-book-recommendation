@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BellRing, CheckCheck, MessageSquareText, Search, Send } from "lucide-react";
+import { BellRing, MessageSquareText, Search, Send } from "lucide-react";
 import { Card } from "../../components/librarian/Card";
 import { fetchRecommendations, updateRecommendationStatus } from "../../api";
 
@@ -15,13 +15,44 @@ function getDepartmentKey(item) {
   return item.department || "Unassigned";
 }
 
-function getFinalDepartmentItems(items) {
-  return getOrderedItems(
-    items.filter((item) => item.status !== "rejected" && Number.isFinite(item.priorityRank))
+function getItemPeriod(item, periods) {
+  const orderPeriod = item.orderPeriod;
+  if (orderPeriod && typeof orderPeriod === "object") {
+    return orderPeriod;
+  }
+
+  return periods.find((period) => String(period._id) === String(orderPeriod));
+}
+
+function isReadyToOrder(item, periods) {
+  return (
+    ["submitted", "selected"].includes(item.status) &&
+    Number.isFinite(item.priorityRank) &&
+    Boolean(item.submittedToLibrarianAt) &&
+    getItemPeriod(item, periods)?.status === "closed"
   );
 }
 
-export function InformLecturerPage({ items = [], token, isPeriodLocked = false, periods = [] }) {
+function getRelevantFinalPeriod(periods) {
+  return periods.find((period) => period?.status === "closed") || periods[0] || null;
+}
+
+function getFinalDepartmentItems(items, periods) {
+  const finalPeriod = getRelevantFinalPeriod(periods);
+  if (!finalPeriod) return [];
+
+  return getOrderedItems(
+    items.filter((item) =>
+      item.status !== "rejected" &&
+      Number.isFinite(item.priorityRank) &&
+      Boolean(item.submittedToLibrarianAt) &&
+      String(item.orderPeriod?._id || item.orderPeriod) === String(finalPeriod._id) &&
+      getItemPeriod(item, periods)?.status === "closed"
+    )
+  );
+}
+
+export function InformLecturerPage({ items = [], token, periods = [] }) {
   const [localItems, setLocalItems] = useState(items);
   const [activeDepartment, setActiveDepartment] = useState("All Departments");
   const [selectedIds, setSelectedIds] = useState([]);
@@ -34,21 +65,10 @@ export function InformLecturerPage({ items = [], token, isPeriodLocked = false, 
     setSelectedIds((prev) => prev.filter((id) => (items || []).some((it) => String(it._id) === String(id))));
   }, [items]);
 
-  const latestPeriod = useMemo(() => {
-    if (!Array.isArray(periods) || periods.length === 0) return null;
-    return [...periods].sort((a, b) => new Date(b.endDate) - new Date(a.endDate))[0];
-  }, [periods]);
-
-  const periodFilteredItems = useMemo(() => {
-    if (!latestPeriod) return localItems;
-
-    return localItems.filter((item) => {
-      const itemPeriodId = item.orderPeriod?._id || item.orderPeriod;
-      return itemPeriodId && String(itemPeriodId) === String(latestPeriod._id);
-    });
-  }, [latestPeriod, localItems]);
-
-  const finalDepartmentItems = useMemo(() => getFinalDepartmentItems(periodFilteredItems), [periodFilteredItems]);
+  const finalDepartmentItems = useMemo(
+    () => getFinalDepartmentItems(localItems, periods),
+    [localItems, periods]
+  );
 
   const departments = useMemo(() => {
     const grouped = {};
@@ -86,12 +106,12 @@ export function InformLecturerPage({ items = [], token, isPeriodLocked = false, 
     });
   }, [activeDepartment, departments, finalDepartmentItems, searchTerm]);
 
-  const selectableVisibleItems = previewItems.filter((item) => item.status !== "ordered");
+  const selectableVisibleItems = previewItems.filter((item) => isReadyToOrder(item, periods));
   const allSelectedInView = selectableVisibleItems.length > 0 && selectableVisibleItems.every((item) => selectedIds.includes(item._id));
 
   function toggleSelection(id) {
     const item = localItems.find((entry) => String(entry._id) === String(id));
-    if (item?.status === "ordered") return;
+    if (!item || !isReadyToOrder(item, periods)) return;
 
     setSelectedIds((prev) =>
       prev.includes(id)
@@ -104,7 +124,7 @@ export function InformLecturerPage({ items = [], token, isPeriodLocked = false, 
     if (!previewItems.length) return;
 
     const visibleIds = previewItems
-      .filter((item) => item.status !== "ordered")
+      .filter((item) => isReadyToOrder(item, periods))
       .map((item) => item._id);
 
     if (!visibleIds.length) return;
@@ -120,11 +140,6 @@ export function InformLecturerPage({ items = [], token, isPeriodLocked = false, 
   }
 
   async function handleBulkStatusUpdate() {
-    if (isPeriodLocked) {
-      setNotice("The order period is still active. Please wait until the period is closed before informing lecturers.");
-      return;
-    }
-
     if (!selectedIds.length) {
       setNotice("Select at least one recommendation before sending the order update.");
       return;
@@ -134,7 +149,17 @@ export function InformLecturerPage({ items = [], token, isPeriodLocked = false, 
     setNotice("");
 
     try {
-      await Promise.all(selectedIds.map((id) => updateRecommendationStatus(token, id, "ordered")));
+      const eligibleIds = selectedIds.filter((id) => {
+        const item = localItems.find((entry) => String(entry._id) === String(id));
+        return item && isReadyToOrder(item, periods);
+      });
+      if (!eligibleIds.length) {
+        setNotice("Only HOD-submitted recommendations from closed periods can be ordered and sent to lecturers.");
+        setSelectedIds([]);
+        return;
+      }
+
+      await Promise.all(eligibleIds.map((id) => updateRecommendationStatus(token, id, "ordered")));
       const refreshed = await fetchRecommendations(token, "librarian");
       setLocalItems(refreshed);
       setSelectedIds([]);
@@ -169,15 +194,6 @@ export function InformLecturerPage({ items = [], token, isPeriodLocked = false, 
 
   return (
     <div className="dashboard-container">
-      {isPeriodLocked && (
-        <section className="large-panel" style={{ borderColor: "rgba(239, 68, 68, 0.45)", background: "rgba(239, 68, 68, 0.04)" }}>
-          <h3 className="panel-title" style={{ color: "var(--danger)" }}>Inform Lecturer Restricted</h3>
-          <div style={{ color: "var(--text-muted)", lineHeight: 1.6 }}>
-            The order period is still active. Please wait until the period is closed before informing lecturers.
-          </div>
-        </section>
-      )}
-
       <section className="large-panel export-preview-panel">
         <div className="panel-header-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
           <h3 className="panel-title" style={{ margin: 0 }}>
@@ -241,7 +257,7 @@ export function InformLecturerPage({ items = [], token, isPeriodLocked = false, 
 
         <div className="export-preview-table-wrap" style={{ marginTop: "1rem" }}>
           {previewItems.length === 0 ? (
-            <p className="export-preview-empty">No ranked HoD recommendations available for this department.</p>
+            <p className="export-preview-empty">No ranked HoD-submitted recommendations are available from the last period.</p>
           ) : (
             <table className="export-preview-table">
               <thead>
@@ -267,7 +283,7 @@ export function InformLecturerPage({ items = [], token, isPeriodLocked = false, 
                 {previewItems.map((item) => (
                   <tr key={item._id || `${item.title}-${item.department}`}>
                     <td>
-                      {item.status === "ordered" ? (
+                      {!isReadyToOrder(item, periods) ? (
                         <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>—</span>
                       ) : (
                         <input
@@ -322,7 +338,7 @@ export function InformLecturerPage({ items = [], token, isPeriodLocked = false, 
           <button
             className="btn btn-success btn-sm"
             type="button"
-            disabled={busy || isPeriodLocked || selectedIds.length === 0}
+            disabled={busy || selectedIds.length === 0}
             onClick={handleBulkStatusUpdate}
           >
             <Send size={16} /> Inform Lecturer: Ordered

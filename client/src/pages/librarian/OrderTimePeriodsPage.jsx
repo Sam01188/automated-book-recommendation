@@ -13,8 +13,6 @@ import {
   deleteOrderPeriod
 } from "../../api";
 
-const FACULTY = "Engineering Faculty";
-
 export function OrderTimePeriodsPage({ token, onViewChange, onSelectPeriod }) {
   const [periods, setPeriods] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -101,9 +99,9 @@ export function OrderTimePeriodsPage({ token, onViewChange, onSelectPeriod }) {
   };
 
   const handleAddPeriod = async () => {
-    const facultyExists = periods.some((p) => p.faculty === FACULTY && (p.status === "open" || p.status === "hod_priority"));
-    if (facultyExists) {
-      showNotice("Active Period Exists", `An active time period already exists for ${FACULTY}. Please close or delete it first.`);
+    const activePeriodExists = periods.some((p) => p.status === "open" || p.status === "hod_priority");
+    if (activePeriodExists) {
+      showNotice("Active Period Exists", "An active time period already exists. Please close or delete it first.");
       return;
     }
 
@@ -114,7 +112,6 @@ export function OrderTimePeriodsPage({ token, onViewChange, onSelectPeriod }) {
       }
       try {
         await createOrderPeriod(token, {
-          faculty: FACULTY,
           startDate: formData.startDate,
           endDate: formData.endDate,
           hodRecommendationDays: defaultHodDays
@@ -129,7 +126,7 @@ export function OrderTimePeriodsPage({ token, onViewChange, onSelectPeriod }) {
     }
   };
 
-  const facultyHasActivePeriod = periods.some((p) => p.faculty === FACULTY && (p.status === "open" || p.status === "hod_priority"));
+  const activePeriodExists = periods.some((p) => p.status === "open" || p.status === "hod_priority");
 
   const handleDeleteClick = (id) => {
     setDeleteConfirmId(id);
@@ -284,12 +281,12 @@ export function OrderTimePeriodsPage({ token, onViewChange, onSelectPeriod }) {
             <Button
               onClick={handleAddPeriod}
               variant="primary"
-              disabled={facultyHasActivePeriod}
-              style={{ opacity: facultyHasActivePeriod ? 0.6 : 1, cursor: facultyHasActivePeriod ? "not-allowed" : "pointer" }}
+              disabled={activePeriodExists}
+              style={{ opacity: activePeriodExists ? 0.6 : 1, cursor: activePeriodExists ? "not-allowed" : "pointer" }}
             >
-              <Plus size={18} /> {facultyHasActivePeriod ? "Period Already Exists" : "Add Period"}
+              <Plus size={18} /> {activePeriodExists ? "Period Already Exists" : "Add Period"}
             </Button>
-            {facultyHasActivePeriod && (
+            {activePeriodExists && (
               <p style={{color: "var(--danger-text)", fontSize: "0.85rem", marginTop: "0.5rem" }}>
                 ⚠️ An active time period already exists.
               </p>
@@ -452,7 +449,7 @@ export function OrderTimePeriodsPage({ token, onViewChange, onSelectPeriod }) {
         return (
           <AppModal
             title="Delete Period"
-            message={`Delete the time period for ${period.faculty}? Period: ${new Date(period.startDate).toLocaleDateString('en-GB')} to ${new Date(period.endDate).toLocaleDateString('en-GB')}.`}
+            message={`Delete the period from ${new Date(period.startDate).toLocaleDateString('en-GB')} to ${new Date(period.endDate).toLocaleDateString('en-GB')}?`}
             confirmText="Delete"
             cancelText="Cancel"
             variant="danger"
@@ -548,7 +545,7 @@ export function OrderTimePeriodsPage({ token, onViewChange, onSelectPeriod }) {
           >
             <div className="modal-form-body">
               <p style={{ marginBottom: "0.5rem" }}>
-                <strong>Faculty:</strong> {period.faculty}
+                <strong>Period:</strong> {new Date(period.startDate).toLocaleDateString('en-GB')} to {new Date(period.endDate).toLocaleDateString('en-GB')}
               </p>
               <p style={{ marginBottom: "1.25rem" }} className="text-muted">
                 Current Deadline: <strong>{currentDeadline.toLocaleDateString('en-GB')}</strong>

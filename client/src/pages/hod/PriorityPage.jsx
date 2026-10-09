@@ -41,6 +41,16 @@ export function PriorityPage({ items, onOrderChange, isPeriodOpen }) {
   }
 
   async function handleSave() {
+    if (!isPeriodOpen) {
+      setModal({
+        title: "HOD Period Closed",
+        message: "The HOD priority assignment period is currently closed. You can save priorities after the librarian opens the period.",
+        confirmText: "OK",
+        onConfirm: () => setModal(null)
+      });
+      return;
+    }
+
     if (!onOrderChange) return;
     setSaving(true);
     try {
@@ -142,7 +152,7 @@ export function PriorityPage({ items, onOrderChange, isPeriodOpen }) {
 
       {count > 0 && (
         <div style={{ marginTop: "1rem", display: "flex", gap: "0.75rem" }}>
-          <button className="primary-button" onClick={handleSave} disabled={!isPeriodOpen || saving}>
+          <button className="primary-button" onClick={handleSave} disabled={saving}>
             Save Priorities
           </button>
         </div>

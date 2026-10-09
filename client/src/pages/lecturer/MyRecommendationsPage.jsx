@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Pencil, Trash2, ChevronDown, Save, X as XIcon } from "lucide-react";
-import { deleteRecommendation, updateRecommendation, fetchRecommendations } from "../../api";
+import { deleteRecommendation, updateRecommendation, fetchLecturerStatus, fetchOrderPeriods } from "../../api";
 import { AppModal } from "../../components/AppModal";
 
 export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, token, periods, selectedPeriod, onSelectedPeriodChange, onItemsUpdate }) {
@@ -12,6 +12,8 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
   const [modal, setModal] = useState(null);
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
   const [activeTab, setActiveTab] = useState("requests");
+  const [historyItems, setHistoryItems] = useState(items);
+  const [statusPeriods, setStatusPeriods] = useState(periods || []);
 
   useEffect(() => {
     const handleThemeChange = () => {
@@ -25,13 +27,10 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
   }, []);
 
   // Filter items by search term and selected period
-  const filteredItems = items.filter((item) => {
-    // Filter by period - if selectedPeriod is set, only show items from that period
-    if (selectedPeriod && item.orderPeriod) {
-      const itemPeriodId = typeof item.orderPeriod === "string" ? item.orderPeriod : item.orderPeriod._id;
-      if (String(itemPeriodId) !== String(selectedPeriod)) {
-        return false;
-      }
+  const filterByPeriodAndSearch = (records) => records.filter((item) => {
+    if (selectedPeriod) {
+      const itemPeriodId = typeof item.orderPeriod === "string" ? item.orderPeriod : item.orderPeriod?._id;
+      if (!itemPeriodId || String(itemPeriodId) !== String(selectedPeriod)) return false;
     }
 
     // Filter by search term
@@ -43,28 +42,46 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
       item.publisher?.toLowerCase().includes(search)
     );
   });
+  const filteredItems = filterByPeriodAndSearch(historyItems);
+  const filteredStatusItems = filteredItems;
 
-  // Poll for status updates when viewing Status tab
   useEffect(() => {
-    if (activeTab !== "status") return undefined;
     let cancelled = false;
-    async function refresh() {
-      try {
-        const fresh = await fetchRecommendations(token, "lecturer");
-        if (!cancelled && onItemsUpdate) onItemsUpdate(fresh);
-      } catch (err) {
-        // ignore polling errors
-      }
-    }
 
-    // initial refresh and interval
-    refresh();
-    const id = setInterval(refresh, 8000);
+    const refreshRecommendations = () => {
+      fetchLecturerStatus(token)
+        .then((records) => {
+          if (!cancelled) setHistoryItems(records);
+        })
+        .catch(() => {});
+    };
+
+    fetchOrderPeriods(token)
+      .then((records) => {
+        if (!cancelled) setStatusPeriods(records.filter((period) => period.status !== "draft"));
+      })
+      .catch(() => {});
+    refreshRecommendations();
+
+    const id = setInterval(refreshRecommendations, 8000);
     return () => {
       cancelled = true;
       clearInterval(id);
     };
-  }, [activeTab, token, onItemsUpdate]);
+  }, [token]);
+
+  function canEditItem(item) {
+    const itemPeriodId = item.orderPeriod?._id || item.orderPeriod;
+    return Boolean(
+      isPeriodOpen &&
+      currentPeriod?._id &&
+      itemPeriodId &&
+      String(itemPeriodId) === String(currentPeriod._id) &&
+      item.status === "submitted" &&
+      !item.reviewedBy &&
+      !item.submittedToLibrarianAt
+    );
+  }
 
   const handleDelete = (itemId) => {
     setPendingDeleteId(itemId);
@@ -85,6 +102,7 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
       await deleteRecommendation(token, targetId);
       const newItems = items.filter((item) => item._id !== targetId);
       onItemsUpdate(newItems);
+      setHistoryItems((current) => current.filter((item) => item._id !== targetId));
       setModal(null);
       setPendingDeleteId(null);
     } catch (error) {
@@ -126,6 +144,7 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
       const updated = await updateRecommendation(token, itemId, editForm);
       const newItems = items.map((item) => item._id === itemId ? updated : item);
       onItemsUpdate(newItems);
+      setHistoryItems((current) => current.map((item) => item._id === itemId ? updated : item));
       handleCancelEdit();
     } catch (error) {
       setModal({
@@ -189,7 +208,7 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
             />
 
             {/* Period Filter Dropdown */}
-            {periods && (
+            {(statusPeriods.length > 0 || periods) && (
               <select
                 value={selectedPeriod || ""}
                 onChange={(e) => onSelectedPeriodChange(e.target.value)}
@@ -199,7 +218,7 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
                 }}
               >
                 <option value="">All Periods</option>
-                {periods.map((period) => {
+                {(statusPeriods.length > 0 ? statusPeriods : periods || []).map((period) => {
                   const startDate = new Date(period.startDate).toLocaleDateString('en-GB');
                   const endDate = new Date(period.endDate).toLocaleDateString('en-GB');
                   const isOpen = period.status === "open";
@@ -226,7 +245,7 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
           fontSize: "0.9375rem",
           fontWeight: 500
         }}>
-          {items.length === 0 ? "No Book Recommendations Found." : "No Results Found."}
+          {historyItems.length === 0 ? "No Book Recommendations Found." : "No Results Found."}
         </div>
           ) : (
             /* Table */
@@ -239,7 +258,7 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
                 <table style={{ minWidth: "1100px", width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr>
-                    {["Title", "Author", "ISBN Number", "Publisher", "Edition", "Year", "Binding", "Copies", "Price (LKR)", "Status", "Rank", "Actions"].map((col) => (
+                    {["Title", "Author", "ISBN Number", "Publisher", "Edition", "Year", "Binding", "Copies", "Price", "Status", "Rank", "Actions"].map((col) => (
                       <th key={col} style={{
                         background: "var(--surface-hover)",
                         padding: "0.875rem 1rem",
@@ -261,7 +280,7 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
                     <RecommendationRow 
                       key={item._id} 
                       item={item}
-                      isPeriodOpen={isPeriodOpen}
+                      canEdit={canEditItem(item)}
                       onDelete={() => handleDelete(item._id)}
                       onEdit={() => handleOpenEdit(item)}
                       onSave={() => handleSaveEdit(item._id)}
@@ -273,14 +292,13 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
                     />
                   ))}
                 </tbody>
-                </table>
-              </div>
+              </table>
             </div>
-          )
-        ) : (
+          </div>
+        )) : (
           /* Status tab */
           <div>
-            {filteredItems.some((item) => item.status === "ordered") && (
+            {filteredStatusItems.some((item) => item.status === "ordered") && (
               <div style={{
                 marginBottom: "1rem",
                 padding: "0.875rem 1rem",
@@ -318,7 +336,7 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredItems.map(item => (
+                    {filteredStatusItems.map(item => (
                       <tr key={item._id} style={{ borderTop: '1px solid var(--border)' }}>
                         <td style={{ padding: '0.875rem 1rem', fontWeight: 700 }}>{item.title}</td>
                         <td style={{ padding: '0.875rem 1rem' }}>{item.edition || '—'}</td>
@@ -361,7 +379,7 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
   );
 }
 
-function RecommendationRow({ item, isPeriodOpen, onDelete, onEdit, onSave, onCancel, isEditing, editForm, onFormChange, isLoading }) {
+function RecommendationRow({ item, canEdit, onDelete, onEdit, onSave, onCancel, isEditing, editForm, onFormChange, isLoading }) {
   const statusMap = {
     submitted:    { bg: "var(--success-bg)", text: "var(--success-text)", border: "var(--success-border)", label: "Submitted" },
     under_review: { bg: "rgba(236, 72, 153, 0.15)", text: "#ec4899", border: "rgba(236, 72, 153, 0.3)", label: "Under Review" },
@@ -411,7 +429,7 @@ function RecommendationRow({ item, isPeriodOpen, onDelete, onEdit, onSave, onCan
             className="table-input"
           />
         ) : (
-          <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <div style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden", overflowWrap: "anywhere", lineHeight: 1.35 }}>
             {item.title}
           </div>
         )}
@@ -521,7 +539,9 @@ function RecommendationRow({ item, isPeriodOpen, onDelete, onEdit, onSave, onCan
             className="table-input"
           />
         ) : (
-          item.price ? Number(item.price).toLocaleString() : "—"
+          item.price !== undefined && item.price !== null && item.price !== ""
+            ? `${item.currency || "LKR"} ${Number(item.price).toLocaleString()}`
+            : "—"
         )}
       </td>
       <td style={tdStyle}>
@@ -561,7 +581,7 @@ function RecommendationRow({ item, isPeriodOpen, onDelete, onEdit, onSave, onCan
             <>
               <button
                 onClick={onSave}
-                disabled={isLoading}
+                disabled={isLoading || !canEdit}
                 className="secondary-button"
               >
                 <Save size={16} />
@@ -578,12 +598,16 @@ function RecommendationRow({ item, isPeriodOpen, onDelete, onEdit, onSave, onCan
             <>
               <button
                 onClick={onEdit}
+                disabled={!canEdit}
+                title={canEdit ? "Edit recommendation" : "Only current-period unreviewed requests can be edited"}
                 className="secondary-button"
               >
                 <Pencil size={16} />
               </button>
               <button
                 onClick={onDelete}
+                disabled={!canEdit}
+                title={canEdit ? "Delete recommendation" : "Only current-period unreviewed requests can be deleted"}
                 className="secondary-button"
                 style={{ color: "red" }}
               >

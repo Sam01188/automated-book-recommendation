@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { AppModal } from "../../components/AppModal";
 
 export function LoginPage({ onLogin, onRequestPasswordReset, onResetPassword, resetToken }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [mode, setMode] = useState(resetToken ? "reset" : "login");
@@ -100,7 +101,7 @@ export function LoginPage({ onLogin, onRequestPasswordReset, onResetPassword, re
             <p style={{ color: 'var(--text-muted)', fontWeight: 500 }}>
               {mode === "login" && "Please enter your credentials to continue."}
               {mode === "forgot" && "Enter your account email and we will send a reset link."}
-              {mode === "reset" && "Use at least 10 characters for your new password."}
+              {mode === "reset" && "Use at least 6 characters for your new password."}
             </p>
           </div>
 
@@ -122,26 +123,37 @@ export function LoginPage({ onLogin, onRequestPasswordReset, onResetPassword, re
             {mode === "login" && (
               <div className="field">
                 <label htmlFor="login-password">Password</label>
-                <input
-                  id="login-password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="Enter your password"
-                />
+                <div className="password-input-wrap">
+                  <input
+                    id="login-password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    required
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="Enter your password"
+                  />
+                  <button
+                    className="password-visibility-toggle"
+                    type="button"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-pressed={showPassword}
+                    onClick={() => setShowPassword((visible) => !visible)}
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
               </div>
             )}
             {mode === "reset" && (
               <>
                 <div className="field">
                   <label htmlFor="reset-password">New password</label>
-                  <input id="reset-password" type="password" autoComplete="new-password" minLength={10} required value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+                  <input id="reset-password" type="password" autoComplete="new-password" minLength={6} required value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
                 </div>
                 <div className="field">
                   <label htmlFor="confirm-password">Confirm new password</label>
-                  <input id="confirm-password" type="password" autoComplete="new-password" minLength={10} required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
+                  <input id="confirm-password" type="password" autoComplete="new-password" minLength={6} required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
                 </div>
               </>
             )}

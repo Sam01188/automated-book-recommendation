@@ -22,6 +22,9 @@ export async function requireAuth(req, res, next) {
     if (!user) {
       return res.status(401).json({ message: "Invalid session" });
     }
+    if (!user.isActive) {
+      return res.status(403).json({ message: "This account has been deactivated. Contact the administrator." });
+    }
     if ((payload.sessionVersion ?? 0) !== (user.sessionVersion ?? 0)) {
       return res.status(401).json({ message: "Your session has expired. Please sign in again." });
     }
@@ -37,6 +40,7 @@ export async function requireAuth(req, res, next) {
 
     req.user = {
       id: user._id,
+      name: user.name,
       role: user.role,
       email: user.email,
       department: user.department,
