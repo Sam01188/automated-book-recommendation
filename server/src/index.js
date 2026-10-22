@@ -23,17 +23,46 @@ if (!process.env.MONGO_URI) {
 
 export const tokenBlacklist = new Set();
 const app = express();
-const port = process.env.PORT || 5000;
+const port = Number(process.env.PORT) || 5000;
+
+const startServer = (serverPort) => {
+  const currentPort = Number(serverPort) || 5000;
+  const server = app.listen(currentPort, () => {
+    console.log(`Server running on port ${currentPort}`);
+  });
+
+  server.on("error", (error) => {
+    if (error.code === "EADDRINUSE") {
+      console.error(`Port ${currentPort} is already in use. Stop the other process or set PORT to a free port.`);
+      process.exit(1);
+      return;
+    }
+
+    console.error("Server startup error:", error);
+    process.exit(1);
+  });
+};
+
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://127.0.0.1:5173",
   "http://localhost:3000",
+  "http://127.0.0.1:3000",
   "https://automated-book-recommendation.vercel.app",
   process.env.CLIENT_URL
 ].filter(Boolean);
 
+function isLocalDevOrigin(origin) {
+  if (!origin) return true;
+
+  const localhostLike = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i;
+  const privateLan = /^https?:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$/i;
+  return localhostLike.test(origin) || privateLan.test(origin);
+}
+
 const corsOptions = {
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || allowedOrigins.includes(origin) || (process.env.NODE_ENV !== "production" && isLocalDevOrigin(origin))) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));
@@ -138,7 +167,7 @@ mongoose.connect(process.env.MONGO_URI, {
 })
 .then(() => {
   console.log("✅ Connected to MongoDB Atlas");
-  startServer(preferredPort);
+  startServer(port);
 })
 .catch((err) => {
   console.error("❌ MongoDB Connection Error:", err.message);

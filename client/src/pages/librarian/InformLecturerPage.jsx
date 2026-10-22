@@ -60,6 +60,9 @@ export function InformLecturerPage({ items = [], token, periods = [] }) {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const latestPeriod = getRelevantFinalPeriod(periods);
+  const isPeriodLocked = latestPeriod ? ["open", "hod_priority"].includes(latestPeriod.status) : false;
+
   useEffect(() => {
     setLocalItems(items || []);
     setSelectedIds((prev) => prev.filter((id) => (items || []).some((it) => String(it._id) === String(id))));
