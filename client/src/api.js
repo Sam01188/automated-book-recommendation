@@ -145,12 +145,13 @@ export async function fetchHodSubmissions(token, periodId = "current") {
   return checkApiResponse(response);
 }
 
-export async function fetchHodOrderStatus(token) {
+export async function fetchHodOrderStatus(token, periodId = "current") {
   if (token === "demo-token") {
     return demoRecommendations.filter((item) => Number.isFinite(item.priorityRank));
   }
 
-  const response = await fetch(`${api}/recommendations/hod-order-status`, {
+  const query = new URLSearchParams({ periodId });
+  const response = await fetch(`${api}/recommendations/hod-order-status?${query}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 
@@ -537,4 +538,3 @@ export async function deleteOrderPeriod(token, id) {
   }
   return response.json();
 }
-

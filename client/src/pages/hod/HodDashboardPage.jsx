@@ -11,15 +11,6 @@ export function HodDashboardPage({ user, stats, items, isPeriodOpen, currentPeri
       })
     : [];
 
-  // derive simple stats for the HOD view
-  const hodStats = {
-    total: hodItems.length,
-    pending: hodItems.filter((item) => Number.isFinite(item.priorityRank)).length,
-    rejected: hodItems.filter((item) => item.status === "rejected").length,
-    highPriority: hodItems.filter((item) => item.priorityRank === 1).length,
-    lecturersCount: new Set(hodItems.filter(r => r.submittedBy && r.status !== 'rejected').map(r => r.submittedBy._id || r.submittedBy)).size
-  };
-
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
       {isPeriodOpen && currentPeriod ? (
@@ -55,7 +46,7 @@ export function HodDashboardPage({ user, stats, items, isPeriodOpen, currentPeri
       )}
       <DashboardContent
         user={user}
-        stats={hodStats}
+        stats={stats}
         items={hodItems}
         onTotalClick={onTotalClick}
         onPendingClick={onPendingClick}
