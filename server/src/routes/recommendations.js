@@ -96,8 +96,6 @@ router.get("/hod-submissions", requireAuth, allowRoles("hod"), async (req, res) 
 
     const filter = {
       ...buildDepartmentFilter(req.user.department),
-      reviewedBy: req.user.id,
-      status: "submitted",
       submittedToLibrarianAt: { $exists: true, $ne: null }
     };
     if (requestedPeriodId === "all") {
@@ -144,12 +142,33 @@ router.get("/hod-order-status", requireAuth, allowRoles("hod"), async (req, res)
   try {
     await finalizeExpiredHodPeriods();
 
-    const recommendations = await Recommendation.find({
+    const requestedPeriodId = String(req.query.periodId || "current");
+    let periodId = null;
+    if (requestedPeriodId === "current") {
+      const period = await findCurrentHodPeriod() || await findCurrentOpenPeriod();
+      if (!period) return res.json([]);
+      periodId = period._id;
+    } else if (requestedPeriodId !== "all") {
+      if (!mongoose.isValidObjectId(requestedPeriodId)) {
+        return res.status(400).json({ message: "Invalid period id" });
+      }
+      periodId = requestedPeriodId;
+    }
+
+    const filter = {
       ...buildDepartmentFilter(req.user.department),
       status: "ordered",
       priorityRank: { $exists: true, $ne: null },
       submittedToLibrarianAt: { $exists: true, $ne: null }
-    })
+    };
+    if (requestedPeriodId === "all") {
+      const existingPeriods = await OrderPeriod.find({}, "_id").lean();
+      filter.orderPeriod = { $in: existingPeriods.map((period) => period._id) };
+    } else if (periodId) {
+      filter.orderPeriod = periodId;
+    }
+
+    const recommendations = await Recommendation.find(filter)
       .populate("submittedBy", "name department")
       .populate("orderPeriod", "faculty startDate endDate")
       .select("title edition status priorityRank submittedBy submittedToLibrarianAt orderPeriod")

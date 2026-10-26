@@ -46,6 +46,14 @@ async function findCurrentHodPeriod() {
   return OrderPeriod.findOne({ status: "hod_priority" }).sort({ createdAt: -1, startDate: -1 });
 }
 
+async function findHodDisplayPeriod() {
+  return (
+    await findCurrentHodPeriod() ||
+    await OrderPeriod.findOne({ status: "open" }).sort({ createdAt: -1, startDate: -1 }) ||
+    await OrderPeriod.findOne({ status: "closed" }).sort({ endDate: -1, updatedAt: -1 })
+  );
+}
+
 function buildPendingFilter(user, baseFilter) {
   if (user.role === "librarian") {
     return baseFilter;
@@ -65,18 +73,18 @@ router.get("/", requireAuth, async (req, res) => {
     await finalizeExpiredHodPeriods();
     const activeLibrarianPeriod = req.user.role === "librarian" ? await findLibrarianDisplayPeriod() : null;
     const activeLecturerPeriod = req.user.role === "lecturer" ? await findCurrentLecturerPeriod() : null;
-    const activeHodPeriod = req.user.role === "hod" ? await findCurrentHodPeriod() : null;
+    const activeHodPeriod = req.user.role === "hod" ? await findHodDisplayPeriod() : null;
 
     if (req.user.role === "librarian" && !activeLibrarianPeriod) {
-      return res.json({ total: 0, pending: 0, approved: 0, highPriority: 0, priorityPending: 0 });
+      return res.json({ total: 0, pending: 0, approved: 0, highPriority: 0, priorityPending: 0, lecturersCount: 0 });
     }
 
     if (req.user.role === "lecturer" && !activeLecturerPeriod) {
-      return res.json({ total: 0, pending: 0, approved: 0, highPriority: 0, priorityPending: 0 });
+      return res.json({ total: 0, pending: 0, approved: 0, highPriority: 0, priorityPending: 0, lecturersCount: 0 });
     }
 
     if (req.user.role === "hod" && !activeHodPeriod) {
-      return res.json({ total: 0, pending: 0, approved: 0, highPriority: 0, priorityPending: 0 });
+      return res.json({ total: 0, pending: 0, approved: 0, highPriority: 0, priorityPending: 0, lecturersCount: 0 });
     }
 
     let filter = buildStatsFilter(req.user);
@@ -91,7 +99,7 @@ router.get("/", requireAuth, async (req, res) => {
 
     const pendingFilter = buildPendingFilter(req.user, filter);
 
-    const [total, pending, approved, prioritized, priorityPending] = await Promise.all([
+    const [total, pending, approved, prioritized, priorityPending, lecturersCount] = await Promise.all([
       Recommendation.countDocuments(filter),
       Recommendation.countDocuments({
         ...filter,
@@ -109,10 +117,13 @@ router.get("/", requireAuth, async (req, res) => {
           { status: "under_review" },
           { status: "submitted", reviewedBy: { $exists: false } }
         ]
-      })
+      }),
+      req.user.role === "hod"
+        ? Recommendation.distinct("submittedBy", { ...filter, status: { $ne: "rejected" } }).then((ids) => ids.length)
+        : Promise.resolve(0)
     ]);
 
-    res.json({ total, pending, approved, highPriority: prioritized, priorityPending });
+    res.json({ total, pending, approved, highPriority: prioritized, priorityPending, lecturersCount });
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch stats", error: err.message });
   }

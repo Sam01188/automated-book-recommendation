@@ -12,16 +12,27 @@ function getOrderPeriodLabel(period) {
   return `${start} - ${end}`;
 }
 
-export function HodOrderStatusPage({ token }) {
+export function HodOrderStatusPage({ token, periods = [], currentPeriod = null }) {
+  const [selectedPeriod, setSelectedPeriod] = useState("current");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const queryPeriodId = selectedPeriod === "current" ? currentPeriod?._id || "current" : selectedPeriod;
+  const latestPeriodId = periods.reduce((latestId, period) => {
+    if (!latestId) return period._id;
+    const latestPeriod = periods.find((item) => String(item._id) === String(latestId));
+    return new Date(period.createdAt || period.startDate) > new Date(latestPeriod.createdAt || latestPeriod.startDate)
+      ? period._id
+      : latestId;
+  }, null);
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
+    setError("");
 
     const refreshStatuses = () => {
-      fetchHodOrderStatus(token)
+      fetchHodOrderStatus(token, queryPeriodId)
         .then((records) => {
           if (!active) return;
           setItems(records);
@@ -42,14 +53,28 @@ export function HodOrderStatusPage({ token }) {
       active = false;
       clearInterval(interval);
     };
-  }, [token]);
+  }, [token, queryPeriodId]);
 
   return (
     <section className="large-panel">
       <h2 className="panel-title">Librarian Order Status</h2>
       <p style={{ color: "var(--text-muted)", marginTop: "-0.5rem" }}>
-        Books submitted to the librarian and marked as ordered, across all periods.
+        Books submitted to the librarian and marked as ordered.
       </p>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "0.5rem" }}>
+        <label style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+          <span style={{ color: "var(--text-muted)" }}>Filter by period:</span>
+          <select value={selectedPeriod} onChange={(e) => setSelectedPeriod(e.target.value)}>
+            <option value="current">Current Period</option>
+            <option value="all">All</option>
+            {periods.map((period) => (
+              <option key={period._id} value={period._id}>
+                {`${new Date(period.startDate).toLocaleDateString()} - ${new Date(period.endDate).toLocaleDateString()}${String(period._id) === String(latestPeriodId) ? " (Latest)" : ""}`}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
       {loading ? (
         <p>Loading order statuses...</p>
       ) : error ? (

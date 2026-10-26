@@ -162,7 +162,7 @@ function App() {
   };
 
   useEffect(() => {
-    if (!session || session.user.mustChangePassword || session.user.role !== "hod" || view !== "submissions") {
+    if (!session || session.user.mustChangePassword || session.user.role !== "hod" || !["submissions", "status"].includes(view)) {
       return undefined;
     }
 
@@ -245,7 +245,8 @@ function App() {
 
     fetchRecommendations(session.token, session.user.role).then((records) => {
       setItems(records);
-      // derive client-side stats (ensure HOD pending reflects unassigned items)
+      if (session.user.role === "hod") return;
+
       const derived = deriveStats(records, session.user.role);
       // fetch server stats but merge with derived pending/lecturersCount
       fetchStats(session.token, records)
@@ -290,6 +291,44 @@ function App() {
 
     refreshPeriodStatus();
   }, [session]);
+
+  useEffect(() => {
+    if (!session || session.user.mustChangePassword || session.user.role !== "hod" || view !== "dashboard") {
+      return undefined;
+    }
+
+    let active = true;
+    let refreshing = false;
+    const refreshHodDashboard = async () => {
+      if (refreshing) return;
+      refreshing = true;
+      try {
+        const [period, records] = await Promise.all([
+          fetchCurrentHodPeriod(session.token),
+          fetchRecommendations(session.token, session.user.role)
+        ]);
+        const nextStats = await fetchStats(session.token, records);
+        if (!active) return;
+
+        setCurrentHodPeriod(period.period);
+        setIsHodPeriodOpen(period.isOpen);
+        setItems(records);
+        setStats(nextStats);
+      } catch (err) {
+        console.error("Failed to refresh HoD dashboard:", err);
+      } finally {
+        refreshing = false;
+      }
+    };
+
+    refreshHodDashboard();
+    const interval = setInterval(refreshHodDashboard, 10000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [session, view]);
 
   useEffect(() => {
     if (!session || session.user.mustChangePassword || session.user.role !== "librarian") return;
@@ -381,6 +420,7 @@ function App() {
   const librarianDashboardStats = deriveStats(librarianDashboardItems, "librarian");
 
   useEffect(() => {
+    if (session?.user?.role === "hod") return;
     setStats(deriveStats(items, session?.user?.role));
   }, [items, session?.user?.role]);
 
@@ -699,13 +739,16 @@ function App() {
       {!passwordChangeRequired && session.user.role === "hod" && currentView === "submissions" && (
         <HodSubmissionsPage
           token={session.token}
-          currentUserId={session.user.id}
           periods={periods}
           currentPeriod={currentHodPeriod}
         />
       )}
       {!passwordChangeRequired && session.user.role === "hod" && currentView === "status" && (
-        <HodOrderStatusPage token={session.token} />
+        <HodOrderStatusPage
+          token={session.token}
+          periods={periods}
+          currentPeriod={currentHodPeriod}
+        />
       )}
 
       {!passwordChangeRequired && session.user.role === "librarian" && currentView === "dashboard" && (
