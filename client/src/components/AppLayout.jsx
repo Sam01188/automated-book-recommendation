@@ -42,13 +42,13 @@ export const viewIcons = {
   audit: ClipboardList
 };
 
-export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, onProfileClick, navigationLocked = false, viewActions, theme, onToggleTheme, notifications = [], notificationsOpen = false, onToggleNotifications, onMarkNotificationRead, children }) {
+export function AppLayout({ user, view, allowedViews, onViewChange, onLogout, onProfileClick, navigationLocked = false, viewActions, theme, onToggleTheme, notifications = [], notificationsOpen = false, onToggleNotifications, onMarkNotificationRead, onClickCapture, children }) {
   const [sidebarMinimized, setSidebarMinimized] = useState(false);
   const ActiveIcon = viewIcons[view] || Home;
   const unreadNotificationCount = notifications.filter((item) => !item.isRead).length;
 
   return (
-    <div className="app-frame" style={{ "--app-sidebar-width": sidebarMinimized ? "80px" : "280px" }}>
+    <div className="app-frame" onClickCapture={onClickCapture} style={{ "--app-sidebar-width": sidebarMinimized ? "80px" : "280px" }}>
       <header className="topbar">
         <div className="brand">
           <img src="/ruhuna.gif" alt="University of Ruhuna" className="logo" />

@@ -203,6 +203,9 @@ function App() {
         const notifications = await fetchLecturerNotifications(session.token);
         if (!active) return;
 
+        setOrderToast((current) =>
+          current && !notifications.some((notification) => notification.id === current.id) ? null : current
+        );
         const unseenNotification = notifications.find((notification) => !seenNotificationIds.has(notification.id));
         if (unseenNotification) {
           setOrderToast(unseenNotification);
@@ -611,6 +614,9 @@ function App() {
       notificationsOpen={notificationsOpen}
       onToggleNotifications={() => setNotificationsOpen((open) => !open)}
       onMarkNotificationRead={markNotificationAsRead}
+      onClickCapture={() => {
+        if (orderToast) setOrderToast(null);
+      }}
     >
       {orderToast && (
         <div
