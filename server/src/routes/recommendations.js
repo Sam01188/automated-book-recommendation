@@ -62,7 +62,10 @@ async function findCurrentHodPeriod() {
 }
 
 async function findCurrentLecturerPeriod() {
-  return findCurrentOpenPeriod();
+  const openPeriod = await findCurrentOpenPeriod();
+  return openPeriod || OrderPeriod.findOne({
+    status: { $in: ["hod_priority", "closed"] }
+  }).sort({ createdAt: -1, startDate: -1 });
 }
 
 async function findLibrarianDisplayPeriod() {

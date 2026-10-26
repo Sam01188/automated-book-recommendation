@@ -323,6 +323,35 @@ function App() {
   }, [session]);
 
   useEffect(() => {
+    if (!session || session.user.mustChangePassword || session.user.role !== "lecturer") return undefined;
+
+    let active = true;
+    const refreshLecturerState = async () => {
+      try {
+        const [periodResponse, records] = await Promise.all([
+          fetchCurrentPeriod(session.token),
+          fetchRecommendations(session.token, session.user.role)
+        ]);
+        if (!active) return;
+
+        setCurrentPeriod(periodResponse.period);
+        setIsPeriodOpen(periodResponse.isOpen);
+        setItems(records);
+      } catch (err) {
+        console.error("Failed to refresh lecturer dashboard:", err);
+      }
+    };
+
+    refreshLecturerState();
+    const interval = setInterval(refreshLecturerState, 10000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [session]);
+
+  useEffect(() => {
     if (!session || session.user.mustChangePassword || session.user.role !== "librarian") {
       return undefined;
     }
