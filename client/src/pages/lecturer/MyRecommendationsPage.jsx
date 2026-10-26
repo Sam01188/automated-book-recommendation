@@ -123,6 +123,7 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
       author: item.author,
       isbn: item.isbn,
       publisher: item.publisher,
+      publishPlace: item.publishPlace || "",
       edition: item.edition,
       publicationYear: item.publicationYear || "",
       binding: item.binding || "",
@@ -258,7 +259,7 @@ export function MyRecommendationsPage({ items, isPeriodOpen, currentPeriod, toke
                 <table style={{ minWidth: "1100px", width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr>
-                    {["Title", "Author", "ISBN Number", "Publisher", "Edition", "Year", "Binding", "Copies", "Price", "Status", "Rank", "Actions"].map((col) => (
+                    {["Title", "Author", "ISBN Number", "Publisher", "Publishing Place", "Edition", "Year", "Binding", "Copies", "Price", "Status", "Rank", "Actions"].map((col) => (
                       <th key={col} style={{
                         background: "var(--surface-hover)",
                         padding: "0.875rem 1rem",
@@ -471,6 +472,19 @@ function RecommendationRow({ item, canEdit, onDelete, onEdit, onSave, onCancel, 
           />
         ) : (
           item.publisher ?? "—"
+        )}
+      </td>
+      <td style={{ ...tdStyle, minWidth: isEditing ? 160 : "auto" }}>
+        {isEditing ? (
+          <input
+            type="text"
+            value={editForm.publishPlace || ""}
+            onChange={(e) => set("publishPlace", e.target.value)}
+            disabled={isLoading}
+            className="table-input"
+          />
+        ) : (
+          item.publishPlace || "—"
         )}
       </td>
       <td style={{ ...tdStyle, minWidth: isEditing ? 140 : "auto" }}>

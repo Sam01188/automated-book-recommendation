@@ -65,18 +65,15 @@ const allowedOrigins = new Set([
   "http://localhost:5173",
   "http://localhost:3000",
   "https://automated-book-recommendation.vercel.app",
-  ...configuredOrigins
-]);
+  process.env.CLIENT_URL
+].filter(Boolean);
+
+const localOriginPattern = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
 const corsOptions = {
   origin(origin, callback) {
-    if (!origin || allowedOrigins.has(origin)) {
-      callback(null, true);
-    } else {
-      const error = new Error("Not allowed by CORS");
-      error.code = "CORS_ORIGIN_BLOCKED";
-      callback(error);
-    }
+    // Disallowed origins get no CORS headers (browser blocks them) instead of a 500 error.
+    callback(null, !origin || allowedOrigins.includes(origin) || localOriginPattern.test(origin));
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

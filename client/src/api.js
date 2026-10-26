@@ -1,9 +1,9 @@
 import { buildStats, demoRecommendations, demoUsers } from "./data";
 
-const defaultApi = import.meta.env.PROD
-  ? "https://automated-book-recommendation-production.up.railway.app/api"
-  : "/api";
-const api = (import.meta.env.VITE_API_BASE_URL || import.meta.env.API_BASE_URL || defaultApi).replace(/\/+$/, "");
+const api = (
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV ? "/api" : "https://automated-book-recommendation-production.up.railway.app/api")
+).replace(/\/+$/, "");
 
 async function checkApiResponse(response) {
   if (response.ok) {
@@ -26,7 +26,10 @@ export async function login(email, password) {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || "Invalid login");
+    throw new Error(
+      errorData.message ||
+      `Unable to reach the login service (HTTP ${response.status}). Please try again later.`
+    );
   }
 
   return response.json();
@@ -538,3 +541,4 @@ export async function deleteOrderPeriod(token, id) {
   }
   return response.json();
 }
+

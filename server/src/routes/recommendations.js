@@ -466,7 +466,6 @@ router.post("/", requireAuth, allowRoles("lecturer"), async (req, res) => {
       isbn10,
       isbn13,
       publisher,
-      publishingPlace,
       pages,
       currency,
       edition,
@@ -476,7 +475,7 @@ router.post("/", requireAuth, allowRoles("lecturer"), async (req, res) => {
       price,
       currency,
       copies,
-      publishPlace,
+      publishPlace: publishPlace || publishingPlace,
       numberOfPages,
       additionalNotes,
       submittedBy: req.user.id,
@@ -696,7 +695,7 @@ router.get("/export/:format", requireAuth, allowRoles("librarian"), async (req, 
       headers.join(","),
       ...data.map((row) =>
         [
-          row.title, row.author, row.isbn, row.isbn10, row.isbn13, row.publisher, row.publishingPlace, row.pages, row.currency, row.edition,
+          row.title, row.author, row.isbn, row.isbn10, row.isbn13, row.publisher, row.publishPlace, row.numberOfPages, row.currency, row.edition,
           row.publicationYear, row.binding, row.agreeLatest, row.price, row.copies,
           row.department, row.submittedBy, row.priorityRank, row.status, row.orderPeriod, row.submittedToLibrarianAt
         ]
@@ -745,8 +744,9 @@ router.patch("/:id", requireAuth, allowRoles("lecturer"), async (req, res) => {
     const {
       title, author, isbn, publisher, edition,
       publicationYear, binding, agreeLatest, price, copies,
-      additionalNotes
+      additionalNotes, publishPlace, publishingPlace
     } = req.body;
+    const nextPublishPlace = publishPlace ?? publishingPlace;
 
     const updated = await Recommendation.findByIdAndUpdate(
       req.params.id,
@@ -755,6 +755,7 @@ router.patch("/:id", requireAuth, allowRoles("lecturer"), async (req, res) => {
         author: author ?? existing.author,
         isbn: isbn ?? existing.isbn,
         publisher: publisher ?? existing.publisher,
+        publishPlace: nextPublishPlace ?? existing.publishPlace,
         edition: edition ?? existing.edition,
         publicationYear: publicationYear ?? existing.publicationYear,
         binding: binding ?? existing.binding,
@@ -770,7 +771,7 @@ router.patch("/:id", requireAuth, allowRoles("lecturer"), async (req, res) => {
 
     const changedFields = [
       "title", "author", "isbn", "publisher", "edition", "publicationYear", "binding",
-      "agreeLatest", "price", "copies", "additionalNotes"
+      "agreeLatest", "price", "copies", "additionalNotes", "publishPlace"
     ].filter((field) => req.body[field] !== undefined && String(req.body[field]) !== String(existing[field] ?? ""));
     if (changedFields.length > 0) {
       await recordAuditLog(req, "recommendation_updated", updated, changedFields, { targetType: "recommendation" });
