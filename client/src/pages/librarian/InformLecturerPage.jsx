@@ -184,10 +184,10 @@ export function InformLecturerPage({ items = [], token, periods = [] }) {
     setNotice("");
 
     try {
-      await updateRecommendationStatus(token, id, "selected");
+      await updateRecommendationStatus(token,       id, "submitted");
       const refreshed = await fetchRecommendations(token, "librarian");
       setLocalItems(refreshed);
-      setNotice("This recommendation was moved back to selected status.");
+            setNotice("This recommendation was moved back to submitted status.");
     } catch (error) {
       setNotice(error.message || "Failed to undo the ordered status.");
     } finally {
