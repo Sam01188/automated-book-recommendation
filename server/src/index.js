@@ -45,19 +45,37 @@ const startServer = (serverPort) => {
   });
 };
 
-const allowedOrigins = [
+const configuredOrigins = [
+  process.env.CLIENT_URL,
+  ...(process.env.CLIENT_URLS || "").split(",")
+].filter((origin) => origin?.trim()).map((origin) => {
+  try {
+    const url = new URL(origin.trim());
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      throw new Error("Client origin must use HTTP or HTTPS");
+    }
+    return url.origin;
+  } catch (error) {
+    console.warn(`Ignoring invalid client origin "${origin}": ${error.message}`);
+    return null;
+  }
+}).filter(Boolean);
+
+const allowedOrigins = new Set([
   "http://localhost:5173",
   "http://localhost:3000",
   "https://automated-book-recommendation.vercel.app",
-  process.env.CLIENT_URL
-].filter(Boolean);
+  ...configuredOrigins
+]);
 
 const corsOptions = {
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || allowedOrigins.has(origin)) {
       callback(null, true);
     } else {
-      callback(new Error("Not allowed by CORS"));
+      const error = new Error("Not allowed by CORS");
+      error.code = "CORS_ORIGIN_BLOCKED";
+      callback(error);
     }
   },
   credentials: true,
@@ -148,6 +166,19 @@ app.use("/api/order-periods", orderPeriodRoutes);
 app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/admin/users", userRoutes);
+
+app.use((error, req, res, next) => {
+  if (error.type === "entity.parse.failed") {
+    return res.status(400).json({ message: "Request body must be valid JSON." });
+  }
+
+  if (error.code === "CORS_ORIGIN_BLOCKED") {
+    return res.status(403).json({ message: "This origin is not allowed by CORS." });
+  }
+
+  console.error("Unhandled request error:", error);
+  return res.status(500).json({ message: "Internal server error." });
+});
 
 mongoose.connect(process.env.MONGO_URI, {
   retryWrites: true,

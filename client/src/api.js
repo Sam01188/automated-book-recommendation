@@ -1,6 +1,9 @@
 import { buildStats, demoRecommendations, demoUsers } from "./data";
 
-const api = (import.meta.env.VITE_API_BASE_URL || import.meta.env.API_BASE_URL || "/api").replace(/\/+$/, "");
+const defaultApi = import.meta.env.PROD
+  ? "https://automated-book-recommendation-production.up.railway.app/api"
+  : "/api";
+const api = (import.meta.env.VITE_API_BASE_URL || import.meta.env.API_BASE_URL || defaultApi).replace(/\/+$/, "");
 
 async function checkApiResponse(response) {
   if (response.ok) {
@@ -534,5 +537,4 @@ export async function deleteOrderPeriod(token, id) {
   }
   return response.json();
 }
-
 
