@@ -1,23 +1,12 @@
 import bcrypt from "bcryptjs";
-import nodemailer from "nodemailer";
 import User from "../models/user.js";
 import { recordAuditLog } from "./auditController.js";
-
-function createMailTransport() {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
-  const fromAddress = process.env.SMTP_FROM || process.env.FROM_EMAIL;
-
-  if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !fromAddress) {
-    return null;
-  }
-
-  return nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT),
-    secure: process.env.SMTP_SECURE === "true",
-    auth: { user: SMTP_USER, pass: SMTP_PASS }
-  });
-}
+import {
+  assertMailtrapConfigured,
+  logMailtrapError,
+  MailtrapConfigurationError,
+  sendEmail
+} from "../utils/mailtrap.js";
 
 function generateTemporaryPassword() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
@@ -57,18 +46,20 @@ export const createUser = async (req, res) => {
     await user.save();
     await recordAuditLog(req, "user_created", user);
 
-    const mailTransport = createMailTransport();
-    if (mailTransport) {
-      await mailTransport.sendMail({
-        from: process.env.SMTP_FROM || process.env.FROM_EMAIL,
+    let responseMessage = "User created successfully. A temporary password has been emailed to the user.";
+    try {
+      await sendEmail({
         to: normalizedEmail,
         subject: "Your temporary password for the Book Recommendation Portal",
         text: `Your account has been created.\n\nEmail: ${normalizedEmail}\nTemporary password: ${tempPassword}\n\nYou will be required to change this password when you sign in.`
       });
+    } catch (error) {
+      logMailtrapError("Temporary-password email failed for newly created user:", error);
+      responseMessage = "User created successfully, but the temporary-password email could not be sent. Contact the administrator.";
     }
 
     res.status(201).json({
-      message: "User created successfully. A temporary password has been emailed to the user.",
+      message: responseMessage,
       user: {
         id: user._id,
         name: user.name,
@@ -80,7 +71,7 @@ export const createUser = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("Error creating user:", err);
+    console.error("Error creating user:", { name: err?.name, code: err?.code });
     res.status(500).json({ message: "Error creating user" });
   }
 };
@@ -94,7 +85,17 @@ export const importUsers = async (req, res) => {
     return res.status(400).json({ message: "Import between 1 and 200 users per CSV." });
   }
 
-  const mailTransport = createMailTransport();
+  let mailtrapConfigured = true;
+  try {
+    assertMailtrapConfigured();
+  } catch (error) {
+    if (!(error instanceof MailtrapConfigurationError)) {
+      throw error;
+    }
+    mailtrapConfigured = false;
+    logMailtrapError("Bulk user email is not configured:", error);
+  }
+
   const seenEmails = new Set();
   const results = [];
   const pendingEmails = [];
@@ -148,12 +149,12 @@ export const importUsers = async (req, res) => {
         email,
         status: "created",
         emailSent: false,
-        message: mailTransport
+        message: mailtrapConfigured
           ? "Account created; temporary-password email is pending."
           : "Account created, but email is not configured."
       };
       results.push(result);
-      if (mailTransport) pendingEmails.push({ email, temporaryPassword, result });
+      if (mailtrapConfigured) pendingEmails.push({ email, temporaryPassword, result });
     } catch (error) {
       const message = error.code === 11000
         ? "An account with this email already exists."
@@ -167,25 +168,22 @@ export const importUsers = async (req, res) => {
       await new Promise((resolve) => setTimeout(resolve, 2500));
     }
 
-    const mail = {
-        from: process.env.SMTP_FROM || process.env.FROM_EMAIL,
-        to: pending.email,
-        subject: "Your temporary password for the Book Recommendation Portal",
-        text: `Your account has been created.\n\nEmail: ${pending.email}\nTemporary password: ${pending.temporaryPassword}\n\nYou will be required to change this password when you sign in.`
-    };
-
     let emailSent = false;
     for (let attempt = 0; attempt < 3 && !emailSent; attempt += 1) {
       try {
-        await mailTransport.sendMail(mail);
+        await sendEmail({
+          to: pending.email,
+          subject: "Your temporary password for the Book Recommendation Portal",
+          text: `Your account has been created.\n\nEmail: ${pending.email}\nTemporary password: ${pending.temporaryPassword}\n\nYou will be required to change this password when you sign in.`
+        });
         emailSent = true;
       } catch (error) {
-        const isRateLimited = error.responseCode === 550 && /too many emails per second/i.test(error.message || "");
+        const isRateLimited = error.status === 429;
         if (isRateLimited && attempt < 2) {
           await new Promise((resolve) => setTimeout(resolve, 3000 * (attempt + 1)));
           continue;
         }
-        console.error(`Failed to email imported account ${pending.email}:`, error.message);
+        logMailtrapError("Failed to email imported account:", error);
         pending.result.message = isRateLimited
           ? "Account created, but the email provider is still rate-limiting delivery."
           : "Account created, but the temporary-password email could not be sent.";

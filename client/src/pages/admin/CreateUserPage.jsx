@@ -41,12 +41,12 @@ export function CreateUserPage({ onCreateUser, onImportUsers, token }) {
         department: roleHasDepartment(form.role) ? form.department : ""
       };
 
-      await onCreateUser(payload);
+      const result = await onCreateUser(payload);
 
       setForm({ name: "", email: "", role: "lecturer", department: "DCEE" });
       setModal({
-        title: "Account created successfully.",
-        message: "A temporary password has been sent to the user by email."
+        title: "Account creation result",
+        message: result?.message || "The account was created, but email delivery status is unknown."
       });
     } catch (err) {
       setModal({

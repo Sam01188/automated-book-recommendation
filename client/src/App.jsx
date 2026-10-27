@@ -575,7 +575,7 @@ function App() {
 
   async function handleUserCreation(userData) {
     if (!session) return;
-    await apiCreateUser(session.token, userData);
+    return apiCreateUser(session.token, userData);
   }
 
   async function handleUserImport(users) {

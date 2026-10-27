@@ -1,28 +1,16 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { createHash, randomBytes } from "node:crypto";
-import nodemailer from "nodemailer";
 import User from "../models/user.js";
 import { tokenBlacklist } from "../index.js";
 import { recordAuditLog } from "./auditController.js";
+import {
+  assertMailtrapConfigured,
+  logMailtrapError,
+  sendEmail
+} from "../utils/mailtrap.js";
 
 const hashResetToken = (token) => createHash("sha256").update(token).digest("hex");
-
-function createMailTransport() {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
-  const fromAddress = process.env.SMTP_FROM || process.env.FROM_EMAIL;
-
-  if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !fromAddress) {
-    return null;
-  }
-
-  return nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT),
-    secure: process.env.SMTP_SECURE === "true",
-    auth: { user: SMTP_USER, pass: SMTP_PASS }
-  });
-}
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
@@ -125,8 +113,10 @@ export const requestPasswordReset = async (req, res) => {
     return res.status(400).json({ message: "Enter your account email address." });
   }
 
-  const mailTransport = createMailTransport();
-  if (!mailTransport) {
+  try {
+    assertMailtrapConfigured();
+  } catch (error) {
+    logMailtrapError("Password reset email is not configured:", error);
     return res.status(503).json({ message: "Password reset email is not configured. Contact the administrator." });
   }
 
@@ -142,8 +132,7 @@ export const requestPasswordReset = async (req, res) => {
 
       const resetUrl = new URL("/", process.env.CLIENT_URL || "http://localhost:5173");
       resetUrl.searchParams.set("resetToken", token);
-      await mailTransport.sendMail({
-        from: process.env.SMTP_FROM || process.env.FROM_EMAIL,
+      await sendEmail({
         to: user.email,
         subject: "Reset your Book Recommendation Portal password",
         text: `A password reset was requested for your account. This link expires in 30 minutes:\n\n${resetUrl.toString()}\n\nIf you did not request this, you can ignore this email.`
@@ -153,7 +142,7 @@ export const requestPasswordReset = async (req, res) => {
 
     res.json({ message: responseMessage });
   } catch (error) {
-    console.error("Password reset email failed:", error.message);
+    logMailtrapError("Password reset email failed:", error);
     res.json({ message: responseMessage });
   }
 };
