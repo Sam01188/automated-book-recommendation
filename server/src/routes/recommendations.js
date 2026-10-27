@@ -62,7 +62,10 @@ async function findCurrentHodPeriod() {
 }
 
 async function findCurrentLecturerPeriod() {
-  return findCurrentOpenPeriod();
+  const openPeriod = await findCurrentOpenPeriod();
+  return openPeriod || OrderPeriod.findOne({
+    status: { $in: ["hod_priority", "closed"] }
+  }).sort({ createdAt: -1, startDate: -1 });
 }
 
 async function findLibrarianDisplayPeriod() {
@@ -119,8 +122,15 @@ router.get("/hod-submissions", requireAuth, allowRoles("hod"), async (req, res) 
 
 router.get("/lecturer-notifications", requireAuth, allowRoles("lecturer"), async (req, res) => {
   try {
+    await finalizeExpiredHodPeriods();
+    const latestPeriod = await findCurrentLecturerPeriod();
+    if (!latestPeriod) {
+      return res.json([]);
+    }
+
     const notifications = await Recommendation.find({
       submittedBy: req.user.id,
+      orderPeriod: latestPeriod._id,
       status: "ordered",
       submittedToLibrarianAt: { $exists: true, $ne: null }
     })

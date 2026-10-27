@@ -5,6 +5,8 @@ export function LecturerDashboardPage({ user, stats, items, isPeriodOpen, curren
   const fullName = user?.name?.toUpperCase() ?? "";
   const notificationItems = (items || []).filter((item) => item.status === "ordered");
   const notificationTitles = notificationItems.map((item) => item.title).filter(Boolean);
+  const submittedCount = (items || []).filter((item) => item.status === "submitted").length;
+  const orderedCount = notificationItems.length;
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
@@ -56,12 +58,28 @@ export function LecturerDashboardPage({ user, stats, items, isPeriodOpen, curren
           <div>
             <h4 style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "var(--success)" }}>📖 Book Submission Period Open</h4>
             <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.875rem", color: "var(--text-muted)" }}>
-              The library is accepting book recommendations for the <strong>Engineering</strong> faculty.
+              The library is accepting book recommendations for this period.
             </p>
           </div>
           <div style={{ textAlign: "right", fontSize: "0.875rem" }}>
             <strong>Deadline:</strong> {new Date(currentPeriod.endDate).toLocaleDateString('en-GB')}
           </div>
+        </div>
+      ) : currentPeriod ? (
+        <div style={{
+          background: "linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%)",
+          border: "1px solid rgba(239, 68, 68, 0.35)",
+          color: "var(--danger)",
+          borderRadius: "var(--radius)",
+          padding: "1rem 1.5rem"
+        }}>
+          <h4 style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "var(--danger)" }}>🔒 Submissions Closed — Latest Period Details</h4>
+          <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.875rem", color: "var(--text-muted)" }}>
+            The latest period ran from{" "}
+            <strong>{new Date(currentPeriod.startDate).toLocaleDateString("en-GB")}</strong> to{" "}
+            <strong>{new Date(currentPeriod.endDate).toLocaleDateString("en-GB")}</strong>.
+            Book recommendations are closed until the librarian opens a new period.
+          </p>
         </div>
       ) : (
         <div style={{
@@ -92,12 +110,12 @@ export function LecturerDashboardPage({ user, stats, items, isPeriodOpen, curren
         <MetricCard
           icon={<Clock size={22} />}
           label="Pending Review"
-          value={stats.pending ?? 0}
+          value={submittedCount}
         />
         <MetricCard
           icon={<CheckCircle size={22} />}
           label="Total Approved"
-          value={stats.approved ?? 0}
+          value={orderedCount}
         />
       </div>
 

@@ -36,9 +36,12 @@ router.get("/", requireAuth, allowRoles("librarian", "hod", "admin", "lecturer")
 router.get("/current", requireAuth, async (req, res) => {
   try {
     await finalizeExpiredHodPeriods();
-    const period = await OrderPeriod.findOne({ status: "open" }).sort({ createdAt: -1, startDate: -1 });
+    const openPeriod = await OrderPeriod.findOne({ status: "open" }).sort({ createdAt: -1, startDate: -1 });
+    const period = openPeriod || await OrderPeriod.findOne({
+      status: { $in: ["hod_priority", "closed"] }
+    }).sort({ createdAt: -1, startDate: -1 });
 
-    res.json({ isOpen: Boolean(period), period });
+    res.json({ isOpen: Boolean(openPeriod), period });
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch current order period" });
   }

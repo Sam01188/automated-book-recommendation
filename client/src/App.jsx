@@ -203,6 +203,9 @@ function App() {
         const notifications = await fetchLecturerNotifications(session.token);
         if (!active) return;
 
+        setOrderToast((current) =>
+          current && !notifications.some((notification) => notification.id === current.id) ? null : current
+        );
         const unseenNotification = notifications.find((notification) => !seenNotificationIds.has(notification.id));
         if (unseenNotification) {
           setOrderToast(unseenNotification);
@@ -359,6 +362,35 @@ function App() {
     const interval = setInterval(refreshLibrarianState, 5000);
 
     return () => clearInterval(interval);
+  }, [session]);
+
+  useEffect(() => {
+    if (!session || session.user.mustChangePassword || session.user.role !== "lecturer") return undefined;
+
+    let active = true;
+    const refreshLecturerState = async () => {
+      try {
+        const [periodResponse, records] = await Promise.all([
+          fetchCurrentPeriod(session.token),
+          fetchRecommendations(session.token, session.user.role)
+        ]);
+        if (!active) return;
+
+        setCurrentPeriod(periodResponse.period);
+        setIsPeriodOpen(periodResponse.isOpen);
+        setItems(records);
+      } catch (err) {
+        console.error("Failed to refresh lecturer dashboard:", err);
+      }
+    };
+
+    refreshLecturerState();
+    const interval = setInterval(refreshLecturerState, 10000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, [session]);
 
   useEffect(() => {
@@ -582,6 +614,9 @@ function App() {
       notificationsOpen={notificationsOpen}
       onToggleNotifications={() => setNotificationsOpen((open) => !open)}
       onMarkNotificationRead={markNotificationAsRead}
+      onClickCapture={() => {
+        if (orderToast) setOrderToast(null);
+      }}
     >
       {orderToast && (
         <div
